@@ -1,0 +1,21 @@
+{
+  "testEnvironment": "node",
+  "transform": {},
+  "testMatch": [
+    "**/tests/unit/**/*.test.js",
+    "**/tests/integration/**/*.test.js",
+    "**/tests/e2e/**/*.test.js"
+  ],
+  "testPathIgnorePatterns": [
+    "/node_modules/",
+    "beautician.schema.test.js",
+    "service.schema.test.js",
+    "slotGenerator.test.js",
+    "scripts/tests/"
+  ],
+  "collectCoverageFrom": ["src/**/*.js", "!src/server.js"],
+  "coverageDirectory": "coverage",
+  "verbose": true,
+  "testTimeout": 30000,
+  "forceExit": true
+}
