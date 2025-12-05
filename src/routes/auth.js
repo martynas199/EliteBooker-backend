@@ -85,6 +85,8 @@ const sendTokenResponse = async (admin, statusCode, res, req) => {
     .cookie("refreshToken", refreshTokenDoc.token, refreshTokenOptions)
     .json({
       success: true,
+      accessToken, // Also return token in response body for cross-domain fallback
+      refreshToken: refreshTokenDoc.token, // Also return refresh token for localStorage fallback
       admin: {
         _id: admin._id,
         id: admin._id,
@@ -387,14 +389,15 @@ r.get("/me", async (req, res) => {
     console.log("[Auth /me] Has accessToken?", !!req.cookies?.accessToken);
     console.log("[Auth /me] Has jwt?", !!req.cookies?.jwt);
 
-    // Get token from cookie - prioritize accessToken over jwt
+    // Get token from cookie or Authorization header
+    // IMPORTANT: Prioritize Authorization header for cross-domain compatibility
     let token;
     let tokenSource;
     if (
       req.headers.authorization &&
-      req.headers.authorization.startsWith("Bearer")
+      req.headers.authorization.startsWith("Bearer ")
     ) {
-      token = req.headers.authorization.split(" ")[1];
+      token = req.headers.authorization.substring(7); // Remove 'Bearer ' prefix
       tokenSource = "Authorization header";
     } else if (req.cookies.accessToken) {
       token = req.cookies.accessToken;
