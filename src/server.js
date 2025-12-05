@@ -92,11 +92,14 @@ app.use(morgan("dev"));
 app.use(cookieParser());
 
 const PORT = process.env.PORT || 4000;
-const MONGO_URI = process.env.MONGO_URI;
+let MONGO_URI = process.env.MONGO_URI;
 if (!MONGO_URI) {
   console.error("MONGO_URI missing");
   process.exit(1);
 }
+// Remove quotes if they exist (Render sometimes adds them)
+MONGO_URI = MONGO_URI.replace(/^["']|["']$/g, '').trim();
+console.log("Connecting to MongoDB...");
 await mongoose.connect(MONGO_URI);
 
 // Health check (no rate limit)
