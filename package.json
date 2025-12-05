@@ -28,7 +28,7 @@
     "helmet": "^7.2.0",
     "ioredis": "^5.8.2",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.5.1",
+    "mongoose": "^9.0.0",
     "morgan": "^1.10.0",
     "multer": "^2.0.2",
     "nodemailer": "^7.0.9",
