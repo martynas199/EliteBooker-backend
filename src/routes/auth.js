@@ -65,7 +65,7 @@ const sendTokenResponse = async (admin, statusCode, res, req) => {
     expires: new Date(Date.now() + JWT_COOKIE_EXPIRES_IN * 24 * 60 * 60 * 1000),
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", // 'none' required for cross-domain
   };
 
   // Refresh token cookie options (longer-lived, 7 days)
@@ -73,7 +73,7 @@ const sendTokenResponse = async (admin, statusCode, res, req) => {
     expires: new Date(Date.now() + REFRESH_TOKEN_EXPIRES_IN),
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", // 'none' required for cross-domain
     // In development, use root path for proxy compatibility
     path: process.env.NODE_ENV === "production" ? "/api/auth/refresh" : "/",
   };
@@ -311,14 +311,14 @@ r.post("/refresh", async (req, res) => {
       ),
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", // 'none' required for cross-domain
     };
 
     const refreshTokenOptions = {
       expires: new Date(Date.now() + REFRESH_TOKEN_EXPIRES_IN),
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", // 'none' required for cross-domain
       path: "/api/auth/refresh",
     };
 
