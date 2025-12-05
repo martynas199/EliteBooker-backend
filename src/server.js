@@ -103,7 +103,22 @@ if (!MONGO_URI) {
 // Remove quotes if they exist (Render sometimes adds them)
 MONGO_URI = MONGO_URI.replace(/^["']|["']$/g, "").trim();
 console.log("Connecting to MongoDB...");
-await mongoose.connect(MONGO_URI);
+
+// MongoDB connection options with better SSL/TLS handling
+const mongoOptions = {
+  serverSelectionTimeoutMS: 5000,
+  socketTimeoutMS: 45000,
+  family: 4, // Use IPv4, skip trying IPv6
+};
+
+try {
+  await mongoose.connect(MONGO_URI, mongoOptions);
+  console.log("✓ MongoDB connected successfully");
+} catch (error) {
+  console.error("MongoDB connection error:", error.message);
+  console.error("Connection string (redacted):", MONGO_URI.replace(/:[^:@]+@/, ':****@'));
+  process.exit(1);
+}
 
 // Health check (no rate limit)
 app.get("/health", (req, res) => res.json({ ok: true }));
