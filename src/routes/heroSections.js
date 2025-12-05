@@ -19,7 +19,17 @@ const deleteLocalFile = (path) => {
 // GET all hero sections
 r.get("/", async (req, res) => {
   try {
-    const sections = await HeroSection.find().sort({ order: 1 }).lean();
+    // TENANT FILTERING: REQUIRED - Multi-tenant app must always filter by tenant
+    if (!req.tenantId) {
+      console.log("[HERO_SECTIONS] ERROR: No tenantId found in request");
+      return res.status(400).json({
+        error: "Tenant context required. Please provide tenant information.",
+      });
+    }
+
+    const sections = await HeroSection.find({ tenantId: req.tenantId })
+      .sort({ order: 1 })
+      .lean();
     res.json(sections);
   } catch (error) {
     console.error("Error fetching hero sections:", error);
@@ -30,7 +40,18 @@ r.get("/", async (req, res) => {
 // GET single hero section
 r.get("/:id", async (req, res) => {
   try {
-    const section = await HeroSection.findById(req.params.id).lean();
+    // TENANT FILTERING: REQUIRED - Multi-tenant app must always filter by tenant
+    if (!req.tenantId) {
+      console.log("[HERO_SECTIONS] ERROR: No tenantId found in request");
+      return res.status(400).json({
+        error: "Tenant context required. Please provide tenant information.",
+      });
+    }
+
+    const section = await HeroSection.findOne({
+      _id: req.params.id,
+      tenantId: req.tenantId,
+    }).lean();
     if (!section) {
       return res.status(404).json({ error: "Hero section not found" });
     }

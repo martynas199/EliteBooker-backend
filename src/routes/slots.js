@@ -50,6 +50,14 @@ function normalizeBeautician(beautician) {
  */
 r.get("/fully-booked", async (req, res) => {
   try {
+    // TENANT FILTERING: REQUIRED - Multi-tenant app must always filter by tenant
+    if (!req.tenantId) {
+      console.log("[SLOTS] ERROR: No tenantId found in request");
+      return res.status(400).json({
+        error: "Tenant context required. Please provide tenant information.",
+      });
+    }
+
     const { beauticianId, year, month } = req.query;
 
     // Validation
@@ -219,6 +227,14 @@ r.get("/fully-booked", async (req, res) => {
 });
 
 r.get("/", async (req, res) => {
+  // TENANT FILTERING: REQUIRED - Multi-tenant app must always filter by tenant
+  if (!req.tenantId) {
+    console.log("[SLOTS] ERROR: No tenantId found in request");
+    return res.status(400).json({
+      error: "Tenant context required. Please provide tenant information.",
+    });
+  }
+
   const { beauticianId, serviceId, variantName, date, any } = req.query;
   if (!serviceId || !variantName || !date)
     return res.status(400).json({ error: "Missing params" });

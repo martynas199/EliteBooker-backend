@@ -21,8 +21,16 @@ async function deleteLocalFile(filePath) {
 // GET /api/products - List all products
 router.get("/", async (req, res) => {
   try {
+    // TENANT FILTERING: REQUIRED - Multi-tenant app must always filter by tenant
+    if (!req.tenantId) {
+      console.log("[PRODUCTS] ERROR: No tenantId found in request");
+      return res.status(400).json({
+        error: "Tenant context required. Please provide tenant information.",
+      });
+    }
+
     const { featured, category, active, page, limit } = req.query;
-    const filter = {};
+    const filter = { tenantId: req.tenantId };
 
     if (featured === "true") filter.featured = true;
     if (category) filter.category = category;

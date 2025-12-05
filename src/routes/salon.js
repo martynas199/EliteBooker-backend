@@ -6,6 +6,14 @@ import { optionalAuth } from "../middleware/optionalAuth.js";
 const r = Router();
 
 r.get("/", optionalAuth, async (req, res) => {
+  // TENANT FILTERING: REQUIRED - Multi-tenant app must always filter by tenant
+  if (!req.tenantId) {
+    console.log("[SALON] ERROR: No tenantId found in request");
+    return res.status(400).json({
+      error: "Tenant context required. Please provide tenant information.",
+    });
+  }
+
   // Get settings from database (multi-tenant will automatically scope to current tenant)
   let settings = await Settings.findOne().lean();
 

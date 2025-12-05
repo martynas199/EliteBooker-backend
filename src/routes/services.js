@@ -83,11 +83,16 @@ r.get("/", optionalAuth, attachTenantToModels, async (req, res, next) => {
       cookieKeys: Object.keys(req.cookies),
     });
 
-    // TENANT FILTERING: Add tenantId filter if admin is authenticated
-    if (req.tenantId) {
-      query.tenantId = req.tenantId;
-      console.log("[SERVICES] Adding tenant filter:", req.tenantId);
+    // TENANT FILTERING: REQUIRED - Multi-tenant app must always filter by tenant
+    if (!req.tenantId) {
+      console.log("[SERVICES] ERROR: No tenantId found in request");
+      return res.status(400).json({
+        error: "Tenant context required. Please provide tenant information.",
+      });
     }
+
+    query.tenantId = req.tenantId;
+    console.log("[SERVICES] Adding tenant filter:", req.tenantId);
 
     if (active && active !== "all") {
       query.active = active === "true";
