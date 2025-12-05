@@ -62,7 +62,10 @@ const allowedOrigins = [
   "http://localhost:5174", // Vite dev server (alternative port)
   "http://localhost:5177", // Vite dev server (alternative port)
   "http://localhost:3000", // Alternative dev port
+  "https://elitebooker.co.uk", // Production frontend
+  "https://www.elitebooker.co.uk", // Production frontend with www
   "https://permanentbyjuste.co.uk", // Production frontend
+  "https://www.permanentbyjuste.co.uk", // Production frontend with www
   "https://www.nobleelegance.co.uk", // Production frontend
   process.env.FRONTEND_URL, // Production frontend URL from env (if different)
 ].filter(Boolean);
@@ -98,7 +101,7 @@ if (!MONGO_URI) {
   process.exit(1);
 }
 // Remove quotes if they exist (Render sometimes adds them)
-MONGO_URI = MONGO_URI.replace(/^["']|["']$/g, '').trim();
+MONGO_URI = MONGO_URI.replace(/^["']|["']$/g, "").trim();
 console.log("Connecting to MongoDB...");
 await mongoose.connect(MONGO_URI);
 
