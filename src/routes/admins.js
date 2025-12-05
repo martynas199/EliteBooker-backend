@@ -63,7 +63,7 @@ This is an automated message. Please do not reply to this email.`,
           </p>
           <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
           <div style="margin-top: 40px; text-align: center;">
-            <p style="margin: 0; color: #9333ea; font-weight: bold;">Noble Elegance</p>
+            <p style="margin: 0; color: #9333ea; font-weight: bold;">Elite Booker</p>
             <p style="color: #999; font-size: 12px; margin-top: 10px;">
               This is an automated message. Please do not reply to this email.
             </p>

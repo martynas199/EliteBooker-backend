@@ -114,7 +114,7 @@ export async function sendCancellationEmails({
 
     textContent += `If you have any questions, please don't hesitate to contact us.\n\n`;
     textContent += `We hope to see you again soon!\n\n`;
-    textContent += `Best regards,\nNoble Elegance`;
+    textContent += `Best regards,\nElite Booker`;
 
     // HTML version
     let htmlContent = `
@@ -155,7 +155,7 @@ export async function sendCancellationEmails({
         
         <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
           <p style="margin: 0; color: #6b7280; font-size: 14px;">Best regards,</p>
-          <p style="margin: 5px 0 0 0; color: #9333ea; font-weight: bold;">Noble Elegance</p>
+          <p style="margin: 5px 0 0 0; color: #9333ea; font-weight: bold;">Elite Booker</p>
           <p style="margin: 20px 0 0 0; color: #9ca3af; font-size: 11px;">Appointment ID: ${String(
             appointment._id
           )}</p>
@@ -700,7 +700,7 @@ If you have any questions about your order, please don't hesitate to contact us.
 Thank you for shopping with us!
 
 Best regards,
-Noble Elegance
+Elite Booker
 
 Order ID: ${order._id}`;
 
@@ -793,7 +793,7 @@ Order ID: ${order._id}`;
       
       <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center;">
         <p style="margin: 0; color: #6b7280; font-size: 14px;">Thank you for shopping with us!</p>
-        <p style="margin: 5px 0 0 0; color: #9333ea; font-weight: bold;">Noble Elegance</p>
+        <p style="margin: 5px 0 0 0; color: #9333ea; font-weight: bold;">Elite Booker</p>
         <p style="margin: 20px 0 0 0; color: #9ca3af; font-size: 11px;">Order ID: ${String(
           order._id
         )}</p>
@@ -918,7 +918,7 @@ Order ID: ${order._id}
 Thank you for offering your products on our platform!
 
 Best regards,
-Noble Elegance Team`;
+Elite Booker Team`;
 
   const htmlContent = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -928,7 +928,7 @@ Noble Elegance Team`;
         beautician.name
       }</strong>,</p>
       
-      <p style="color: #374151; margin-bottom: 20px;">Great news! A customer has ordered your products from Noble Elegance!</p>
+      <p style="color: #374151; margin-bottom: 20px;">Great news! A customer has ordered your products through Elite Booker!</p>
       
       <div style="background-color: #fef3c7; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #fad24e;">
         <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
@@ -981,7 +981,7 @@ Noble Elegance Team`;
       
       <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
         <p style="margin: 0; color: #6b7280; font-size: 14px;">Best regards,</p>
-        <p style="margin: 5px 0 0 0; color: #9333ea; font-weight: bold;">Noble Elegance Team</p>
+        <p style="margin: 5px 0 0 0; color: #9333ea; font-weight: bold;">Elite Booker Team</p>
         <p style="margin: 20px 0 0 0; color: #9ca3af; font-size: 11px;">Order ID: ${String(
           order._id
         )}</p>
@@ -1358,10 +1358,10 @@ Please collect your order during our opening hours. Don't forget to bring your o
 
 If you have any questions, please contact us at +44 7928 775746.
 
-Thank you for shopping with Noble Elegance!
+Thank you for shopping with us!
 
 Best regards,
-Noble Elegance Team
+Elite Booker Team
 12 Blackfriars Rd, Wisbech PE13 1AT
 Phone: +44 7928 775746`;
 
@@ -1391,7 +1391,7 @@ Phone: +44 7928 775746`;
             </p>
             
             <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0 0 30px 0;">
-              Great news! Your order is now ready for collection at Noble Elegance. We've carefully prepared everything for you.
+              Great news! Your order is now ready for collection. We've carefully prepared everything for you.
             </p>
 
             <!-- Order Details Box -->
@@ -1431,7 +1431,7 @@ Phone: +44 7928 775746`;
                 📍 Collection Address
               </h2>
               <p style="color: #1f2937; font-size: 16px; font-weight: 600; margin: 0 0 5px 0; line-height: 1.5;">
-                Noble Elegance Beauty Salon
+                [Business Name]
               </p>
               <p style="color: #4b5563; font-size: 15px; margin: 0; line-height: 1.6;">
                 ${collectionAddress}
@@ -1474,14 +1474,14 @@ Phone: +44 7928 775746`;
 
             <p style="color: #6b7280; font-size: 14px; line-height: 1.6; margin: 30px 0 0 0;">
               Best regards,<br>
-              <strong style="color: #1f2937;">The Noble Elegance Team</strong>
+              <strong style="color: #1f2937;">The Elite Booker Team</strong>
             </p>
           </div>
 
           <!-- Footer -->
           <div style="background-color: #f9fafb; padding: 30px; text-align: center; border-top: 1px solid #e5e7eb;">
             <p style="color: #6b7280; font-size: 13px; margin: 0 0 10px 0;">
-              Noble Elegance Beauty Salon<br>
+              [Business Name]<br>
               12 Blackfriars Rd, Wisbech PE13 1AT<br>
               Phone: +44 7928 775746
             </p>

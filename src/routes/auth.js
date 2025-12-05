@@ -681,9 +681,9 @@ async function sendPasswordResetEmail(admin, resetToken) {
   const resetUrl = `${process.env.FRONTEND_URL}/admin/reset-password?token=${resetToken}`;
 
   const mailOptions = {
-    from: SMTP_FROM || `"Noble Elegance Admin" <${SMTP_USER}>`,
+    from: SMTP_FROM || `"Elite Booker Admin" <${SMTP_USER}>`,
     to: admin.email,
-    subject: "Password Reset Request - Noble Elegance",
+    subject: "Password Reset Request - Elite Booker",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
         <div style="background-color: white; border-radius: 8px; padding: 30px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
@@ -696,7 +696,7 @@ async function sendPasswordResetEmail(admin, resetToken) {
           </p>
           
           <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-            We received a request to reset your password for your Noble Elegance admin account.
+            We received a request to reset your password for your Elite Booker admin account.
           </p>
           
           <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 4px;">
@@ -730,7 +730,7 @@ async function sendPasswordResetEmail(admin, resetToken) {
           
           <div style="margin-top: 30px; text-align: center; padding-top: 20px; border-top: 1px solid #e5e7eb;">
             <p style="color: #9ca3af; font-size: 12px; margin: 5px 0;">
-              Noble Elegance Beauty Salon
+              Elite Booker
             </p>
             <p style="color: #9ca3af; font-size: 12px; margin: 5px 0;">
               Admin Portal

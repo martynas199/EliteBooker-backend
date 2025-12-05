@@ -50,10 +50,10 @@ if (!MONGO_URI) {
 
 // Configuration for the default tenant
 const DEFAULT_TENANT_CONFIG = {
-  businessName: process.env.DEFAULT_BUSINESS_NAME || "Noble Elegance",
-  name: process.env.DEFAULT_SALON_NAME || "Noble Elegance Beauty Salon",
-  slug: process.env.DEFAULT_TENANT_SLUG || "noble-elegance",
-  email: process.env.DEFAULT_TENANT_EMAIL || "info@nobleelegance.co.uk",
+  businessName: process.env.DEFAULT_BUSINESS_NAME || "Elite Booker",
+  name: process.env.DEFAULT_SALON_NAME || "Elite Booker",
+  slug: process.env.DEFAULT_TENANT_SLUG || "elite-booker",
+  email: process.env.DEFAULT_TENANT_EMAIL || "info@elitebooker.com",
   phone: process.env.DEFAULT_TENANT_PHONE || "+44 1945 123456",
   address: {
     street: "12 Blackfriars Rd",
