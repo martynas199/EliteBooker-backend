@@ -70,11 +70,22 @@ const allowedOrigins = [
   process.env.FRONTEND_URL, // Production frontend URL from env (if different)
 ].filter(Boolean);
 
+// Also check for Vercel preview deployments
+const isVercelPreview = (origin) => {
+  return origin && origin.includes(".vercel.app");
+};
+
 app.use(
   cors({
     origin: (origin, callback) => {
       // Allow requests with no origin (like mobile apps or curl requests)
       if (!origin) return callback(null, true);
+
+      // Allow Vercel preview deployments
+      if (isVercelPreview(origin)) {
+        console.log(`Allowing Vercel preview deployment: ${origin}`);
+        return callback(null, true);
+      }
 
       if (allowedOrigins.includes(origin)) {
         callback(null, true);
@@ -116,7 +127,10 @@ try {
   console.log("✓ MongoDB connected successfully");
 } catch (error) {
   console.error("MongoDB connection error:", error.message);
-  console.error("Connection string (redacted):", MONGO_URI.replace(/:[^:@]+@/, ':****@'));
+  console.error(
+    "Connection string (redacted):",
+    MONGO_URI.replace(/:[^:@]+@/, ":****@")
+  );
   process.exit(1);
 }
 
