@@ -1,7 +1,7 @@
 import { Router } from "express";
 import Stripe from "stripe";
 import Appointment from "../models/Appointment.js";
-import Beautician from "../models/Beautician.js";
+import Specialist from "../models/Specialist.js";
 import Order from "../models/Order.js";
 import {
   sendConfirmationEmail,
@@ -186,7 +186,7 @@ r.post("/stripe", async (req, res) => {
                 itemsByBeautician
               )) {
                 try {
-                  const beautician = await Beautician.findById(beauticianId);
+                  const beautician = await Specialist.findById(beauticianId);
                   if (beautician?.email) {
                     await sendBeauticianProductOrderNotification({
                       order,
@@ -194,7 +194,7 @@ r.post("/stripe", async (req, res) => {
                       beauticianItems: items,
                     });
                     console.log(
-                      `[WEBHOOK] Beautician notification sent to ${beautician.email} for ${items.length} product(s) in order ${orderId}`
+                      `[WEBHOOK] Beautician notification sent to ${Specialist.email} for ${items.length} product(s) in order ${orderId}`
                     );
                   }
                 } catch (beauticianEmailErr) {
@@ -385,26 +385,26 @@ r.post("/stripe", async (req, res) => {
         console.log("[WEBHOOK] account.updated - account:", account.id);
 
         try {
-          const beautician = await Beautician.findOne({
+          const beautician = await Specialist.findOne({
             stripeAccountId: account.id,
           });
           if (beautician) {
             const isComplete =
               account.details_submitted && account.charges_enabled;
-            beautician.stripeStatus = isComplete ? "connected" : "pending";
-            beautician.stripeOnboardingCompleted = isComplete;
+            Specialist.stripeStatus = isComplete ? "connected" : "pending";
+            Specialist.stripeOnboardingCompleted = isComplete;
 
             // Track payouts enabled status
             if (account.payouts_enabled !== undefined) {
-              beautician.stripePayoutsEnabled = account.payouts_enabled;
+              Specialist.stripePayoutsEnabled = account.payouts_enabled;
             }
 
-            await beautician.save();
+            await Specialist.save();
             console.log(
               "[WEBHOOK] Beautician",
-              beautician._id,
+              Specialist._id,
               "status updated to",
-              beautician.stripeStatus,
+              Specialist.stripeStatus,
               "payouts:",
               account.payouts_enabled
             );
@@ -424,16 +424,16 @@ r.post("/stripe", async (req, res) => {
         );
 
         try {
-          const beautician = await Beautician.findOne({
+          const beautician = await Specialist.findOne({
             stripeAccountId: event.account,
           });
           if (beautician) {
-            beautician.stripeStatus = "connected";
-            beautician.stripeOnboardingCompleted = true;
-            await beautician.save();
+            Specialist.stripeStatus = "connected";
+            Specialist.stripeOnboardingCompleted = true;
+            await Specialist.save();
             console.log(
               "[WEBHOOK] Beautician",
-              beautician._id,
+              Specialist._id,
               "authorized platform access"
             );
           }
@@ -452,17 +452,17 @@ r.post("/stripe", async (req, res) => {
         );
 
         try {
-          const beautician = await Beautician.findOne({
+          const beautician = await Specialist.findOne({
             stripeAccountId: event.account,
           });
           if (beautician) {
-            beautician.stripeStatus = "disconnected";
-            beautician.stripeOnboardingCompleted = false;
-            beautician.stripeAccountId = null;
-            await beautician.save();
+            Specialist.stripeStatus = "disconnected";
+            Specialist.stripeOnboardingCompleted = false;
+            Specialist.stripeAccountId = null;
+            await Specialist.save();
             console.log(
               "[WEBHOOK] Beautician",
-              beautician._id,
+              Specialist._id,
               "deauthorized - Stripe account disconnected"
             );
           }
@@ -483,16 +483,16 @@ r.post("/stripe", async (req, res) => {
         );
 
         try {
-          const beautician = await Beautician.findOne({
+          const beautician = await Specialist.findOne({
             stripeAccountId: event.account,
           });
           if (beautician) {
-            beautician.totalPayouts += payout.amount / 100; // Convert from pence to pounds
-            beautician.lastPayoutDate = new Date(payout.arrival_date * 1000);
-            await beautician.save();
+            Specialist.totalPayouts += payout.amount / 100; // Convert from pence to pounds
+            Specialist.lastPayoutDate = new Date(payout.arrival_date * 1000);
+            await Specialist.save();
             console.log(
               "[WEBHOOK] Beautician",
-              beautician._id,
+              Specialist._id,
               "payout recorded"
             );
           }

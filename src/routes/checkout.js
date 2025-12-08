@@ -1,7 +1,7 @@
 import { Router } from "express";
 import Stripe from "stripe";
 import Service from "../models/Service.js";
-import Beautician from "../models/Beautician.js";
+import Specialist from "../models/Specialist.js";
 import Appointment from "../models/Appointment.js";
 import { sendConfirmationEmail } from "../emails/mailer.js";
 
@@ -53,7 +53,7 @@ r.get("/confirm", async (req, res, next) => {
     console.log("[CHECKOUT CONFIRM] Found appointment:", appt._id);
 
     // Get beautician to determine which Stripe account has the session
-    const beautician = await Beautician.findById(appt.beauticianId).lean();
+    const beautician = await Specialist.findById(appt.beauticianId).lean();
 
     // Retrieve session from the correct account
     let stripe;
@@ -62,10 +62,10 @@ r.get("/confirm", async (req, res, next) => {
       beautician?.stripeStatus === "connected"
     ) {
       // Direct charge - session is on beautician's account
-      stripe = getStripe(beautician.stripeAccountId);
+      stripe = getStripe(Specialist.stripeAccountId);
       console.log(
         "[CHECKOUT CONFIRM] Retrieving from beautician account:",
-        beautician.stripeAccountId
+        Specialist.stripeAccountId
       );
     } else {
       // Platform charge - session is on platform account
@@ -158,12 +158,12 @@ r.get("/confirm", async (req, res, next) => {
       beautician?.stripeStatus === "connected"
     ) {
       stripeData.platformFee = platformFee;
-      stripeData.beauticianStripeAccount = beautician.stripeAccountId;
+      stripeData.beauticianStripeAccount = Specialist.stripeAccountId;
       console.log("[CHECKOUT CONFIRM] Stripe Connect payment tracked");
 
       // Update beautician's total earnings (amount minus platform fee, converted to pounds)
       const earningsInPounds = (amountTotal - platformFee) / 100;
-      await Beautician.findByIdAndUpdate(appt.beauticianId, {
+      await Specialist.findByIdAndUpdate(appt.beauticianId, {
         $inc: { totalEarnings: earningsInPounds },
       });
     }
@@ -265,12 +265,12 @@ r.post("/create-session", async (req, res, next) => {
       if (!variant) return res.status(404).json({ error: "Variant not found" });
       let beautician = null;
       if (any) {
-        beautician = await Beautician.findOne({
+        beautician = await Specialist.findOne({
           _id: { $in: service.beauticianIds },
           active: true,
         }).lean();
       } else {
-        beautician = await Beautician.findById(beauticianId).lean();
+        beautician = await Specialist.findById(beauticianId).lean();
       }
       if (!beautician)
         return res.status(400).json({ error: "No beautician available" });
@@ -283,7 +283,7 @@ r.post("/create-session", async (req, res, next) => {
             60000
       );
       const conflict = await Appointment.findOne({
-        beauticianId: beautician._id,
+        beauticianId: Specialist._id,
         start: { $lt: end },
         end: { $gt: start },
       }).lean();
@@ -291,7 +291,7 @@ r.post("/create-session", async (req, res, next) => {
         return res.status(409).json({ error: "Slot no longer available" });
       appt = await Appointment.create({
         client,
-        beauticianId: beautician._id,
+        beauticianId: Specialist._id,
         serviceId,
         variantName,
         start,
@@ -323,7 +323,7 @@ r.post("/create-session", async (req, res, next) => {
       });
     }
     // Get beautician to check payment settings and Stripe Connect status
-    const beautician = await Beautician.findById(appt.beauticianId).lean();
+    const beautician = await Specialist.findById(appt.beauticianId).lean();
 
     // Get tenant for platform fee, currency settings, and URLs
     const tenant = req.tenant;
@@ -472,7 +472,7 @@ r.post("/create-session", async (req, res, next) => {
       sessionConfig.payment_intent_data = {
         application_fee_amount: platformFee, // £0.50 to platform
         transfer_data: {
-          destination: beautician.stripeAccountId,
+          destination: Specialist.stripeAccountId,
         },
         metadata: {
           appointmentId: String(appt._id),
@@ -483,7 +483,7 @@ r.post("/create-session", async (req, res, next) => {
       };
       console.log(
         "[CHECKOUT] Creating DIRECT CHARGE on connected account:",
-        beautician.stripeAccountId,
+        Specialist.stripeAccountId,
         "Platform fee:",
         platformFee
       );

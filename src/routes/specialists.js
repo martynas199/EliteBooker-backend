@@ -4,11 +4,11 @@ import Service from "../models/Service.js";
 import Admin from "../models/Admin.js";
 import jwt from "jsonwebtoken";
 import {
-  validateCreateBeautician,
-  validateUpdateBeautician,
-  listBeauticiansQuerySchema,
-  beauticianIdSchema,
-} from "../validations/Specialist.schema.js";
+  validateCreateSpecialist,
+  validateUpdateSpecialist,
+  listSpecialistsQuerySchema,
+  specialistIdSchema,
+} from "../validations/specialist.schema.js";
 import requireAdmin from "../middleware/requireAdmin.js";
 import optionalAuth from "../middleware/optionalAuth.js";
 import { attachTenantToModels } from "../middleware/multiTenantPlugin.js";
@@ -31,14 +31,14 @@ const deleteLocalFile = (path) => {
 };
 
 /**
- * GET /api/beauticians
- * List beauticians with optional filters
+ * GET /api/Specialists
+ * List Specialists with optional filters
  * Query params: active, serviceId, page, limit
  */
 r.get("/", optionalAuth, attachTenantToModels, async (req, res, next) => {
   try {
     // Validate query params
-    const queryValidation = listBeauticiansQuerySchema.safeParse(req.query);
+    const queryValidation = listSpecialistsQuerySchema.safeParse(req.query);
     if (!queryValidation.success) {
       return res.status(400).json({
         error: "Invalid query parameters",
@@ -61,32 +61,32 @@ r.get("/", optionalAuth, attachTenantToModels, async (req, res, next) => {
 
     // TENANT FILTERING: REQUIRED - Multi-tenant app must always filter by tenant
     if (!req.tenantId) {
-      console.log("[BEAUTICIANS] ERROR: No tenantId found in request");
+      console.log("[SpecialistS] ERROR: No tenantId found in request");
       return res.status(400).json({
         error: "Tenant context required. Please provide tenant information.",
       });
     }
 
     query.tenantId = req.tenantId;
-    console.log("[BEAUTICIANS] Adding tenant filter:", req.tenantId);
+    console.log("[SpecialistS] Adding tenant filter:", req.tenantId);
 
     if (active && active !== "all") {
       query.active = active === "true";
     }
 
-    // If filtering by service, find beauticians assigned to that service
+    // If filtering by service, find Specialists assigned to that service
     if (serviceId) {
       const service = await Service.findById(serviceId).lean();
       if (!service) {
         return res.status(404).json({ error: "Service not found" });
       }
 
-      const beauticianIds = [
-        service.primaryBeauticianId,
-        ...(service.additionalBeauticianIds || []),
+      const SpecialistIds = [
+        service.primarySpecialistId,
+        ...(service.additionalSpecialistIds || []),
       ].filter(Boolean);
 
-      query._id = { $in: beauticianIds };
+      query._id = { $in: SpecialistIds };
     }
 
     // Get total count for pagination
@@ -127,8 +127,8 @@ r.get("/", optionalAuth, attachTenantToModels, async (req, res, next) => {
 });
 
 /**
- * PATCH /api/beauticians/me/working-hours
- * Update working hours for the logged-in beautician
+ * PATCH /api/Specialists/me/working-hours
+ * Update working hours for the logged-in Specialist
  * Requires authentication but not admin
  */
 r.patch("/me/working-hours", async (req, res, next) => {
@@ -158,30 +158,30 @@ r.patch("/me/working-hours", async (req, res, next) => {
       return res.status(401).json({ error: "Invalid token payload" });
     }
 
-    // Find admin user to get their beauticianId
+    // Find admin user to get their SpecialistId
     const admin = await Admin.findById(userId);
     console.log(
       "[Working Hours] Found admin:",
       admin ? admin._id : "null",
-      "beauticianId:",
-      admin?.beauticianId
+      "SpecialistId:",
+      admin?.SpecialistId
     );
 
-    if (!admin || !admin.beauticianId) {
+    if (!admin || !admin.SpecialistId) {
       return res.status(404).json({
-        error: "No beautician profile associated with this admin account",
+        error: "No Specialist profile associated with this admin account",
       });
     }
 
-    // Find beautician by beauticianId
-    const beautician = await Specialist.findById(admin.beauticianId);
+    // Find Specialist by SpecialistId
+    const Specialist = await Specialist.findById(admin.SpecialistId);
     console.log(
-      "[Working Hours] Found beautician:",
-      beautician ? Specialist._id : "null"
+      "[Working Hours] Found Specialist:",
+      Specialist ? Specialist._id : "null"
     );
 
-    if (!beautician) {
-      return res.status(404).json({ error: "Beautician profile not found" });
+    if (!Specialist) {
+      return res.status(404).json({ error: "Specialist profile not found" });
     }
 
     const { workingHours } = req.body;
@@ -196,7 +196,7 @@ r.patch("/me/working-hours", async (req, res, next) => {
     await Specialist.save();
 
     console.log("[Working Hours] Successfully updated working hours");
-    res.json(beautician);
+    res.json(Specialist);
   } catch (err) {
     console.error("[Working Hours] Error:", err);
     next(err);
@@ -204,24 +204,24 @@ r.patch("/me/working-hours", async (req, res, next) => {
 });
 
 /**
- * GET /api/beauticians/:id
- * Get single beautician by ID
+ * GET /api/Specialists/:id
+ * Get single Specialist by ID
  */
 r.get("/:id", async (req, res, next) => {
   try {
     // Validate ID
-    const idValidation = beauticianIdSchema.safeParse(req.params);
+    const idValidation = SpecialistIdSchema.safeParse(req.params);
     if (!idValidation.success) {
       return res.status(400).json({
-        error: "Invalid beautician ID",
+        error: "Invalid Specialist ID",
         details: idValidation.error.errors,
       });
     }
 
-    const beautician = await Specialist.findById(req.params.id).lean();
+    const Specialist = await Specialist.findById(req.params.id).lean();
 
-    if (!beautician) {
-      return res.status(404).json({ error: "Beautician not found" });
+    if (!Specialist) {
+      return res.status(404).json({ error: "Specialist not found" });
     }
 
     // Convert Map to plain object for customSchedule if it exists (only if it's still a Map)
@@ -229,20 +229,20 @@ r.get("/:id", async (req, res, next) => {
       Specialist.customSchedule = Object.fromEntries(Specialist.customSchedule);
     }
 
-    res.json(beautician);
+    res.json(Specialist);
   } catch (err) {
     next(err);
   }
 });
 
 /**
- * POST /api/beauticians
- * Create a new beautician (admin only)
+ * POST /api/Specialists
+ * Create a new Specialist (admin only)
  */
 r.post("/", requireAdmin, async (req, res, next) => {
   try {
     // Validate request body
-    const validation = validateCreateBeautician(req.body);
+    const validation = validateCreateSpecialist(req.body);
     if (!validation.success) {
       const errorMessages = validation.errors.map((e) => e.message).join(", ");
       return res.status(400).json({
@@ -252,18 +252,18 @@ r.post("/", requireAdmin, async (req, res, next) => {
     }
 
     // Add tenantId from authenticated admin
-    const beauticianData = {
+    const SpecialistData = {
       ...validation.data,
       tenantId: req.tenantId || req.admin.tenantId,
     };
 
-    const created = await Specialist.create(beauticianData);
+    const created = await Specialist.create(SpecialistData);
     res.status(201).json(created);
   } catch (err) {
     if (err.code === 11000) {
       return res.status(409).json({
-        error: "Beautician already exists",
-        details: "A beautician with this email may already exist",
+        error: "Specialist already exists",
+        details: "A Specialist with this email may already exist",
       });
     }
     next(err);
@@ -271,22 +271,22 @@ r.post("/", requireAdmin, async (req, res, next) => {
 });
 
 /**
- * PATCH /api/beauticians/:id
- * Update a beautician (admin only)
+ * PATCH /api/Specialists/:id
+ * Update a Specialist (admin only)
  */
 r.patch("/:id", requireAdmin, async (req, res, next) => {
   try {
     // Validate ID
-    const idValidation = beauticianIdSchema.safeParse(req.params);
+    const idValidation = SpecialistIdSchema.safeParse(req.params);
     if (!idValidation.success) {
       return res.status(400).json({
-        error: "Invalid beautician ID",
+        error: "Invalid Specialist ID",
         details: idValidation.error.errors,
       });
     }
 
     // Validate request body
-    const validation = validateUpdateBeautician(req.body);
+    const validation = validateUpdateSpecialist(req.body);
     if (!validation.success) {
       const errorMessages = validation.errors.map((e) => e.message).join(", ");
       return res.status(400).json({
@@ -302,7 +302,7 @@ r.patch("/:id", requireAdmin, async (req, res, next) => {
     ).lean();
 
     if (!updated) {
-      return res.status(404).json({ error: "Beautician not found" });
+      return res.status(404).json({ error: "Specialist not found" });
     }
 
     res.json(updated);
@@ -312,52 +312,52 @@ r.patch("/:id", requireAdmin, async (req, res, next) => {
 });
 
 /**
- * DELETE /api/beauticians/:id
- * Delete a beautician (admin only)
+ * DELETE /api/Specialists/:id
+ * Delete a Specialist (admin only)
  * Note: Consider soft-delete (active: false) in production
- * Also consider checking if beautician is assigned to any services
+ * Also consider checking if Specialist is assigned to any services
  */
 r.delete("/:id", requireAdmin, async (req, res, next) => {
   try {
     // Validate ID
-    const idValidation = beauticianIdSchema.safeParse(req.params);
+    const idValidation = SpecialistIdSchema.safeParse(req.params);
     if (!idValidation.success) {
       return res.status(400).json({
-        error: "Invalid beautician ID",
+        error: "Invalid Specialist ID",
         details: idValidation.error.errors,
       });
     }
 
-    // Check if beautician is assigned to any services
-    const servicesWithBeautician = await Service.countDocuments({
+    // Check if Specialist is assigned to any services
+    const servicesWithSpecialist = await Service.countDocuments({
       $or: [
-        { primaryBeauticianId: req.params.id },
-        { additionalBeauticianIds: req.params.id },
+        { primarySpecialistId: req.params.id },
+        { additionalSpecialistIds: req.params.id },
       ],
     });
 
-    if (servicesWithBeautician > 0) {
+    if (servicesWithSpecialist > 0) {
       return res.status(400).json({
-        error: "Cannot delete beautician",
-        details: `This beautician is assigned to ${servicesWithBeautician} service(s). Please reassign or remove them first.`,
+        error: "Cannot delete Specialist",
+        details: `This Specialist is assigned to ${servicesWithSpecialist} service(s). Please reassign or remove them first.`,
       });
     }
 
     const deleted = await Specialist.findByIdAndDelete(req.params.id);
 
     if (!deleted) {
-      return res.status(404).json({ error: "Beautician not found" });
+      return res.status(404).json({ error: "Specialist not found" });
     }
 
-    res.json({ ok: true, message: "Beautician deleted successfully" });
+    res.json({ ok: true, message: "Specialist deleted successfully" });
   } catch (err) {
     next(err);
   }
 });
 
 /**
- * POST /api/beauticians/:id/upload-image
- * Upload profile image for a beautician (admin only)
+ * POST /api/Specialists/:id/upload-image
+ * Upload profile image for a Specialist (admin only)
  */
 r.post(
   "/:id/upload-image",
@@ -366,10 +366,10 @@ r.post(
   async (req, res, next) => {
     try {
       // Validate ID
-      const idValidation = beauticianIdSchema.safeParse(req.params);
+      const idValidation = SpecialistIdSchema.safeParse(req.params);
       if (!idValidation.success) {
         return res.status(400).json({
-          error: "Invalid beautician ID",
+          error: "Invalid Specialist ID",
           details: idValidation.error.errors,
         });
       }
@@ -379,11 +379,11 @@ r.post(
         return res.status(400).json({ error: "No image file provided" });
       }
 
-      // Find beautician
-      const beautician = await Specialist.findById(req.params.id);
-      if (!beautician) {
+      // Find Specialist
+      const Specialist = await Specialist.findById(req.params.id);
+      if (!Specialist) {
         deleteLocalFile(req.file.path);
-        return res.status(404).json({ error: "Beautician not found" });
+        return res.status(404).json({ error: "Specialist not found" });
       }
 
       try {
@@ -401,9 +401,9 @@ r.post(
         }
 
         // Upload to Cloudinary
-        const result = await uploadImage(req.file.path, "beauticians");
+        const result = await uploadImage(req.file.path, "Specialists");
 
-        // Update beautician with new image
+        // Update Specialist with new image
         Specialist.image = {
           provider: "cloudinary",
           id: result.public_id,
@@ -434,27 +434,27 @@ r.post(
 );
 
 /**
- * POST /api/beauticians/:id/stripe/onboard
- * Start Stripe Connect onboarding for a beautician
+ * POST /api/Specialists/:id/stripe/onboard
+ * Start Stripe Connect onboarding for a Specialist
  * Creates a Stripe Connect account and returns onboarding link
  */
 r.post("/:id/stripe/onboard", requireAdmin, async (req, res, next) => {
   try {
     const { id } = req.params;
-    const beautician = await Specialist.findById(id);
+    const Specialist = await Specialist.findById(id);
 
-    if (!beautician) {
-      return res.status(404).json({ error: "Beautician not found" });
+    if (!Specialist) {
+      return res.status(404).json({ error: "Specialist not found" });
     }
 
-    // Check if beautician belongs to current tenant
+    // Check if Specialist belongs to current tenant
     if (
       req.tenant &&
       Specialist.tenantId.toString() !== req.tenant._id.toString()
     ) {
       return res
         .status(403)
-        .json({ error: "Access denied to this beautician" });
+        .json({ error: "Access denied to this Specialist" });
     }
 
     // Import Stripe
@@ -475,7 +475,7 @@ r.post("/:id/stripe/onboard", requireAdmin, async (req, res, next) => {
         },
         business_type: "individual",
         metadata: {
-          beauticianId: Specialist._id.toString(),
+          SpecialistId: Specialist._id.toString(),
           tenantId: Specialist.tenantId.toString(),
         },
       });
@@ -486,17 +486,17 @@ r.post("/:id/stripe/onboard", requireAdmin, async (req, res, next) => {
 
       accountId = account.id;
       console.log(
-        `[STRIPE] Created Connect account ${accountId} for beautician ${id}`
+        `[STRIPE] Created Connect account ${accountId} for Specialist ${id}`
       );
     }
 
     // Generate onboarding link
     const returnUrl = `${
       process.env.FRONTEND_URL || "http://localhost:5173"
-    }/admin/beauticians/${id}?stripe=success`;
+    }/admin/Specialists/${id}?stripe=success`;
     const refreshUrl = `${
       process.env.FRONTEND_URL || "http://localhost:5173"
-    }/admin/beauticians/${id}?stripe=refresh`;
+    }/admin/Specialists/${id}?stripe=refresh`;
 
     const accountLink = await stripe.accountLinks.create({
       account: accountId,
@@ -517,16 +517,16 @@ r.post("/:id/stripe/onboard", requireAdmin, async (req, res, next) => {
 });
 
 /**
- * GET /api/beauticians/:id/stripe/status
- * Check Stripe Connect account status for a beautician
+ * GET /api/Specialists/:id/stripe/status
+ * Check Stripe Connect account status for a Specialist
  */
 r.get("/:id/stripe/status", requireAdmin, async (req, res, next) => {
   try {
     const { id } = req.params;
-    const beautician = await Specialist.findById(id);
+    const Specialist = await Specialist.findById(id);
 
-    if (!beautician) {
-      return res.status(404).json({ error: "Beautician not found" });
+    if (!Specialist) {
+      return res.status(404).json({ error: "Specialist not found" });
     }
 
     // Check tenant access
@@ -536,14 +536,14 @@ r.get("/:id/stripe/status", requireAdmin, async (req, res, next) => {
     ) {
       return res
         .status(403)
-        .json({ error: "Access denied to this beautician" });
+        .json({ error: "Access denied to this Specialist" });
     }
 
     if (!Specialist.stripeAccountId) {
       return res.json({
         connected: false,
         status: "not_connected",
-        message: "Beautician has not started Stripe Connect onboarding",
+        message: "Specialist has not started Stripe Connect onboarding",
       });
     }
 
@@ -581,16 +581,16 @@ r.get("/:id/stripe/status", requireAdmin, async (req, res, next) => {
 });
 
 /**
- * POST /api/beauticians/:id/stripe/disconnect
- * Disconnect beautician's Stripe Connect account
+ * POST /api/Specialists/:id/stripe/disconnect
+ * Disconnect Specialist's Stripe Connect account
  */
 r.post("/:id/stripe/disconnect", requireAdmin, async (req, res, next) => {
   try {
     const { id } = req.params;
-    const beautician = await Specialist.findById(id);
+    const Specialist = await Specialist.findById(id);
 
-    if (!beautician) {
-      return res.status(404).json({ error: "Beautician not found" });
+    if (!Specialist) {
+      return res.status(404).json({ error: "Specialist not found" });
     }
 
     // Check tenant access
@@ -600,13 +600,13 @@ r.post("/:id/stripe/disconnect", requireAdmin, async (req, res, next) => {
     ) {
       return res
         .status(403)
-        .json({ error: "Access denied to this beautician" });
+        .json({ error: "Access denied to this Specialist" });
     }
 
     if (!Specialist.stripeAccountId) {
       return res
         .status(400)
-        .json({ error: "Beautician has no connected Stripe account" });
+        .json({ error: "Specialist has no connected Stripe account" });
     }
 
     // Note: We don't delete the Stripe account (Stripe retains it)

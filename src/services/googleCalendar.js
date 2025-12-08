@@ -6,7 +6,7 @@
  */
 
 import { google } from "googleapis";
-import Beautician from "../models/Beautician.js";
+import Specialist from "../models/Specialist.js";
 
 // OAuth 2.0 Configuration
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
@@ -53,7 +53,7 @@ export async function getTokensFromCode(code) {
  * Store Google Calendar tokens for beautician
  */
 export async function saveTokensForBeautician(beauticianId, tokens) {
-  await Beautician.findByIdAndUpdate(beauticianId, {
+  await Specialist.findByIdAndUpdate(beauticianId, {
     "googleCalendar.accessToken": tokens.access_token,
     "googleCalendar.refreshToken": tokens.refresh_token,
     "googleCalendar.expiryDate": tokens.expiry_date,
@@ -65,24 +65,24 @@ export async function saveTokensForBeautician(beauticianId, tokens) {
  * Get authenticated calendar client for beautician
  */
 async function getCalendarClient(beauticianId) {
-  const beautician = await Beautician.findById(beauticianId);
+  const beautician = await Specialist.findById(beauticianId);
 
   if (
     !beautician?.googleCalendar?.enabled ||
-    !beautician.googleCalendar.accessToken
+    !Specialist.googleCalendar.accessToken
   ) {
     throw new Error("Google Calendar not enabled for this beautician");
   }
 
   // Set credentials
   oauth2Client.setCredentials({
-    access_token: beautician.googleCalendar.accessToken,
-    refresh_token: beautician.googleCalendar.refreshToken,
-    expiry_date: beautician.googleCalendar.expiryDate,
+    access_token: Specialist.googleCalendar.accessToken,
+    refresh_token: Specialist.googleCalendar.refreshToken,
+    expiry_date: Specialist.googleCalendar.expiryDate,
   });
 
   // Check if token needs refresh
-  if (Date.now() >= beautician.googleCalendar.expiryDate) {
+  if (Date.now() >= Specialist.googleCalendar.expiryDate) {
     const { credentials } = await oauth2Client.refreshAccessToken();
     await saveTokensForBeautician(beauticianId, credentials);
     oauth2Client.setCredentials(credentials);
@@ -217,7 +217,7 @@ export async function deleteCalendarEvent(beauticianId, eventId) {
  * Disconnect Google Calendar for beautician
  */
 export async function disconnectCalendar(beauticianId) {
-  await Beautician.findByIdAndUpdate(beauticianId, {
+  await Specialist.findByIdAndUpdate(beauticianId, {
     "googleCalendar.enabled": false,
     "googleCalendar.accessToken": null,
     "googleCalendar.refreshToken": null,

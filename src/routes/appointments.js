@@ -1,6 +1,6 @@
 import { Router } from "express";
 import Service from "../models/Service.js";
-import Beautician from "../models/Beautician.js";
+import Specialist from "../models/Specialist.js";
 import Appointment from "../models/Appointment.js";
 import CancellationPolicy from "../models/CancellationPolicy.js";
 import { z } from "zod";
@@ -95,7 +95,7 @@ r.get("/:id", async (req, res) => {
   if (!a) return res.status(404).json({ error: "Appointment not found" });
   const [s, b] = await Promise.all([
     Service.findById(a.serviceId).lean(),
-    Beautician.findById(a.beauticianId).lean(),
+    Specialist.findById(a.beauticianId).lean(),
   ]);
   res.json({ ...a, service: s || null, beautician: b || null });
 });
@@ -116,12 +116,12 @@ r.post("/", async (req, res) => {
   if (!variant) return res.status(404).json({ error: "Variant not found" });
   let beautician = null;
   if (any) {
-    beautician = await Beautician.findOne({
+    beautician = await Specialist.findOne({
       _id: { $in: service.beauticianIds },
       active: true,
     }).lean();
   } else {
-    beautician = await Beautician.findById(beauticianId).lean();
+    beautician = await Specialist.findById(beauticianId).lean();
   }
   if (!beautician)
     return res.status(400).json({ error: "No beautician available" });
@@ -134,7 +134,7 @@ r.post("/", async (req, res) => {
         60000
   );
   const conflict = await Appointment.findOne({
-    beauticianId: beautician._id,
+    beauticianId: Specialist._id,
     start: { $lt: end },
     end: { $gt: start },
   }).lean();
@@ -152,7 +152,7 @@ r.post("/", async (req, res) => {
     : undefined;
   const appt = await Appointment.create({
     client,
-    beauticianId: beautician._id,
+    beauticianId: Specialist._id,
     serviceId,
     variantName,
     start,
@@ -470,7 +470,7 @@ r.delete("/beautician/:beauticianId", async (req, res) => {
     const { beauticianId } = req.params;
 
     // Verify beautician exists
-    const beautician = await Beautician.findById(beauticianId);
+    const beautician = await Specialist.findById(beauticianId);
     if (!beautician) {
       return res.status(404).json({ error: "Beautician not found" });
     }
@@ -481,7 +481,7 @@ r.delete("/beautician/:beauticianId", async (req, res) => {
     res.json({
       success: true,
       deletedCount: result.deletedCount,
-      message: `Deleted ${result.deletedCount} appointment(s) for ${beautician.name}`,
+      message: `Deleted ${result.deletedCount} appointment(s) for ${Specialist.name}`,
     });
   } catch (err) {
     console.error("delete_beautician_appointments_err", err);

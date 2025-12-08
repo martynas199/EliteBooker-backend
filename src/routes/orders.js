@@ -2,7 +2,7 @@ import { Router } from "express";
 import Stripe from "stripe";
 import Order from "../models/Order.js";
 import Product from "../models/Product.js";
-import Beautician from "../models/Beautician.js";
+import Specialist from "../models/Specialist.js";
 import {
   sendOrderConfirmationEmail,
   sendAdminOrderNotification,
@@ -112,12 +112,12 @@ router.get("/confirm-checkout", async (req, res) => {
     // We only need to update the payment status and beautician earnings
     if (order.stripeConnectPayments && order.stripeConnectPayments.length > 0) {
       for (const payment of order.stripeConnectPayments) {
-        const beautician = await Beautician.findById(payment.beauticianId);
+        const beautician = await Specialist.findById(payment.beauticianId);
 
         if (
           beautician &&
-          beautician.stripeAccountId &&
-          beautician.stripeStatus === "connected"
+          Specialist.stripeAccountId &&
+          Specialist.stripeStatus === "connected"
         ) {
           try {
             // Destination charge: payment already sent directly to beautician
@@ -127,16 +127,16 @@ router.get("/confirm-checkout", async (req, res) => {
               session.payment_intent?.id || session.payment_intent;
 
             // Update beautician earnings
-            await Beautician.findByIdAndUpdate(beautician._id, {
+            await Specialist.findByIdAndUpdate(Specialist._id, {
               $inc: { totalEarnings: payment.amount },
             });
 
             console.log(
-              `[PRODUCT ORDER] Direct payment processed for beautician ${beautician._id} - amount: £${payment.amount}`
+              `[PRODUCT ORDER] Direct payment processed for beautician ${Specialist._id} - amount: £${payment.amount}`
             );
           } catch (error) {
             console.error(
-              `[PRODUCT ORDER] Payment processing failed for beautician ${beautician._id}:`,
+              `[PRODUCT ORDER] Payment processing failed for beautician ${Specialist._id}:`,
               error
             );
             payment.status = "failed";
@@ -204,7 +204,7 @@ router.get("/confirm-checkout", async (req, res) => {
 
       for (const [beauticianId, items] of Object.entries(itemsByBeautician)) {
         try {
-          const beautician = await Beautician.findById(beauticianId);
+          const beautician = await Specialist.findById(beauticianId);
           if (beautician?.email) {
             await sendBeauticianProductOrderNotification({
               order: populatedOrder,
@@ -212,7 +212,7 @@ router.get("/confirm-checkout", async (req, res) => {
               beauticianItems: items,
             });
             console.log(
-              `[ORDER CONFIRM] Beautician notification sent to ${beautician.email} for ${items.length} product(s)`
+              `[ORDER CONFIRM] Beautician notification sent to ${Specialist.email} for ${items.length} product(s)`
             );
           }
         } catch (beauticianEmailErr) {
@@ -431,7 +431,7 @@ router.post("/checkout", async (req, res) => {
     if (itemsByBeautician.size > 1) {
       return res.status(400).json({
         error:
-          "Cannot checkout with products from multiple beauticians. Please complete separate orders for each beautician.",
+          "Cannot checkout with products from multiple beauticians. Please complete separate orders for each Specialist.",
       });
     }
 
@@ -466,7 +466,7 @@ router.post("/checkout", async (req, res) => {
 
       stripeConnectPayments.push({
         beauticianId,
-        beauticianStripeAccount: firstItem.beautician.stripeAccountId,
+        beauticianStripeAccount: firstItem.Specialist.stripeAccountId,
         amount: itemsTotal,
         status: "pending",
       });
@@ -503,7 +503,7 @@ router.post("/checkout", async (req, res) => {
     if (stripeConnectPayments.length > 1) {
       return res.status(400).json({
         error:
-          "Cannot checkout with products from multiple beauticians. Please complete separate orders for each beautician.",
+          "Cannot checkout with products from multiple beauticians. Please complete separate orders for each Specialist.",
       });
     }
 
@@ -940,7 +940,7 @@ router.post("/:id/refund", async (req, res) => {
           payment.status = "refunded";
 
           // Deduct from beautician earnings
-          await Beautician.findByIdAndUpdate(payment.beauticianId, {
+          await Specialist.findByIdAndUpdate(payment.beauticianId, {
             $inc: { totalEarnings: -payment.amount },
           });
         }

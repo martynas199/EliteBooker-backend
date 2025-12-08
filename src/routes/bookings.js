@@ -113,7 +113,7 @@ router.post("/create", async (req, res) => {
 
     // Step 2: Validate booking data
     // Check if beautician exists and is active
-    const beautician = await Beautician.findOne({
+    const beautician = await Specialist.findOne({
       _id: beauticianId,
       tenantId,
       active: true,

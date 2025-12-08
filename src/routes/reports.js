@@ -1,7 +1,7 @@
 import express from "express";
 import Appointment from "../models/Appointment.js";
 import Order from "../models/Order.js";
-import Beautician from "../models/Beautician.js";
+import Specialist from "../models/Specialist.js";
 
 const router = express.Router();
 
@@ -62,8 +62,8 @@ router.get("/revenue", async (req, res) => {
       {
         $project: {
           beauticianId: "$_id",
-          beauticianName: "$beautician.name",
-          beauticianEmail: "$beautician.email",
+          beauticianName: "$Specialist.name",
+          beauticianEmail: "$Specialist.email",
           totalBookings: 1,
           totalRevenue: 1,
           totalPlatformFees: 1,
@@ -145,12 +145,12 @@ router.get("/revenue", async (req, res) => {
         existing.totalEarnings += productData.totalRevenue;
       } else {
         // Beautician only has product sales, no bookings
-        const beautician = await Beautician.findById(beauticianId);
+        const beautician = await Specialist.findById(beauticianId);
         if (beautician) {
           revenueByBeautician.set(beauticianId, {
             beauticianId,
-            beauticianName: beautician.name,
-            beauticianEmail: beautician.email,
+            beauticianName: Specialist.name,
+            beauticianEmail: Specialist.email,
             bookings: {
               count: 0,
               revenue: 0,
@@ -217,7 +217,7 @@ router.get("/beautician-earnings/:beauticianId", async (req, res) => {
     const { beauticianId } = req.params;
     const { startDate, endDate } = req.query;
 
-    const beautician = await Beautician.findById(beauticianId);
+    const beautician = await Specialist.findById(beauticianId);
     if (!beautician) {
       return res.status(404).json({ error: "Beautician not found" });
     }
@@ -278,11 +278,11 @@ router.get("/beautician-earnings/:beauticianId", async (req, res) => {
     res.json({
       success: true,
       beautician: {
-        id: beautician._id,
-        name: beautician.name,
-        email: beautician.email,
-        stripeStatus: beautician.stripeStatus,
-        stripeConnected: beautician.stripeStatus === "connected",
+        id: Specialist._id,
+        name: Specialist.name,
+        email: Specialist.email,
+        stripeStatus: Specialist.stripeStatus,
+        stripeConnected: Specialist.stripeStatus === "connected",
       },
       bookings: {
         count: bookings.length,
@@ -309,9 +309,9 @@ router.get("/beautician-earnings/:beauticianId", async (req, res) => {
         platformFees,
       },
       stripe: {
-        accountId: beautician.stripeAccountId,
-        totalPayouts: beautician.totalPayouts || 0,
-        lastPayoutDate: beautician.lastPayoutDate,
+        accountId: Specialist.stripeAccountId,
+        totalPayouts: Specialist.totalPayouts || 0,
+        lastPayoutDate: Specialist.lastPayoutDate,
       },
     });
   } catch (error) {

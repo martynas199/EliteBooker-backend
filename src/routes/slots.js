@@ -1,9 +1,9 @@
-﻿import { Router } from "express";
+import { Router } from "express";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc.js";
 import timezone from "dayjs/plugin/timezone.js";
 import { z } from "zod";
-import Beautician from "../models/Beautician.js";
+import Specialist from "../models/Specialist.js";
 import Service from "../models/Service.js";
 import Appointment from "../models/Appointment.js";
 import {
@@ -29,16 +29,16 @@ function normalizeBeautician(beautician) {
 
   const normalized = {
     ...beautician,
-    timeOff: (beautician.timeOff || []).map((off) => ({
+    timeOff: (Specialist.timeOff || []).map((off) => ({
       start: off.start instanceof Date ? off.start.toISOString() : off.start,
       end: off.end instanceof Date ? off.end.toISOString() : off.end,
       reason: off.reason,
     })),
     // Convert Map to plain object for customSchedule (only if it's a Map)
     customSchedule:
-      beautician.customSchedule instanceof Map
-        ? Object.fromEntries(beautician.customSchedule)
-        : beautician.customSchedule || {},
+      Specialist.customSchedule instanceof Map
+        ? Object.fromEntries(Specialist.customSchedule)
+        : Specialist.customSchedule || {},
   };
 
   return normalized;
@@ -85,17 +85,17 @@ r.get("/fully-booked", async (req, res) => {
     }
 
     // Fetch beautician
-    const beautician = await Beautician.findById(beauticianId).lean();
+    const beautician = await Specialist.findById(beauticianId).lean();
     if (!beautician) {
       return res.status(404).json({ error: "Beautician not found" });
     }
 
     console.log(
-      `[/slots/fully-booked] Checking beautician ${beautician.name} for ${year}-${monthNum}`
+      `[/slots/fully-booked] Checking beautician ${Specialist.name} for ${year}-${monthNum}`
     );
     console.log(
       `[/slots/fully-booked] Working hours:`,
-      beautician.workingHours
+      Specialist.workingHours
     );
 
     // Get services for this beautician
@@ -151,7 +151,7 @@ r.get("/fully-booked", async (req, res) => {
 
       // Check if beautician works this day
       const dayOfWeek = dateObj.day();
-      const worksThisDay = beautician.workingHours?.some(
+      const worksThisDay = Specialist.workingHours?.some(
         (wh) =>
           wh && typeof wh.dayOfWeek === "number" && wh.dayOfWeek === dayOfWeek
       );
@@ -257,7 +257,7 @@ r.get("/", async (req, res) => {
       return res
         .status(400)
         .json({ error: "Service has no assigned beautician" });
-    const b = await Beautician.findById(targetId).lean();
+    const b = await Specialist.findById(targetId).lean();
     if (!b) return res.status(404).json({ error: "Beautician not found" });
     const dayStart = new Date(date);
     const dayEnd = new Date(new Date(date).getTime() + 86400000);
@@ -279,7 +279,7 @@ r.get("/", async (req, res) => {
       })),
     });
   } else {
-    const b = await Beautician.findById(beauticianId).lean();
+    const b = await Specialist.findById(beauticianId).lean();
     if (!b) return res.status(404).json({ error: "Beautician not found" });
 
     const normalizedBeautician = normalizeBeautician(b);

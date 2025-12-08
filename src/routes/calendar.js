@@ -5,7 +5,7 @@
 import { Router } from "express";
 import { requireAdmin } from "../middleware/requireAdmin.js";
 import * as calendarService from "../services/googleCalendar.js";
-import Beautician from "../models/Beautician.js";
+import Specialist from "../models/Specialist.js";
 
 const router = Router();
 
@@ -104,7 +104,7 @@ router.get("/status", requireAdmin, async (req, res) => {
       return res.json({ connected: false });
     }
 
-    const beautician = await Beautician.findById(beauticianId).select(
+    const beautician = await Specialist.findById(beauticianId).select(
       "googleCalendar"
     );
 

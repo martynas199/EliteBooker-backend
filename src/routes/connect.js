@@ -1,6 +1,6 @@
 import express from "express";
 import Stripe from "stripe";
-import Beautician from "../models/Beautician.js";
+import Specialist from "../models/Specialist.js";
 
 const router = express.Router();
 
@@ -31,12 +31,12 @@ router.post("/onboard", async (req, res) => {
       });
     }
 
-    const beautician = await Beautician.findById(beauticianId);
+    const beautician = await Specialist.findById(beauticianId);
     if (!beautician) {
       return res.status(404).json({ error: "Beautician not found" });
     }
 
-    let stripeAccountId = beautician.stripeAccountId;
+    let stripeAccountId = Specialist.stripeAccountId;
 
     const stripe = getStripe();
 
@@ -50,10 +50,10 @@ router.post("/onboard", async (req, res) => {
           `Clearing invalid Stripe account ID for beautician ${beauticianId}`
         );
         stripeAccountId = null;
-        beautician.stripeAccountId = null;
-        beautician.stripeStatus = "not_connected";
-        beautician.stripeOnboardingCompleted = false;
-        await beautician.save();
+        Specialist.stripeAccountId = null;
+        Specialist.stripeStatus = "not_connected";
+        Specialist.stripeOnboardingCompleted = false;
+        await Specialist.save();
       }
     }
 
@@ -73,9 +73,9 @@ router.post("/onboard", async (req, res) => {
       stripeAccountId = account.id;
 
       // Save Stripe account ID to database
-      beautician.stripeAccountId = stripeAccountId;
-      beautician.stripeStatus = "pending";
-      await beautician.save();
+      Specialist.stripeAccountId = stripeAccountId;
+      Specialist.stripeStatus = "pending";
+      await Specialist.save();
     }
 
     // Create account link for onboarding
@@ -111,12 +111,12 @@ router.get("/status/:beauticianId", async (req, res) => {
   try {
     const { beauticianId } = req.params;
 
-    const beautician = await Beautician.findById(beauticianId);
+    const beautician = await Specialist.findById(beauticianId);
     if (!beautician) {
       return res.status(404).json({ error: "Beautician not found" });
     }
 
-    if (!beautician.stripeAccountId) {
+    if (!Specialist.stripeAccountId) {
       return res.json({
         status: "not_connected",
         connected: false,
@@ -129,16 +129,16 @@ router.get("/status/:beauticianId", async (req, res) => {
     // Fetch account details from Stripe
     let account;
     try {
-      account = await stripe.accounts.retrieve(beautician.stripeAccountId);
+      account = await stripe.accounts.retrieve(Specialist.stripeAccountId);
     } catch (error) {
       // Account doesn't exist (likely test account with live keys)
       console.log(
         `Invalid Stripe account ID for beautician ${beauticianId}, clearing...`
       );
-      beautician.stripeAccountId = null;
-      beautician.stripeStatus = "not_connected";
-      beautician.stripeOnboardingCompleted = false;
-      await beautician.save();
+      Specialist.stripeAccountId = null;
+      Specialist.stripeStatus = "not_connected";
+      Specialist.stripeOnboardingCompleted = false;
+      await Specialist.save();
 
       return res.json({
         status: "not_connected",
@@ -153,20 +153,20 @@ router.get("/status/:beauticianId", async (req, res) => {
     const isComplete = account.details_submitted && account.charges_enabled;
 
     // Update beautician status in database
-    if (isComplete && beautician.stripeStatus !== "connected") {
-      beautician.stripeStatus = "connected";
-      beautician.stripeOnboardingCompleted = true;
-      await beautician.save();
-    } else if (!isComplete && beautician.stripeStatus === "connected") {
-      beautician.stripeStatus = "pending";
-      beautician.stripeOnboardingCompleted = false;
-      await beautician.save();
+    if (isComplete && Specialist.stripeStatus !== "connected") {
+      Specialist.stripeStatus = "connected";
+      Specialist.stripeOnboardingCompleted = true;
+      await Specialist.save();
+    } else if (!isComplete && Specialist.stripeStatus === "connected") {
+      Specialist.stripeStatus = "pending";
+      Specialist.stripeOnboardingCompleted = false;
+      await Specialist.save();
     }
 
     res.json({
-      status: beautician.stripeStatus,
+      status: Specialist.stripeStatus,
       connected: isComplete,
-      stripeAccountId: beautician.stripeAccountId,
+      stripeAccountId: Specialist.stripeAccountId,
       chargesEnabled: account.charges_enabled,
       detailsSubmitted: account.details_submitted,
       payoutsEnabled: account.payouts_enabled,
@@ -189,8 +189,8 @@ router.post("/dashboard-link/:beauticianId", async (req, res) => {
   try {
     const { beauticianId } = req.params;
 
-    const beautician = await Beautician.findById(beauticianId);
-    if (!beautician || !beautician.stripeAccountId) {
+    const beautician = await Specialist.findById(beauticianId);
+    if (!beautician || !Specialist.stripeAccountId) {
       return res.status(404).json({
         error: "Beautician not found or Stripe account not connected",
       });
@@ -198,7 +198,7 @@ router.post("/dashboard-link/:beauticianId", async (req, res) => {
 
     const stripe = getStripe();
     const loginLink = await stripe.accounts.createLoginLink(
-      beautician.stripeAccountId
+      Specialist.stripeAccountId
     );
 
     res.json({
@@ -222,20 +222,20 @@ router.delete("/disconnect/:beauticianId", async (req, res) => {
   try {
     const { beauticianId } = req.params;
 
-    const beautician = await Beautician.findById(beauticianId);
+    const beautician = await Specialist.findById(beauticianId);
     if (!beautician) {
       return res.status(404).json({ error: "Beautician not found" });
     }
 
-    if (beautician.stripeAccountId) {
+    if (Specialist.stripeAccountId) {
       // Optionally delete the account from Stripe
-      // await stripe.accounts.del(beautician.stripeAccountId);
+      // await stripe.accounts.del(Specialist.stripeAccountId);
 
       // Clear Stripe fields from database
-      beautician.stripeAccountId = null;
-      beautician.stripeStatus = "not_connected";
-      beautician.stripeOnboardingCompleted = false;
-      await beautician.save();
+      Specialist.stripeAccountId = null;
+      Specialist.stripeStatus = "not_connected";
+      Specialist.stripeOnboardingCompleted = false;
+      await Specialist.save();
     }
 
     res.json({

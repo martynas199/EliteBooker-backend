@@ -10,6 +10,7 @@ import mongoose from "mongoose";
 import passport from "./config/passport.js";
 import servicesRouter from "./routes/services.js";
 import beauticiansRouter from "./routes/beauticians.js";
+import specialistsRouter from "./routes/specialists.js";
 import slotsRouter from "./routes/slots.js";
 import checkoutRouter from "./routes/checkout.js";
 import appointmentsRouter from "./routes/appointments.js";
@@ -179,7 +180,8 @@ app.use("/api/locks", readLimiter, locksRouter);
 
 // Public READ-ONLY routes with lenient rate limiting (BEFORE general limiter)
 app.use("/api/services", readLimiter, servicesRouter);
-app.use("/api/beauticians", readLimiter, beauticiansRouter);
+app.use("/api/beauticians", readLimiter, beauticiansRouter); // Legacy endpoint for backward compatibility
+app.use("/api/specialists", readLimiter, specialistsRouter); // New endpoint
 app.use("/api/slots", readLimiter, slotsRouter);
 app.use("/api/salon", readLimiter, salonRouter);
 app.use("/api/hero-sections", readLimiter, heroSectionsRouter);
