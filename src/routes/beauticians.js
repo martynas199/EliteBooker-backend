@@ -4,11 +4,11 @@ import Service from "../models/Service.js";
 import Admin from "../models/Admin.js";
 import jwt from "jsonwebtoken";
 import {
-  validateCreateBeautician,
-  validateUpdateBeautician,
-  listBeauticiansQuerySchema,
-  beauticianIdSchema,
-} from "../validations/Specialist.schema.js";
+  validateCreateSpecialist as validateCreateBeautician,
+  validateUpdateSpecialist as validateUpdateBeautician,
+  listSpecialistsQuerySchema as listBeauticiansQuerySchema,
+  specialistIdSchema as beauticianIdSchema,
+} from "../validations/specialist.schema.js";
 import requireAdmin from "../middleware/requireAdmin.js";
 import optionalAuth from "../middleware/optionalAuth.js";
 import { attachTenantToModels } from "../middleware/multiTenantPlugin.js";
