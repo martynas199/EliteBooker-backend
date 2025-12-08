@@ -48,7 +48,7 @@ const userSchema = new mongoose.Schema(
     // We'll populate these via userId field in Appointment/Order models
     role: {
       type: String,
-      enum: ["customer", "salon-admin", "beautician", "super-admin"],
+      enum: ["customer", "salon-admin", "specialist", "super-admin"],
       default: "customer",
     },
     // Track user statistics

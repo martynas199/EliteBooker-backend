@@ -2,10 +2,10 @@
 
 ## Overview
 
-This system uses **Stripe Connect Express** accounts to enable direct payouts to beauticians for both:
+This system uses **Stripe Connect Express** accounts to enable direct payouts to specialists for both:
 
 - **Service Bookings** - Platform keeps £0.50 per completed booking
-- **Product Sales** - 100% goes to product owner (beautician)
+- **Product Sales** - 100% goes to product owner (specialist)
 
 ## Architecture
 
@@ -68,7 +68,7 @@ Content-Type: application/json
 
 {
   "beauticianId": "64a1b2c3d4e5f6...",
-  "email": "beautician@example.com"
+  "email": "specialist@example.com"
 }
 
 Response:
@@ -121,7 +121,7 @@ Response:
     "totalBookingRevenue": 3500.00,
     "totalProductRevenue": 1200.00
   },
-  "beauticians": [
+  "specialists": [
     {
       "beauticianId": "...",
       "beauticianName": "Jane Doe",
@@ -144,11 +144,11 @@ Response:
 #### Get Beautician Earnings
 
 ```http
-GET /api/reports/beautician-earnings/:beauticianId
+GET /api/reports/specialist-earnings/:beauticianId
 
 Response:
 {
-  "beautician": {
+  "specialist": {
     "name": "Jane Doe",
     "stripeConnected": true
   },
@@ -180,11 +180,11 @@ const paymentIntent = await stripe.paymentIntents.create({
   payment_method_types: ["card"],
   application_fee_amount: 50, // £0.50 platform fee
   transfer_data: {
-    destination: beautician.stripeAccountId, // Direct to beautician
+    destination: specialist.stripeAccountId, // Direct to specialist
   },
   metadata: {
     appointmentId: appointment._id,
-    beauticianId: beautician._id,
+    beauticianId: specialist._id,
     type: "booking",
   },
 });
@@ -193,7 +193,7 @@ const paymentIntent = await stripe.paymentIntents.create({
 **Result:**
 
 - £0.50 stays in platform account
-- £49.50 transferred to beautician account
+- £49.50 transferred to specialist account
 - Payment tracked in `Appointment.payment.stripe`
 
 ### Product Purchase with Connect
@@ -201,10 +201,10 @@ const paymentIntent = await stripe.paymentIntents.create({
 When a client buys a product:
 
 ```javascript
-// Group items by beautician
+// Group items by specialist
 const itemsByBeautician = groupBy(items, (item) => item.productId.beauticianId);
 
-// Create separate Payment Intent for each beautician
+// Create separate Payment Intent for each specialist
 for (const [beauticianId, items] of itemsByBeautician) {
   const total = items.reduce(
     (sum, item) => sum + item.price * item.quantity,
@@ -216,7 +216,7 @@ for (const [beauticianId, items] of itemsByBeautician) {
     currency: "gbp",
     application_fee_amount: 0, // No platform fee for products
     transfer_data: {
-      destination: beautician.stripeAccountId,
+      destination: specialist.stripeAccountId,
     },
     metadata: {
       orderId: order._id,
@@ -229,7 +229,7 @@ for (const [beauticianId, items] of itemsByBeautician) {
 
 **Result:**
 
-- 100% of product price goes to beautician
+- 100% of product price goes to specialist
 - No platform fee
 - Payment tracked in `Order.stripeConnectPayments`
 
@@ -241,7 +241,7 @@ for (const [beauticianId, items] of itemsByBeautician) {
 const refund = await stripe.refunds.create({
   payment_intent: appointment.payment.stripe.paymentIntentId,
   refund_application_fee: true, // Refund the £0.50 platform fee
-  reverse_transfer: true, // Take money back from beautician
+  reverse_transfer: true, // Take money back from specialist
 });
 ```
 
@@ -249,14 +249,14 @@ const refund = await stripe.refunds.create({
 
 - Client receives full refund
 - Platform fee returned
-- Amount deducted from beautician's next payout
+- Amount deducted from specialist's next payout
 
 ### Product Refund
 
 ```javascript
 const refund = await stripe.refunds.create({
   payment_intent: order.stripePaymentIntentId,
-  reverse_transfer: true, // Take from beautician
+  reverse_transfer: true, // Take from specialist
 });
 ```
 
@@ -319,13 +319,13 @@ const refund = await stripe.refunds.create({
 
 **Onboarding:**
 
-1. Create beautician account
+1. Create specialist account
 2. Complete Stripe onboarding
 3. Verify status updates to "connected"
 
 **Booking Payment:**
 
-1. Book a service with connected beautician
+1. Book a service with connected specialist
 2. Complete payment (£50.00)
 3. Verify:
    - Platform receives £0.50
@@ -342,8 +342,8 @@ const refund = await stripe.refunds.create({
 
 **Product Sale:**
 
-1. Purchase product owned by beautician
-2. Verify 100% goes to beautician
+1. Purchase product owned by specialist
+2. Verify 100% goes to specialist
 3. No platform fee charged
 
 ## Compliance
@@ -378,13 +378,13 @@ Stripe handles all KYC verification during onboarding:
 
 ### Payment Fails with Connect Error
 
-- Verify beautician's `stripeAccountId` is valid
+- Verify specialist's `stripeAccountId` is valid
 - Check account status in Stripe Dashboard
 - Ensure `charges_enabled` is true
 
 ### Refund Fails
 
-- Verify beautician has sufficient balance
+- Verify specialist has sufficient balance
 - Check if transfer has already been reversed
 - View detailed error in Stripe Dashboard
 
@@ -410,13 +410,13 @@ Stripe handles all KYC verification during onboarding:
 
 - [ ] Beautician "Connect with Stripe" button
 - [ ] Onboarding redirect handling
-- [ ] Earnings dashboard for beauticians
+- [ ] Earnings dashboard for specialists
 - [ ] Admin revenue dashboard
 - [ ] CSV export functionality
 
 ### Phase 3: Advanced Features
 
-- [ ] Split payments for multi-beautician orders
+- [ ] Split payments for multi-specialist orders
 - [ ] Dynamic platform fee configuration
 - [ ] Commission-based pricing for products
 - [ ] Payout schedule customization

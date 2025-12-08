@@ -2,7 +2,7 @@
 
 ## Problem
 
-Currently, the **platform pays all Stripe fees** for both bookings and products. The beautician should pay the fees since they're receiving the money.
+Currently, the **platform pays all Stripe fees** for both bookings and products. The specialist should pay the fees since they're receiving the money.
 
 ---
 
@@ -18,14 +18,14 @@ Added `on_behalf_of` parameter to booking checkout sessions.
 // Before:
 payment_intent_data.application_fee_amount = platformFee;
 payment_intent_data.transfer_data = {
-  destination: beautician.stripeAccountId,
+  destination: specialist.stripeAccountId,
 };
 
 // After:
 payment_intent_data.application_fee_amount = platformFee;
-payment_intent_data.on_behalf_of = beautician.stripeAccountId; // ← ADDED
+payment_intent_data.on_behalf_of = specialist.stripeAccountId; // ← ADDED
 payment_intent_data.transfer_data = {
-  destination: beautician.stripeAccountId,
+  destination: specialist.stripeAccountId,
 };
 ```
 
@@ -34,7 +34,7 @@ payment_intent_data.transfer_data = {
 **Example Booking: £50**
 
 - Customer pays: **£50**
-- Stripe fees (~2.9% + 20p): **£1.65** (paid by beautician)
+- Stripe fees (~2.9% + 20p): **£1.65** (paid by specialist)
 - Platform fee: **£0.50**
 - Beautician receives: **£50 - £1.65 - £0.50 = £47.85**
 
@@ -43,7 +43,7 @@ payment_intent_data.transfer_data = {
 ```
 Customer → Stripe (£50)
   ↓
-Stripe keeps £1.65 (processing fee - from beautician)
+Stripe keeps £1.65 (processing fee - from specialist)
   ↓
 Platform gets £0.50 (application fee)
   ↓
@@ -64,10 +64,10 @@ Products now use a **smart hybrid approach** based on cart composition.
 
 #### **Single-Beautician Orders** (Most Common)
 
-Uses destination charges with `on_behalf_of` - beautician pays fees.
+Uses destination charges with `on_behalf_of` - specialist pays fees.
 
 ```javascript
-// If single beautician order
+// If single specialist order
 if (stripeConnectPayments.length === 1) {
   sessionConfig.payment_intent_data = {
     on_behalf_of: payment.beauticianStripeAccount, // Beautician pays fees
@@ -89,7 +89,7 @@ Uses transfers after payment - platform pays fees.
 
 #### **Example 1: Single Beautician Order - £100**
 
-- Customer buys products from one beautician
+- Customer buys products from one specialist
 - **Beautician pays Stripe fees** (~£3.10)
 - Beautician receives: **£96.90**
 
@@ -119,7 +119,7 @@ Uses transfers after payment - platform pays fees.
 | Item                            | Amount     |
 | ------------------------------- | ---------- |
 | Customer pays                   | £100.00    |
-| Stripe fee (paid by beautician) | -£3.10     |
+| Stripe fee (paid by specialist) | -£3.10     |
 | Platform fee                    | £0.00      |
 | **Beautician receives**         | **£96.90** |
 
@@ -148,12 +148,12 @@ Uses transfers after payment - platform pays fees.
 Both booking and product payments have been optimized:
 
 1. **Bookings**: Always use destination charges with `on_behalf_of`
-2. **Products (single beautician)**: Use destination charges with `on_behalf_of`
-3. **Products (multiple beauticians)**: Use transfers (platform pays fees as technical limitation)
+2. **Products (single specialist)**: Use destination charges with `on_behalf_of`
+3. **Products (multiple specialists)**: Use transfers (platform pays fees as technical limitation)
 
 ### **Why This Approach?**
 
-- ✅ 95%+ of orders are single-beautician → fees paid by beautician
+- ✅ 95%+ of orders are single-specialist → fees paid by specialist
 - ✅ No complex fee calculations needed
 - ✅ Uses Stripe-recommended patterns
 - ✅ Multi-vendor capability preserved

@@ -18,7 +18,7 @@ function getStripe() {
 
 /**
  * POST /api/connect/onboard
- * Create a Stripe Connect Express account for a beautician
+ * Create a Stripe Connect Express account for a specialist
  * and return the onboarding link
  */
 router.post("/onboard", async (req, res) => {
@@ -31,8 +31,8 @@ router.post("/onboard", async (req, res) => {
       });
     }
 
-    const beautician = await Specialist.findById(beauticianId);
-    if (!beautician) {
+    const specialist = await Specialist.findById(beauticianId);
+    if (!specialist) {
       return res.status(404).json({ error: "Beautician not found" });
     }
 
@@ -47,7 +47,7 @@ router.post("/onboard", async (req, res) => {
       } catch (error) {
         // Account doesn't exist in current mode (likely test account with live keys)
         console.log(
-          `Clearing invalid Stripe account ID for beautician ${beauticianId}`
+          `Clearing invalid Stripe account ID for specialist ${beauticianId}`
         );
         stripeAccountId = null;
         Specialist.stripeAccountId = null;
@@ -105,14 +105,14 @@ router.post("/onboard", async (req, res) => {
 
 /**
  * GET /api/connect/status/:beauticianId
- * Check the status of a beautician's Stripe Connect account
+ * Check the status of a specialist's Stripe Connect account
  */
 router.get("/status/:beauticianId", async (req, res) => {
   try {
     const { beauticianId } = req.params;
 
-    const beautician = await Specialist.findById(beauticianId);
-    if (!beautician) {
+    const specialist = await Specialist.findById(beauticianId);
+    if (!specialist) {
       return res.status(404).json({ error: "Beautician not found" });
     }
 
@@ -133,7 +133,7 @@ router.get("/status/:beauticianId", async (req, res) => {
     } catch (error) {
       // Account doesn't exist (likely test account with live keys)
       console.log(
-        `Invalid Stripe account ID for beautician ${beauticianId}, clearing...`
+        `Invalid Stripe account ID for specialist ${beauticianId}, clearing...`
       );
       Specialist.stripeAccountId = null;
       Specialist.stripeStatus = "not_connected";
@@ -152,7 +152,7 @@ router.get("/status/:beauticianId", async (req, res) => {
     // Check if onboarding is complete
     const isComplete = account.details_submitted && account.charges_enabled;
 
-    // Update beautician status in database
+    // Update specialist status in database
     if (isComplete && Specialist.stripeStatus !== "connected") {
       Specialist.stripeStatus = "connected";
       Specialist.stripeOnboardingCompleted = true;
@@ -183,14 +183,14 @@ router.get("/status/:beauticianId", async (req, res) => {
 
 /**
  * POST /api/connect/dashboard-link/:beauticianId
- * Generate a login link for beautician to access their Stripe Express dashboard
+ * Generate a login link for specialist to access their Stripe Express dashboard
  */
 router.post("/dashboard-link/:beauticianId", async (req, res) => {
   try {
     const { beauticianId } = req.params;
 
-    const beautician = await Specialist.findById(beauticianId);
-    if (!beautician || !Specialist.stripeAccountId) {
+    const specialist = await Specialist.findById(beauticianId);
+    if (!specialist || !Specialist.stripeAccountId) {
       return res.status(404).json({
         error: "Beautician not found or Stripe account not connected",
       });
@@ -216,14 +216,14 @@ router.post("/dashboard-link/:beauticianId", async (req, res) => {
 
 /**
  * DELETE /api/connect/disconnect/:beauticianId
- * Disconnect a beautician's Stripe account (for testing/admin purposes)
+ * Disconnect a specialist's Stripe account (for testing/admin purposes)
  */
 router.delete("/disconnect/:beauticianId", async (req, res) => {
   try {
     const { beauticianId } = req.params;
 
-    const beautician = await Specialist.findById(beauticianId);
-    if (!beautician) {
+    const specialist = await Specialist.findById(beauticianId);
+    if (!specialist) {
       return res.status(404).json({ error: "Beautician not found" });
     }
 

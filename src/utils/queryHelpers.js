@@ -156,7 +156,7 @@ export const commonFields = {
     "_id userId client beauticianId serviceId variantName start end price status createdAt",
   service:
     "_id name description category image variants active primaryBeauticianId",
-  beautician: "_id name email phone bio specialty image active",
+  specialist: "_id name email phone bio specialty image active",
   product:
     "_id title description price originalPrice image category featured active",
   order:

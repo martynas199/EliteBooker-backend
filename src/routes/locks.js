@@ -246,7 +246,7 @@ router.get("/admin/active", requireAdmin, async (req, res) => {
     const { resourceId } = req.query;
     const limit = parseInt(req.query.limit, 10) || 100;
 
-    // Get active locks (optionally filtered by resourceId/beautician)
+    // Get active locks (optionally filtered by resourceId/specialist)
     const locks = await lockService.getActiveLocks(resourceId || null, limit);
 
     res.status(200).json({

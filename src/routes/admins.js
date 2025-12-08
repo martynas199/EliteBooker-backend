@@ -165,8 +165,8 @@ router.post("/", requireAdmin, async (req, res) => {
   }
 });
 
-// Link or unlink admin to beautician (requires authentication)
-router.patch("/:adminId/link-beautician", requireAdmin, async (req, res) => {
+// Link or unlink admin to specialist (requires authentication)
+router.patch("/:adminId/link-specialist", requireAdmin, async (req, res) => {
   try {
     const { adminId } = req.params;
     const { beauticianId } = req.body;
@@ -177,7 +177,7 @@ router.patch("/:adminId/link-beautician", requireAdmin, async (req, res) => {
       return res.status(404).json({ error: "Admin not found" });
     }
 
-    // Update the beautician link
+    // Update the specialist link
     admin.beauticianId = beauticianId || null;
     await admin.save();
 
@@ -188,13 +188,13 @@ router.patch("/:adminId/link-beautician", requireAdmin, async (req, res) => {
 
     res.json({
       message: beauticianId
-        ? "Admin successfully linked to beautician"
-        : "Admin successfully unlinked from beautician",
+        ? "Admin successfully linked to specialist"
+        : "Admin successfully unlinked from specialist",
       admin: updatedAdmin,
     });
   } catch (error) {
-    console.error("Error linking admin to beautician:", error);
-    res.status(500).json({ error: "Failed to link admin to beautician" });
+    console.error("Error linking admin to specialist:", error);
+    res.status(500).json({ error: "Failed to link admin to specialist" });
   }
 });
 

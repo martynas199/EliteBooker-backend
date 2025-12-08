@@ -8,8 +8,8 @@ The platform uses **Stripe Connect** to enable:
 
 - Platform collects payments on behalf of tenants
 - Automatic platform fee deduction (£0.50 per booking/product by default)
-- Direct transfers to beautician Stripe accounts
-- Separate payouts for each beautician
+- Direct transfers to specialist Stripe accounts
+- Separate payouts for each specialist
 
 ## Architecture
 
@@ -69,8 +69,8 @@ Customer Payment → Platform Stripe Account → Transfer to Beautician Account
 3. **OAuth Settings**:
    - Add redirect URIs:
      ```
-     http://localhost:5173/admin/beauticians/*
-     https://yourdomain.com/admin/beauticians/*
+     http://localhost:5173/admin/specialists/*
+     https://yourdomain.com/admin/specialists/*
      ```
 
 ## Step 2: Webhook Configuration
@@ -123,22 +123,22 @@ stripe listen --forward-to localhost:4000/api/webhooks/stripe
 
 ### 3.1 Create Stripe Connect Account
 
-When a beautician needs to connect their bank account:
+When a specialist needs to connect their bank account:
 
 ```javascript
-// Backend: POST /api/beauticians/:id/stripe/onboard
+// Backend: POST /api/specialists/:id/stripe/onboard
 const account = await stripe.accounts.create({
   type: "express",
   country: "GB",
-  email: beautician.email,
+  email: specialist.email,
   capabilities: {
     card_payments: { requested: true },
     transfers: { requested: true },
   },
   business_type: "individual",
   metadata: {
-    beauticianId: beautician._id.toString(),
-    tenantId: beautician.tenantId.toString(),
+    beauticianId: specialist._id.toString(),
+    tenantId: specialist.tenantId.toString(),
   },
 });
 ```
@@ -148,12 +148,12 @@ const account = await stripe.accounts.create({
 ```javascript
 const accountLink = await stripe.accountLinks.create({
   account: accountId,
-  refresh_url: `${FRONTEND_URL}/admin/beauticians/${id}?stripe=refresh`,
-  return_url: `${FRONTEND_URL}/admin/beauticians/${id}?stripe=success`,
+  refresh_url: `${FRONTEND_URL}/admin/specialists/${id}?stripe=refresh`,
+  return_url: `${FRONTEND_URL}/admin/specialists/${id}?stripe=success`,
   type: "account_onboarding",
 });
 
-// Redirect beautician to accountLink.url
+// Redirect specialist to accountLink.url
 ```
 
 ### 3.3 Frontend Integration
@@ -162,7 +162,7 @@ const accountLink = await stripe.accountLinks.create({
 // In your Admin panel
 const handleStripeConnect = async (beauticianId) => {
   const response = await api.post(
-    `/api/beauticians/${beauticianId}/stripe/onboard`
+    `/api/specialists/${beauticianId}/stripe/onboard`
   );
 
   // Redirect to Stripe onboarding
@@ -213,7 +213,7 @@ const session = await stripe.checkout.sessions.create({
   payment_intent_data: {
     application_fee_amount: platformFee,
     transfer_data: {
-      destination: beautician.stripeAccountId,
+      destination: specialist.stripeAccountId,
     },
     metadata: {
       appointmentId: appointment._id.toString(),
@@ -265,15 +265,15 @@ const session = await stripe.checkout.sessions.create({
 // Webhook: account.updated
 case 'account.updated': {
   const account = event.data.object;
-  const beautician = await Beautician.findOne({
+  const specialist = await Beautician.findOne({
     stripeAccountId: account.id,
   });
 
-  if (beautician) {
+  if (specialist) {
     const isComplete = account.details_submitted && account.charges_enabled;
-    beautician.stripeStatus = isComplete ? 'connected' : 'pending';
-    beautician.stripePayoutsEnabled = account.payouts_enabled;
-    await beautician.save();
+    specialist.stripeStatus = isComplete ? 'connected' : 'pending';
+    specialist.stripePayoutsEnabled = account.payouts_enabled;
+    await specialist.save();
   }
   break;
 }
@@ -311,14 +311,14 @@ case 'payment_intent.succeeded': {
 ```javascript
 // Webhook: account.application.deauthorized
 case 'account.application.deauthorized': {
-  const beautician = await Beautician.findOne({
+  const specialist = await Beautician.findOne({
     stripeAccountId: event.account,
   });
 
-  if (beautician) {
-    beautician.stripeStatus = 'disconnected';
-    beautician.stripeAccountId = null;
-    await beautician.save();
+  if (specialist) {
+    specialist.stripeStatus = 'disconnected';
+    specialist.stripeAccountId = null;
+    await specialist.save();
   }
   break;
 }
@@ -341,7 +341,7 @@ Expiry: Any future date
 
 ### 6.2 Test Onboarding
 
-1. Create a beautician in admin panel
+1. Create a specialist in admin panel
 2. Click "Connect Stripe" button
 3. Fill in test information:
    - Email: any email
@@ -388,7 +388,7 @@ NODE_ENV=production
 ### Issue: "No such destination"
 
 **Cause**: Beautician's Stripe account not connected
-**Solution**: Ensure beautician completes onboarding before accepting payments
+**Solution**: Ensure specialist completes onboarding before accepting payments
 
 ### Issue: "Invalid application fee"
 
@@ -403,7 +403,7 @@ NODE_ENV=production
 ### Issue: Account onboarding link expired
 
 **Cause**: Account links expire after 5 minutes
-**Solution**: Generate new link via `/api/beauticians/:id/stripe/onboard`
+**Solution**: Generate new link via `/api/specialists/:id/stripe/onboard`
 
 ## Monitoring
 
@@ -445,7 +445,7 @@ const stats = {
 
 ## Next Steps
 
-1. Test onboarding flow with multiple beauticians
+1. Test onboarding flow with multiple specialists
 2. Verify webhooks are processing correctly
 3. Monitor dashboard for payment activity
 4. Set up automated reports for platform fees

@@ -106,7 +106,7 @@ r.post("/stripe", async (req, res) => {
                 await sendConfirmationEmail({
                   appointment,
                   service: appointment.serviceId,
-                  beautician: appointment.beauticianId,
+                  specialist: appointment.beauticianId,
                 });
                 console.log(
                   "[WEBHOOK] Confirmation email sent for appointment",
@@ -169,7 +169,7 @@ r.post("/stripe", async (req, res) => {
                 );
               }
 
-              // Send notifications to beauticians for their products
+              // Send notifications to specialists for their products
               const itemsByBeautician = {};
               for (const item of order.items) {
                 const beauticianId = item.productId?.beauticianId;
@@ -186,11 +186,11 @@ r.post("/stripe", async (req, res) => {
                 itemsByBeautician
               )) {
                 try {
-                  const beautician = await Specialist.findById(beauticianId);
-                  if (beautician?.email) {
+                  const specialist = await Specialist.findById(beauticianId);
+                  if (specialist?.email) {
                     await sendBeauticianProductOrderNotification({
                       order,
-                      beautician,
+                      specialist,
                       beauticianItems: items,
                     });
                     console.log(
@@ -199,10 +199,10 @@ r.post("/stripe", async (req, res) => {
                   }
                 } catch (beauticianEmailErr) {
                   console.error(
-                    `[WEBHOOK] Failed to send beautician notification to ${beauticianId}:`,
+                    `[WEBHOOK] Failed to send specialist notification to ${beauticianId}:`,
                     beauticianEmailErr
                   );
-                  // Continue with other beauticians
+                  // Continue with other specialists
                 }
               }
             }
@@ -292,7 +292,7 @@ r.post("/stripe", async (req, res) => {
                 await sendConfirmationEmail({
                   appointment,
                   service: appointment.serviceId,
-                  beautician: appointment.beauticianId,
+                  specialist: appointment.beauticianId,
                 });
                 console.log(
                   "[WEBHOOK] Confirmation email sent for appointment",
@@ -385,10 +385,10 @@ r.post("/stripe", async (req, res) => {
         console.log("[WEBHOOK] account.updated - account:", account.id);
 
         try {
-          const beautician = await Specialist.findOne({
+          const specialist = await Specialist.findOne({
             stripeAccountId: account.id,
           });
-          if (beautician) {
+          if (specialist) {
             const isComplete =
               account.details_submitted && account.charges_enabled;
             Specialist.stripeStatus = isComplete ? "connected" : "pending";
@@ -424,10 +424,10 @@ r.post("/stripe", async (req, res) => {
         );
 
         try {
-          const beautician = await Specialist.findOne({
+          const specialist = await Specialist.findOne({
             stripeAccountId: event.account,
           });
-          if (beautician) {
+          if (specialist) {
             Specialist.stripeStatus = "connected";
             Specialist.stripeOnboardingCompleted = true;
             await Specialist.save();
@@ -452,10 +452,10 @@ r.post("/stripe", async (req, res) => {
         );
 
         try {
-          const beautician = await Specialist.findOne({
+          const specialist = await Specialist.findOne({
             stripeAccountId: event.account,
           });
-          if (beautician) {
+          if (specialist) {
             Specialist.stripeStatus = "disconnected";
             Specialist.stripeOnboardingCompleted = false;
             Specialist.stripeAccountId = null;
@@ -473,7 +473,7 @@ r.post("/stripe", async (req, res) => {
       }
 
       case "payout.paid": {
-        // Payout successfully sent to beautician's bank
+        // Payout successfully sent to specialist's bank
         const payout = event.data.object;
         console.log(
           "[WEBHOOK] payout.paid - amount:",
@@ -483,10 +483,10 @@ r.post("/stripe", async (req, res) => {
         );
 
         try {
-          const beautician = await Specialist.findOne({
+          const specialist = await Specialist.findOne({
             stripeAccountId: event.account,
           });
-          if (beautician) {
+          if (specialist) {
             Specialist.totalPayouts += payout.amount / 100; // Convert from pence to pounds
             Specialist.lastPayoutDate = new Date(payout.arrival_date * 1000);
             await Specialist.save();

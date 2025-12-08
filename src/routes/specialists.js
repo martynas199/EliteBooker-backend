@@ -174,13 +174,13 @@ r.patch("/me/working-hours", async (req, res, next) => {
     }
 
     // Find Specialist by SpecialistId
-    const Specialist = await Specialist.findById(admin.SpecialistId);
+    const specialist = await Specialist.findById(admin.SpecialistId);
     console.log(
       "[Working Hours] Found Specialist:",
-      Specialist ? Specialist._id : "null"
+      specialist ? specialist._id : "null"
     );
 
-    if (!Specialist) {
+    if (!specialist) {
       return res.status(404).json({ error: "Specialist profile not found" });
     }
 
@@ -192,11 +192,11 @@ r.patch("/me/working-hours", async (req, res, next) => {
     }
 
     // Update working hours
-    Specialist.workingHours = workingHours;
-    await Specialist.save();
+    specialist.workingHours = workingHours;
+    await specialist.save();
 
     console.log("[Working Hours] Successfully updated working hours");
-    res.json(Specialist);
+    res.json(specialist);
   } catch (err) {
     console.error("[Working Hours] Error:", err);
     next(err);
@@ -210,7 +210,7 @@ r.patch("/me/working-hours", async (req, res, next) => {
 r.get("/:id", async (req, res, next) => {
   try {
     // Validate ID
-    const idValidation = SpecialistIdSchema.safeParse(req.params);
+    const idValidation = specialistIdSchema.safeParse(req.params);
     if (!idValidation.success) {
       return res.status(400).json({
         error: "Invalid Specialist ID",
@@ -218,18 +218,18 @@ r.get("/:id", async (req, res, next) => {
       });
     }
 
-    const Specialist = await Specialist.findById(req.params.id).lean();
+    const specialist = await Specialist.findById(req.params.id).lean();
 
-    if (!Specialist) {
+    if (!specialist) {
       return res.status(404).json({ error: "Specialist not found" });
     }
 
     // Convert Map to plain object for customSchedule if it exists (only if it's still a Map)
-    if (Specialist.customSchedule && Specialist.customSchedule instanceof Map) {
-      Specialist.customSchedule = Object.fromEntries(Specialist.customSchedule);
+    if (specialist.customSchedule && specialist.customSchedule instanceof Map) {
+      specialist.customSchedule = Object.fromEntries(specialist.customSchedule);
     }
 
-    res.json(Specialist);
+    res.json(specialist);
   } catch (err) {
     next(err);
   }
@@ -277,7 +277,7 @@ r.post("/", requireAdmin, async (req, res, next) => {
 r.patch("/:id", requireAdmin, async (req, res, next) => {
   try {
     // Validate ID
-    const idValidation = SpecialistIdSchema.safeParse(req.params);
+    const idValidation = specialistIdSchema.safeParse(req.params);
     if (!idValidation.success) {
       return res.status(400).json({
         error: "Invalid Specialist ID",
@@ -320,7 +320,7 @@ r.patch("/:id", requireAdmin, async (req, res, next) => {
 r.delete("/:id", requireAdmin, async (req, res, next) => {
   try {
     // Validate ID
-    const idValidation = SpecialistIdSchema.safeParse(req.params);
+    const idValidation = specialistIdSchema.safeParse(req.params);
     if (!idValidation.success) {
       return res.status(400).json({
         error: "Invalid Specialist ID",
@@ -366,7 +366,7 @@ r.post(
   async (req, res, next) => {
     try {
       // Validate ID
-      const idValidation = SpecialistIdSchema.safeParse(req.params);
+      const idValidation = specialistIdSchema.safeParse(req.params);
       if (!idValidation.success) {
         return res.status(400).json({
           error: "Invalid Specialist ID",
@@ -380,8 +380,8 @@ r.post(
       }
 
       // Find Specialist
-      const Specialist = await Specialist.findById(req.params.id);
-      if (!Specialist) {
+      const specialist = await Specialist.findById(req.params.id);
+      if (!specialist) {
         deleteLocalFile(req.file.path);
         return res.status(404).json({ error: "Specialist not found" });
       }
@@ -389,11 +389,11 @@ r.post(
       try {
         // Delete old image from Cloudinary if exists
         if (
-          Specialist.image?.provider === "cloudinary" &&
-          Specialist.image?.id
+          specialist.image?.provider === "cloudinary" &&
+          specialist.image?.id
         ) {
           try {
-            await deleteImage(Specialist.image.id);
+            await deleteImage(specialist.image.id);
           } catch (deleteErr) {
             console.error("Error deleting old image:", deleteErr);
             // Continue with upload even if old image deletion fails
@@ -404,23 +404,23 @@ r.post(
         const result = await uploadImage(req.file.path, "Specialists");
 
         // Update Specialist with new image
-        Specialist.image = {
+        specialist.image = {
           provider: "cloudinary",
           id: result.public_id,
           url: result.secure_url,
-          alt: Specialist.name,
+          alt: specialist.name,
           width: result.width,
           height: result.height,
         };
 
-        await Specialist.save();
+        await specialist.save();
 
         // Clean up temp file
         deleteLocalFile(req.file.path);
 
         res.json({
           message: "Image uploaded successfully",
-          image: Specialist.image,
+          image: specialist.image,
         });
       } catch (uploadErr) {
         // Clean up temp file on error
@@ -441,16 +441,16 @@ r.post(
 r.post("/:id/stripe/onboard", requireAdmin, async (req, res, next) => {
   try {
     const { id } = req.params;
-    const Specialist = await Specialist.findById(id);
+    const specialist = await Specialist.findById(id);
 
-    if (!Specialist) {
+    if (!specialist) {
       return res.status(404).json({ error: "Specialist not found" });
     }
 
     // Check if Specialist belongs to current tenant
     if (
       req.tenant &&
-      Specialist.tenantId.toString() !== req.tenant._id.toString()
+      specialist.tenantId.toString() !== req.tenant._id.toString()
     ) {
       return res
         .status(403)
@@ -461,28 +461,28 @@ r.post("/:id/stripe/onboard", requireAdmin, async (req, res, next) => {
     const { getStripe } = await import("../payments/stripe.js");
     const stripe = getStripe(); // Use platform account
 
-    let accountId = Specialist.stripeAccountId;
+    let accountId = specialist.stripeAccountId;
 
     // Create Connect account if doesn't exist
     if (!accountId) {
       const account = await stripe.accounts.create({
         type: "express",
         country: "GB",
-        email: Specialist.email,
+        email: specialist.email,
         capabilities: {
           card_payments: { requested: true },
           transfers: { requested: true },
         },
         business_type: "individual",
         metadata: {
-          SpecialistId: Specialist._id.toString(),
-          tenantId: Specialist.tenantId.toString(),
+          SpecialistId: specialist._id.toString(),
+          tenantId: specialist.tenantId.toString(),
         },
       });
 
-      Specialist.stripeAccountId = account.id;
-      Specialist.stripeStatus = "pending";
-      await Specialist.save();
+      specialist.stripeAccountId = account.id;
+      specialist.stripeStatus = "pending";
+      await specialist.save();
 
       accountId = account.id;
       console.log(
@@ -523,23 +523,23 @@ r.post("/:id/stripe/onboard", requireAdmin, async (req, res, next) => {
 r.get("/:id/stripe/status", requireAdmin, async (req, res, next) => {
   try {
     const { id } = req.params;
-    const Specialist = await Specialist.findById(id);
+    const specialist = await Specialist.findById(id);
 
-    if (!Specialist) {
+    if (!specialist) {
       return res.status(404).json({ error: "Specialist not found" });
     }
 
     // Check tenant access
     if (
       req.tenant &&
-      Specialist.tenantId.toString() !== req.tenant._id.toString()
+      specialist.tenantId.toString() !== req.tenant._id.toString()
     ) {
       return res
         .status(403)
         .json({ error: "Access denied to this Specialist" });
     }
 
-    if (!Specialist.stripeAccountId) {
+    if (!specialist.stripeAccountId) {
       return res.json({
         connected: false,
         status: "not_connected",
@@ -552,23 +552,23 @@ r.get("/:id/stripe/status", requireAdmin, async (req, res, next) => {
     const stripe = getStripe();
 
     // Fetch account details from Stripe
-    const account = await stripe.accounts.retrieve(Specialist.stripeAccountId);
+    const account = await stripe.accounts.retrieve(specialist.stripeAccountId);
 
     const isComplete = account.details_submitted && account.charges_enabled;
     const status = isComplete ? "connected" : "pending";
 
     // Update local status if changed
-    if (Specialist.stripeStatus !== status) {
-      Specialist.stripeStatus = status;
-      Specialist.stripeOnboardingCompleted = isComplete;
-      Specialist.stripePayoutsEnabled = account.payouts_enabled || false;
-      await Specialist.save();
+    if (specialist.stripeStatus !== status) {
+      specialist.stripeStatus = status;
+      specialist.stripeOnboardingCompleted = isComplete;
+      specialist.stripePayoutsEnabled = account.payouts_enabled || false;
+      await specialist.save();
     }
 
     res.json({
       connected: isComplete,
-      status: Specialist.stripeStatus,
-      accountId: Specialist.stripeAccountId,
+      status: specialist.stripeStatus,
+      accountId: specialist.stripeAccountId,
       chargesEnabled: account.charges_enabled,
       payoutsEnabled: account.payouts_enabled,
       detailsSubmitted: account.details_submitted,
@@ -587,23 +587,23 @@ r.get("/:id/stripe/status", requireAdmin, async (req, res, next) => {
 r.post("/:id/stripe/disconnect", requireAdmin, async (req, res, next) => {
   try {
     const { id } = req.params;
-    const Specialist = await Specialist.findById(id);
+    const specialist = await Specialist.findById(id);
 
-    if (!Specialist) {
+    if (!specialist) {
       return res.status(404).json({ error: "Specialist not found" });
     }
 
     // Check tenant access
     if (
       req.tenant &&
-      Specialist.tenantId.toString() !== req.tenant._id.toString()
+      specialist.tenantId.toString() !== req.tenant._id.toString()
     ) {
       return res
         .status(403)
         .json({ error: "Access denied to this Specialist" });
     }
 
-    if (!Specialist.stripeAccountId) {
+    if (!specialist.stripeAccountId) {
       return res
         .status(400)
         .json({ error: "Specialist has no connected Stripe account" });
@@ -611,11 +611,11 @@ r.post("/:id/stripe/disconnect", requireAdmin, async (req, res, next) => {
 
     // Note: We don't delete the Stripe account (Stripe retains it)
     // We just disconnect it from our platform
-    Specialist.stripeAccountId = null;
-    Specialist.stripeStatus = "disconnected";
-    Specialist.stripeOnboardingCompleted = false;
-    Specialist.stripePayoutsEnabled = false;
-    await Specialist.save();
+    specialist.stripeAccountId = null;
+    specialist.stripeStatus = "disconnected";
+    specialist.stripeOnboardingCompleted = false;
+    specialist.stripePayoutsEnabled = false;
+    await specialist.save();
 
     res.json({
       message: "Stripe account disconnected successfully",

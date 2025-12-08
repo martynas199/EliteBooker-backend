@@ -21,7 +21,7 @@ function computeSlotsForBeautician({
   salonTz,
   stepMin,
   service,
-  beautician,
+  specialist,
   appointments,
 }) {
   const slots = [];
@@ -29,7 +29,7 @@ function computeSlotsForBeautician({
   const dayOfWeek = dateObj.day();
 
   // Find working hours for this day
-  const workingHours = beautician.workingHours?.find(
+  const workingHours = specialist.workingHours?.find(
     (wh) => wh.dayOfWeek === dayOfWeek
   );
   if (!workingHours) return slots;
@@ -63,7 +63,7 @@ function computeSlotsForBeautician({
     });
 
     // Check for overlaps with breaks
-    const hasBreakOverlap = beautician.breaks?.some((br) => {
+    const hasBreakOverlap = specialist.breaks?.some((br) => {
       const [breakStartH, breakStartM] = br.start.split(":").map(Number);
       const [breakEndH, breakEndM] = br.end.split(":").map(Number);
       const breakStart = dateObj.hour(breakStartH).minute(breakStartM);
@@ -72,7 +72,7 @@ function computeSlotsForBeautician({
     });
 
     // Check for time off
-    const hasTimeOff = beautician.timeOff?.some((timeOff) => {
+    const hasTimeOff = specialist.timeOff?.some((timeOff) => {
       const timeOffStart = dayjs(timeOff.start);
       const timeOffEnd = dayjs(timeOff.end);
       return slotStart.isBefore(timeOffEnd) && slotEnd.isAfter(timeOffStart);
@@ -82,7 +82,7 @@ function computeSlotsForBeautician({
       slots.push({
         startISO: slotStart.toISOString(),
         endISO: slotEnd.toISOString(),
-        beauticianId: beautician._id,
+        beauticianId: specialist._id,
       });
     }
 
@@ -94,7 +94,7 @@ function computeSlotsForBeautician({
 
 describe("Slot Generator - Basic Functionality", () => {
   it("should generate slots within working hours", () => {
-    const beautician = {
+    const specialist = {
       _id: "beautician123",
       workingHours: [{ dayOfWeek: 1, start: "09:00", end: "17:00" }], // Monday
     };
@@ -110,7 +110,7 @@ describe("Slot Generator - Basic Functionality", () => {
       salonTz: "Europe/London",
       stepMin: 15,
       service,
-      beautician,
+      specialist,
       appointments: [],
     });
 
@@ -134,8 +134,8 @@ describe("Slot Generator - Basic Functionality", () => {
     });
   });
 
-  it("should return empty array when beautician does not work on specified day", () => {
-    const beautician = {
+  it("should return empty array when specialist does not work on specified day", () => {
+    const specialist = {
       _id: "beautician123",
       workingHours: [{ dayOfWeek: 1, start: "09:00", end: "17:00" }], // Monday only
     };
@@ -151,7 +151,7 @@ describe("Slot Generator - Basic Functionality", () => {
       salonTz: "Europe/London",
       stepMin: 15,
       service,
-      beautician,
+      specialist,
       appointments: [],
     });
 
@@ -163,7 +163,7 @@ describe("Slot Generator - Basic Functionality", () => {
   });
 
   it("should respect step interval alignment", () => {
-    const beautician = {
+    const specialist = {
       _id: "beautician123",
       workingHours: [{ dayOfWeek: 1, start: "09:00", end: "12:00" }],
     };
@@ -179,7 +179,7 @@ describe("Slot Generator - Basic Functionality", () => {
       salonTz: "Europe/London",
       stepMin: 30,
       service,
-      beautician,
+      specialist,
       appointments: [],
     });
 
@@ -196,7 +196,7 @@ describe("Slot Generator - Basic Functionality", () => {
 
 describe("Slot Generator - Appointment Overlaps", () => {
   it("should exclude slots that overlap with existing appointments", () => {
-    const beautician = {
+    const specialist = {
       _id: "beautician123",
       workingHours: [{ dayOfWeek: 1, start: "09:00", end: "17:00" }],
     };
@@ -220,7 +220,7 @@ describe("Slot Generator - Appointment Overlaps", () => {
       salonTz: "Europe/London",
       stepMin: 15,
       service,
-      beautician,
+      specialist,
       appointments,
     });
 
@@ -242,7 +242,7 @@ describe("Slot Generator - Appointment Overlaps", () => {
   });
 
   it("should include slots when appointment is cancelled", () => {
-    const beautician = {
+    const specialist = {
       _id: "beautician123",
       workingHours: [{ dayOfWeek: 1, start: "09:00", end: "12:00" }],
     };
@@ -267,7 +267,7 @@ describe("Slot Generator - Appointment Overlaps", () => {
       salonTz: "Europe/London",
       stepMin: 60,
       service,
-      beautician,
+      specialist,
       appointments: [], // Cancelled appointments should not be passed
     });
 
@@ -277,7 +277,7 @@ describe("Slot Generator - Appointment Overlaps", () => {
       salonTz: "Europe/London",
       stepMin: 60,
       service,
-      beautician,
+      specialist,
       appointments: [],
     });
 
@@ -291,7 +291,7 @@ describe("Slot Generator - Appointment Overlaps", () => {
 
 describe("Slot Generator - Breaks and Time Off", () => {
   it("should exclude slots that overlap with breaks", () => {
-    const beautician = {
+    const specialist = {
       _id: "beautician123",
       workingHours: [{ dayOfWeek: 1, start: "09:00", end: "17:00" }],
       breaks: [{ start: "12:00", end: "13:00" }],
@@ -308,7 +308,7 @@ describe("Slot Generator - Breaks and Time Off", () => {
       salonTz: "Europe/London",
       stepMin: 60,
       service,
-      beautician,
+      specialist,
       appointments: [],
     });
 
@@ -333,7 +333,7 @@ describe("Slot Generator - Breaks and Time Off", () => {
   });
 
   it("should exclude slots that overlap with time off", () => {
-    const beautician = {
+    const specialist = {
       _id: "beautician123",
       workingHours: [{ dayOfWeek: 1, start: "09:00", end: "17:00" }],
       timeOff: [
@@ -356,7 +356,7 @@ describe("Slot Generator - Breaks and Time Off", () => {
       salonTz: "Europe/London",
       stepMin: 60,
       service,
-      beautician,
+      specialist,
       appointments: [],
     });
 
@@ -375,7 +375,7 @@ describe("Slot Generator - Breaks and Time Off", () => {
 
 describe("Slot Generator - Duration and Buffers", () => {
   it("should include buffer time in slot duration", () => {
-    const beautician = {
+    const specialist = {
       _id: "beautician123",
       workingHours: [{ dayOfWeek: 1, start: "09:00", end: "12:00" }],
     };
@@ -391,7 +391,7 @@ describe("Slot Generator - Duration and Buffers", () => {
       salonTz: "Europe/London",
       stepMin: 15,
       service,
-      beautician,
+      specialist,
       appointments: [],
     });
 
@@ -415,7 +415,7 @@ describe("Slot Generator - Duration and Buffers", () => {
 describe("Slot Generator - DST Edge Cases", () => {
   it("should handle DST spring forward correctly", () => {
     // March 30, 2025 - clocks go forward at 1:00 AM to 2:00 AM
-    const beautician = {
+    const specialist = {
       _id: "beautician123",
       workingHours: [{ dayOfWeek: 0, start: "00:00", end: "06:00" }], // Sunday
     };
@@ -431,7 +431,7 @@ describe("Slot Generator - DST Edge Cases", () => {
       salonTz: "Europe/London",
       stepMin: 60,
       service,
-      beautician,
+      specialist,
       appointments: [],
     });
 
@@ -445,7 +445,7 @@ describe("Slot Generator - DST Edge Cases", () => {
 
   it("should handle DST fall back correctly", () => {
     // October 26, 2025 - clocks go back at 2:00 AM to 1:00 AM
-    const beautician = {
+    const specialist = {
       _id: "beautician123",
       workingHours: [{ dayOfWeek: 0, start: "00:00", end: "06:00" }], // Sunday
     };
@@ -461,7 +461,7 @@ describe("Slot Generator - DST Edge Cases", () => {
       salonTz: "Europe/London",
       stepMin: 60,
       service,
-      beautician,
+      specialist,
       appointments: [],
     });
 
@@ -479,7 +479,7 @@ describe("Slot Generator - DST Edge Cases", () => {
 
 describe("Slot Generator - Edge Cases", () => {
   it("should return empty array when working hours are too short for service", () => {
-    const beautician = {
+    const specialist = {
       _id: "beautician123",
       workingHours: [{ dayOfWeek: 1, start: "09:00", end: "09:30" }], // Only 30 minutes
     };
@@ -495,7 +495,7 @@ describe("Slot Generator - Edge Cases", () => {
       salonTz: "Europe/London",
       stepMin: 15,
       service,
-      beautician,
+      specialist,
       appointments: [],
     });
 
@@ -507,7 +507,7 @@ describe("Slot Generator - Edge Cases", () => {
   });
 
   it("should handle midnight-crossing working hours", () => {
-    const beautician = {
+    const specialist = {
       _id: "beautician123",
       workingHours: [{ dayOfWeek: 1, start: "22:00", end: "23:59" }],
     };
@@ -523,7 +523,7 @@ describe("Slot Generator - Edge Cases", () => {
       salonTz: "Europe/London",
       stepMin: 60,
       service,
-      beautician,
+      specialist,
       appointments: [],
     });
 

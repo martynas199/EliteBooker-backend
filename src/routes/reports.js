@@ -11,7 +11,7 @@ const router = express.Router();
  * Query params:
  *   - startDate: ISO date string
  *   - endDate: ISO date string
- *   - beauticianId: filter by specific beautician
+ *   - beauticianId: filter by specific specialist
  */
 router.get("/revenue", async (req, res) => {
   try {
@@ -28,7 +28,7 @@ router.get("/revenue", async (req, res) => {
 
     const hasDateFilter = Object.keys(dateFilter).length > 0;
 
-    // 1. Aggregate booking revenue by beautician
+    // 1. Aggregate booking revenue by specialist
     const bookingMatch = {
       status: { $in: ["confirmed", "completed"] },
       "payment.status": "succeeded",
@@ -52,13 +52,13 @@ router.get("/revenue", async (req, res) => {
       },
       {
         $lookup: {
-          from: "beauticians",
+          from: "specialists",
           localField: "_id",
           foreignField: "_id",
-          as: "beautician",
+          as: "specialist",
         },
       },
-      { $unwind: "$beautician" },
+      { $unwind: "$specialist" },
       {
         $project: {
           beauticianId: "$_id",
@@ -74,7 +74,7 @@ router.get("/revenue", async (req, res) => {
       },
     ]);
 
-    // 2. Aggregate product revenue by beautician
+    // 2. Aggregate product revenue by specialist
     const orderMatch = {
       paymentStatus: "paid",
       orderStatus: { $ne: "cancelled" },
@@ -83,13 +83,13 @@ router.get("/revenue", async (req, res) => {
       orderMatch.createdAt = dateFilter;
     }
 
-    // Get orders and extract beautician revenue
+    // Get orders and extract specialist revenue
     const orders = await Order.find(orderMatch).populate({
       path: "items.productId",
       select: "beauticianId",
     });
 
-    // Group product revenue by beautician
+    // Group product revenue by specialist
     const productRevenueMap = new Map();
     for (const order of orders) {
       for (const item of order.items) {
@@ -145,8 +145,8 @@ router.get("/revenue", async (req, res) => {
         existing.totalEarnings += productData.totalRevenue;
       } else {
         // Beautician only has product sales, no bookings
-        const beautician = await Specialist.findById(beauticianId);
-        if (beautician) {
+        const specialist = await Specialist.findById(beauticianId);
+        if (specialist) {
           revenueByBeautician.set(beauticianId, {
             beauticianId,
             beauticianName: Specialist.name,
@@ -192,7 +192,7 @@ router.get("/revenue", async (req, res) => {
         totalProductRevenue,
         totalRevenue: totalBookingRevenue + totalProductRevenue,
       },
-      beauticians: Array.from(revenueByBeautician.values()),
+      specialists: Array.from(revenueByBeautician.values()),
       summary: {
         totalBeauticianEarnings,
         totalPlatformEarnings: totalPlatformFees,
@@ -209,16 +209,16 @@ router.get("/revenue", async (req, res) => {
 });
 
 /**
- * GET /api/reports/beautician-earnings/:beauticianId
- * Get detailed earnings for a specific beautician
+ * GET /api/reports/specialist-earnings/:beauticianId
+ * Get detailed earnings for a specific specialist
  */
-router.get("/beautician-earnings/:beauticianId", async (req, res) => {
+router.get("/specialist-earnings/:beauticianId", async (req, res) => {
   try {
     const { beauticianId } = req.params;
     const { startDate, endDate } = req.query;
 
-    const beautician = await Specialist.findById(beauticianId);
-    if (!beautician) {
+    const specialist = await Specialist.findById(beauticianId);
+    if (!specialist) {
       return res.status(404).json({ error: "Beautician not found" });
     }
 
@@ -277,7 +277,7 @@ router.get("/beautician-earnings/:beauticianId", async (req, res) => {
 
     res.json({
       success: true,
-      beautician: {
+      specialist: {
         id: Specialist._id,
         name: Specialist.name,
         email: Specialist.email,
@@ -317,7 +317,7 @@ router.get("/beautician-earnings/:beauticianId", async (req, res) => {
   } catch (error) {
     console.error("Beautician earnings error:", error);
     res.status(500).json({
-      error: "Failed to get beautician earnings",
+      error: "Failed to get specialist earnings",
       message: error.message,
     });
   }

@@ -2,7 +2,7 @@
 
 ## ✅ Changes Applied
 
-Both booking and product payments now ensure beauticians pay Stripe processing fees (when possible).
+Both booking and product payments now ensure specialists pay Stripe processing fees (when possible).
 
 ---
 
@@ -13,21 +13,21 @@ Both booking and product payments now ensure beauticians pay Stripe processing f
 **Steps:**
 
 1. Go to booking page
-2. Select service, beautician, time slot
+2. Select service, specialist, time slot
 3. Complete checkout
 4. Check Stripe Dashboard
 
 **Expected Results:**
 
 - Customer pays: Full service price (e.g., £50)
-- Stripe fee (~£1.65): Deducted from beautician
+- Stripe fee (~£1.65): Deducted from specialist
 - Platform fee: £0.50
 - Beautician receives: £47.85
 
 **In Stripe Dashboard:**
 
 - Go to Connect → Connected accounts
-- Click on beautician's account
+- Click on specialist's account
 - Check "Payments" tab
 - Fee should show as charged to connected account
 
@@ -38,20 +38,20 @@ Both booking and product payments now ensure beauticians pay Stripe processing f
 **Steps:**
 
 1. Go to shop
-2. Add products from ONE beautician to cart
+2. Add products from ONE specialist to cart
 3. Complete checkout
 4. Check Stripe Dashboard
 
 **Expected Results:**
 
 - Customer pays: Product total (e.g., £100)
-- Stripe fee (~£3.10): Deducted from beautician
+- Stripe fee (~£3.10): Deducted from specialist
 - Platform fee: £0.00
 - Beautician receives: £96.90
 
 **In Stripe Dashboard:**
 
-- Check beautician's Connect account
+- Check specialist's Connect account
 - Fee should be charged to connected account
 
 ---
@@ -61,14 +61,14 @@ Both booking and product payments now ensure beauticians pay Stripe processing f
 **Steps:**
 
 1. Go to shop
-2. Add products from MULTIPLE beauticians
+2. Add products from MULTIPLE specialists
 3. Complete checkout
 
 **Expected Results:**
 
 - Customer pays: Product total (e.g., £100)
 - Stripe fee (~£3.10): Paid by platform
-- Each beautician receives: Full amount for their products
+- Each specialist receives: Full amount for their products
 - Platform absorbs: ~£3.10 fee
 
 **Note:** This is a rare edge case and acceptable compromise.
@@ -88,7 +88,7 @@ Both booking and product payments now ensure beauticians pay Stripe processing f
 ### **Method 2: Check Connected Account Balance**
 
 1. Go to **Connect** → **Connected accounts**
-2. Click on beautician's account
+2. Click on specialist's account
 3. Go to **Balance** or **Payouts**
 4. Verify the amount matches expected (after fees)
 
@@ -97,7 +97,7 @@ Both booking and product payments now ensure beauticians pay Stripe processing f
 1. Go to **Developers** → **API logs**
 2. Find the `payment_intent.created` event
 3. Check for `on_behalf_of` parameter
-4. Should match beautician's Stripe account ID
+4. Should match specialist's Stripe account ID
 
 ---
 
@@ -122,7 +122,7 @@ Use Stripe test cards:
 ```
 Customer Payment:     £50.00
 ─────────────────────────────
-Stripe Fee (2.9%+20p): -£1.65  ← Charged to beautician
+Stripe Fee (2.9%+20p): -£1.65  ← Charged to specialist
 Platform Fee:          -£0.50  ← Goes to platform
 ─────────────────────────────
 Beautician Receives:   £47.85
@@ -133,7 +133,7 @@ Beautician Receives:   £47.85
 ```
 Customer Payment:     £100.00
 ─────────────────────────────
-Stripe Fee (2.9%+20p): -£3.10  ← Charged to beautician
+Stripe Fee (2.9%+20p): -£3.10  ← Charged to specialist
 Platform Fee:          £0.00
 ─────────────────────────────
 Beautician Receives:   £96.90
@@ -147,14 +147,14 @@ Beautician Receives:   £96.90
 
 **Check:**
 
-1. Is beautician's Stripe account fully onboarded?
+1. Is specialist's Stripe account fully onboarded?
 2. Check `stripeStatus === 'connected'` in database
 3. Verify `on_behalf_of` parameter in payment intent
 4. Check API logs for errors
 
 **Fix:**
 
-- Re-run beautician Stripe onboarding
+- Re-run specialist Stripe onboarding
 - Ensure `beauticianId` is linked to admin account
 - Check environment variables are set
 
@@ -172,7 +172,7 @@ Beautician Receives:   £96.90
 
 - ✅ Bookings complete successfully
 - ✅ Products complete successfully
-- ✅ Stripe Dashboard shows fees charged to beautician (not platform)
+- ✅ Stripe Dashboard shows fees charged to specialist (not platform)
 - ✅ Beautician balance reflects net amount (after fees)
 - ✅ Platform only receives application fee (£0.50 for bookings, £0 for products)
 
@@ -183,13 +183,13 @@ Beautician Receives:   £96.90
 ### **File: `src/routes/checkout.js`** (Bookings)
 
 ```javascript
-payment_intent_data.on_behalf_of = beautician.stripeAccountId;
+payment_intent_data.on_behalf_of = specialist.stripeAccountId;
 ```
 
 ### **File: `src/routes/orders.js`** (Products)
 
 ```javascript
-// For single-beautician orders
+// For single-specialist orders
 if (stripeConnectPayments.length === 1) {
   sessionConfig.payment_intent_data = {
     on_behalf_of: payment.beauticianStripeAccount,

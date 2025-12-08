@@ -467,6 +467,7 @@ r.get("/me", async (req, res) => {
         active: admin.active,
         lastLogin: admin.lastLogin,
         beauticianId: admin.beauticianId, // Added for Stripe Connect
+        tenantId: admin.tenantId, // Required for tenant-specific operations
       },
     });
   } catch (error) {

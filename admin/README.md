@@ -9,12 +9,12 @@ Complete production-ready admin dashboard for managing services and staff in you
 - **Validation Schemas** (`src/validations/`)
 
   - `service.schema.js` - Zod schemas for service CRUD operations
-  - `beautician.schema.js` - Zod schemas for beautician/staff CRUD operations
+  - `specialist.schema.js` - Zod schemas for specialist/staff CRUD operations
 
 - **API Routes** (`src/routes/`)
 
   - `services.js` - Full CRUD API for services (GET, POST, PATCH, DELETE)
-  - `beauticians.js` - Full CRUD API for beauticians with service-assignment protection
+  - `specialists.js` - Full CRUD API for specialists with service-assignment protection
 
 - **Middleware** (`src/middleware/`)
 
@@ -22,7 +22,7 @@ Complete production-ready admin dashboard for managing services and staff in you
 
 - **Tests** (`tests/`)
   - `service.schema.test.js` - Comprehensive validation tests for services
-  - `beautician.schema.test.js` - Comprehensive validation tests for beauticians
+  - `specialist.schema.test.js` - Comprehensive validation tests for specialists
 
 ### Frontend Components
 
@@ -54,7 +54,7 @@ npm install zod
 
 ```bash
 node --test tests/service.schema.test.js
-node --test tests/beautician.schema.test.js
+node --test tests/specialist.schema.test.js
 ```
 
 #### Update Server Routes
@@ -63,10 +63,10 @@ Make sure your `src/server.js` imports and uses the routes:
 
 ```javascript
 import servicesRouter from "./routes/services.js";
-import beauticiansRouter from "./routes/beauticians.js";
+import beauticiansRouter from "./routes/specialists.js";
 
 app.use("/api/services", servicesRouter);
-app.use("/api/beauticians", beauticiansRouter);
+app.use("/api/specialists", beauticiansRouter);
 ```
 
 ### 2. Frontend Setup
@@ -83,7 +83,7 @@ import ServicesList from "../ServicesList";
 
 export default function ServicesManager() {
   const [services, setServices] = useState([]);
-  const [beauticians, setBeauticians] = useState([]);
+  const [specialists, setBeauticians] = useState([]);
   const [editingService, setEditingService] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -97,7 +97,7 @@ export default function ServicesManager() {
     try {
       const [servicesRes, beauticiansRes] = await Promise.all([
         fetch("/api/services"),
-        fetch("/api/beauticians"),
+        fetch("/api/specialists"),
       ]);
       setServices(await servicesRes.json());
       setBeauticians(await beauticiansRes.json());
@@ -173,7 +173,7 @@ export default function ServicesManager() {
     return (
       <ServiceForm
         service={editingService}
-        beauticians={beauticians}
+        specialists={specialists}
         onSave={handleSave}
         onCancel={handleCancel}
         onDelete={
@@ -204,7 +204,7 @@ import StaffForm from "../StaffForm";
 import StaffList from "../StaffList";
 
 // ... Similar structure to ServicesManager
-// Use /api/beauticians endpoints
+// Use /api/specialists endpoints
 ```
 
 ## 📚 API Reference
@@ -248,7 +248,7 @@ Get all services with optional filters.
 
 #### GET /api/services/:id
 
-Get a single service by ID with populated beautician.
+Get a single service by ID with populated specialist.
 
 #### POST /api/services
 
@@ -286,22 +286,22 @@ Delete a service (requires admin auth).
 
 ### Beauticians API
 
-#### GET /api/beauticians
+#### GET /api/specialists
 
-Get all beauticians with optional filters.
+Get all specialists with optional filters.
 
 **Query Parameters:**
 
 - `active` (boolean) - Filter by active status
 - `serviceId` (string) - Filter by assigned service
 
-#### GET /api/beauticians/:id
+#### GET /api/specialists/:id
 
-Get a single beautician by ID.
+Get a single specialist by ID.
 
-#### POST /api/beauticians
+#### POST /api/specialists
 
-Create a new beautician (requires admin auth).
+Create a new specialist (requires admin auth).
 
 **Request Body:**
 
@@ -329,15 +329,15 @@ Create a new beautician (requires admin auth).
 }
 ```
 
-#### PATCH /api/beauticians/:id
+#### PATCH /api/specialists/:id
 
-Update an existing beautician (requires admin auth).
+Update an existing specialist (requires admin auth).
 
-#### DELETE /api/beauticians/:id
+#### DELETE /api/specialists/:id
 
-Delete a beautician (requires admin auth).
+Delete a specialist (requires admin auth).
 
-**Note:** Backend will return 409 error if beautician is assigned to any services.
+**Note:** Backend will return 409 error if specialist is assigned to any services.
 
 ## 🔒 Authentication Setup
 
@@ -535,7 +535,7 @@ try {
 import {
   createBeauticianSchema,
   updateBeauticianSchema,
-} from "./validations/beautician.schema.js";
+} from "./validations/specialist.schema.js";
 
 // Validates working hours, time format, specialties array, etc.
 const validData = createBeauticianSchema.parse(req.body);
@@ -549,8 +549,8 @@ Run the validation tests:
 # Test service schema validation
 node --test tests/service.schema.test.js
 
-# Test beautician schema validation
-node --test tests/beautician.schema.test.js
+# Test specialist schema validation
+node --test tests/specialist.schema.test.js
 
 # Run all tests
 node --test tests/*.test.js
@@ -607,7 +607,7 @@ PORT=4000
 ```jsx
 <ServiceForm
   service={service || null}        // Existing service for edit, null for create
-  beauticians={beauticiansArray}   // Array of beautician objects for dropdown
+  specialists={beauticiansArray}   // Array of specialist objects for dropdown
   onSave={async (data) => {...}}   // Called with validated service data
   onCancel={() => {...}}           // Called when user cancels
   onDelete={async () => {...}}     // Called when user confirms delete (edit mode only)
@@ -685,10 +685,10 @@ import express from "express";
 
 ### "Beautician cannot be deleted (assigned to services)"
 
-The backend prevents deletion of beauticians assigned to services. Reassign services first:
+The backend prevents deletion of specialists assigned to services. Reassign services first:
 
-1. Edit each service that uses this beautician
-2. Select a different primary beautician
+1. Edit each service that uses this specialist
+2. Select a different primary specialist
 3. Save the service
 4. Now you can delete the staff member
 

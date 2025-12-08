@@ -260,7 +260,7 @@ async function runMigration() {
       admins: await Admin.countDocuments({ tenantId }),
       users: await User.countDocuments({ tenantId }),
       services: await Service.countDocuments({ tenantId }),
-      beauticians: await Beautician.countDocuments({ tenantId }),
+      specialists: await Beautician.countDocuments({ tenantId }),
       appointments: await Appointment.countDocuments({ tenantId }),
       products: await Product.countDocuments({ tenantId }),
       orders: await Order.countDocuments({ tenantId }),

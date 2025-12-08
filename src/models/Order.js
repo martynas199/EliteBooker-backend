@@ -40,10 +40,10 @@ const OrderItemSchema = new Schema(
       type: String,
       default: "",
     },
-    // Stripe Connect: Track which beautician owns this product
+    // Stripe Connect: Track which specialist owns this product
     beauticianId: {
       type: Schema.Types.ObjectId,
-      ref: "Beautician",
+      ref: "Specialist",
       default: null, // null means platform-owned
     },
   },
@@ -209,7 +209,7 @@ const OrderSchema = new Schema(
       {
         beauticianId: Schema.Types.ObjectId,
         beauticianStripeAccount: String,
-        amount: Number, // Amount paid to this beautician
+        amount: Number, // Amount paid to this specialist
         paymentIntentId: String,
         transferId: String,
         status: {

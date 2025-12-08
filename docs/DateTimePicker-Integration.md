@@ -79,11 +79,11 @@ function BookingPage() {
 
 ### GET /api/slots/fully-booked
 
-Returns dates that are fully booked (no available slots) for a beautician in a specific month.
+Returns dates that are fully booked (no available slots) for a specialist in a specific month.
 
 **Query Parameters:**
 
-- `beauticianId` (string, required) - MongoDB ObjectId of beautician
+- `beauticianId` (string, required) - MongoDB ObjectId of specialist
 - `year` (number, required) - e.g., 2025
 - `month` (number, required) - 1-12
 
@@ -111,7 +111,7 @@ const { fullyBooked } = await response.json();
 
 ### GET /api/slots
 
-Returns available time slots for a specific date/beautician/service combination.
+Returns available time slots for a specific date/specialist/service combination.
 
 **Query Parameters:**
 
@@ -164,8 +164,8 @@ All slots are validated against these business rules:
 
 ### Rule 4: Within Working Hours
 
-- Slot must fit entirely within beautician's working hours for that weekday
-- Use beautician.workingHours array: `[{ dayOfWeek: 1, start: "09:00", end: "17:00" }]`
+- Slot must fit entirely within specialist's working hours for that weekday
+- Use specialist.workingHours array: `[{ dayOfWeek: 1, start: "09:00", end: "17:00" }]`
 
 ### Rule 5: No Break Overlaps
 
@@ -174,8 +174,8 @@ All slots are validated against these business rules:
 
 ### Rule 6: No Time-Off Overlaps
 
-- Slot must not overlap any beautician time-off windows
-- Check `beautician.timeOff`: `[{ start: Date, end: Date, reason: string }]`
+- Slot must not overlap any specialist time-off windows
+- Check `specialist.timeOff`: `[{ start: Date, end: Date, reason: string }]`
 
 ### Rule 7: No Appointment Overlaps
 
@@ -517,7 +517,7 @@ console.error("Error computing slots for ${dateStr}:", err.message);
 - [ ] Test with screen readers
 - [ ] Load test fully-booked endpoint
 - [ ] Verify cache TTL appropriate for your use case
-- [ ] Test with real beautician schedules
+- [ ] Test with real specialist schedules
 - [ ] Verify timezone handling (Europe/London)
 
 ## 🔄 Integration with Existing Booking Flow
@@ -528,18 +528,18 @@ User selects service and variant (existing flow).
 
 ### Step 2: Beautician Selection
 
-User selects beautician (existing flow).
+User selects specialist (existing flow).
 
 ### Step 3: Date/Time Selection (NEW)
 
 ```jsx
 <DateTimePicker
-  beauticianId={selectedBeautician._id}
+  beauticianId={selectedSpecialist._id}
   serviceId={selectedService._id}
   variantName={selectedVariant.name}
   salonTz="Europe/London"
   stepMin={15}
-  beauticianWorkingHours={selectedBeautician.workingHours}
+  beauticianWorkingHours={selectedSpecialist.workingHours}
   onSelect={(slot) => {
     // Store selected slot
     setBookingDetails({
@@ -574,8 +574,8 @@ SLOTS_STEP_MIN=15
 
 **Issue**: Calendar shows no available dates
 
-- Check beautician has working hours configured
-- Check beautician has services assigned
+- Check specialist has working hours configured
+- Check specialist has services assigned
 - Check dates are not in the past
 - Check `workingHours` array format: `[{ dayOfWeek: 1, start: "09:00", end: "17:00" }]`
 

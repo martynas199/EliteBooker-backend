@@ -9,7 +9,7 @@ const PaymentStripeSchema = new mongoose.Schema(
     // Stripe Connect fields
     platformFee: { type: Number, default: 50 }, // £0.50 in pence
     beauticianStripeAccount: String, // Connected account ID
-    transferId: String, // ID of the transfer to beautician
+    transferId: String, // ID of the transfer to specialist
     // Payment error details (for failed/declined payments)
     lastPaymentError: {
       code: String, // e.g., 'card_declined', 'insufficient_funds'
@@ -75,7 +75,7 @@ const AppointmentSchema = new mongoose.Schema(
     client: { name: String, email: String, phone: String, notes: String },
     beauticianId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Beautician",
+      ref: "Specialist",
       index: true,
     },
     serviceId: { type: mongoose.Schema.Types.ObjectId, ref: "Service" },

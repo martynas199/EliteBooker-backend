@@ -102,12 +102,12 @@ r.get("/", optionalAuth, attachTenantToModels, async (req, res, next) => {
     }
     if (beauticianId) {
       console.log(`[SERVICES] Filtering by beauticianId: ${beauticianId}`);
-      // Check all possible beautician fields (including legacy fields)
+      // Check all possible specialist fields (including legacy fields)
       query.$or = [
         { primaryBeauticianId: beauticianId },
         { additionalBeauticianIds: beauticianId },
-        { beauticianId: beauticianId }, // Legacy single beautician field
-        { beauticianIds: beauticianId }, // Legacy beauticians array
+        { beauticianId: beauticianId }, // Legacy single specialist field
+        { beauticianIds: beauticianId }, // Legacy specialists array
       ];
     }
 
@@ -200,7 +200,7 @@ r.get("/:id", async (req, res, next) => {
 /**
  * POST /api/services
  * Create a new service
- * - SUPER_ADMIN: Can create services for any beautician
+ * - SUPER_ADMIN: Can create services for any specialist
  * - BEAUTICIAN: Can only create services for themselves
  */
 r.post("/", requireAdmin, async (req, res, next) => {
@@ -233,13 +233,13 @@ r.post("/", requireAdmin, async (req, res, next) => {
 
     // BEAUTICIAN role: Can only create services for themselves
     if (req.admin.role === "admin" && req.admin.beauticianId) {
-      console.log("[SERVICE CREATE] Checking beautician permissions...");
-      // Ensure the beautician is creating a service for themselves
+      console.log("[SERVICE CREATE] Checking specialist permissions...");
+      // Ensure the specialist is creating a service for themselves
       if (
         validation.data.primaryBeauticianId !==
         req.admin.beauticianId.toString()
       ) {
-        console.log("[SERVICE CREATE] Permission denied: beautician mismatch");
+        console.log("[SERVICE CREATE] Permission denied: specialist mismatch");
         return res.status(403).json({
           error: "Access denied",
           message: "You can only create services for yourself.",

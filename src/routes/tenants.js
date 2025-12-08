@@ -343,7 +343,24 @@ router.put("/:id", requireAdmin, async (req, res) => {
 
     const validatedData = updateTenantSchema.parse(req.body);
 
-    const tenant = await Tenant.findByIdAndUpdate(id, validatedData, {
+    // Special handling for features - merge instead of replace
+    let updateData = { ...validatedData };
+    if (validatedData.features) {
+      const tenant = await Tenant.findById(id).lean();
+      if (!tenant) {
+        return res.status(404).json({
+          error: "Tenant not found",
+        });
+      }
+
+      // Merge new features with existing ones (without schema defaults)
+      updateData.features = {
+        ...(tenant.features || {}),
+        ...validatedData.features,
+      };
+    }
+
+    const tenant = await Tenant.findByIdAndUpdate(id, updateData, {
       new: true,
       runValidators: true,
     });

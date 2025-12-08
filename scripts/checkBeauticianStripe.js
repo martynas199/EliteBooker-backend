@@ -23,20 +23,20 @@ async function checkBeauticianStripe() {
     await mongoose.connect(mongoUri);
     console.log("✓ Connected to MongoDB");
 
-    // Get all beauticians and their Stripe info
-    const beauticians = await Beautician.find({});
+    // Get all specialists and their Stripe info
+    const specialists = await Beautician.find({});
 
     console.log("\n=== Beautician Stripe Status ===\n");
 
-    for (const beautician of beauticians) {
-      console.log(`Name: ${beautician.name}`);
-      console.log(`ID: ${beautician._id}`);
+    for (const specialist of specialists) {
+      console.log(`Name: ${specialist.name}`);
+      console.log(`ID: ${specialist._id}`);
       console.log(
-        `Stripe Account ID: ${beautician.stripeAccountId || "NOT SET"}`
+        `Stripe Account ID: ${specialist.stripeAccountId || "NOT SET"}`
       );
-      console.log(`Stripe Status: ${beautician.stripeStatus || "NOT SET"}`);
+      console.log(`Stripe Status: ${specialist.stripeStatus || "NOT SET"}`);
       console.log(
-        `Onboarding Completed: ${beautician.stripeOnboardingCompleted || false}`
+        `Onboarding Completed: ${specialist.stripeOnboardingCompleted || false}`
       );
       console.log("---");
     }

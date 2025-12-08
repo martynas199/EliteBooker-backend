@@ -48,7 +48,7 @@ function getTransport() {
 }
 
 /**
- * Send cancellation emails to customer and beautician. No-op if SMTP not configured.
+ * Send cancellation emails to customer and specialist. No-op if SMTP not configured.
  */
 export async function sendCancellationEmails({
   appointment,
@@ -182,7 +182,7 @@ export async function sendCancellationEmails({
     }
   }
 
-  // Optional: Send notification to beautician/salon staff
+  // Optional: Send notification to specialist/salon staff
   const beauticianEmail = process.env.BEAUTICIAN_NOTIFY_EMAIL;
   if (beauticianEmail) {
     const beauticianName = appointment.beauticianId?.name || "Staff";
@@ -249,7 +249,7 @@ export async function sendCancellationEmails({
 export async function sendConfirmationEmail({
   appointment,
   service,
-  beautician,
+  specialist,
 }) {
   console.log(
     "[MAILER] sendConfirmationEmail called for appointment:",
@@ -283,7 +283,7 @@ export async function sendConfirmationEmail({
   }
 
   const serviceName = service?.name || appointment.variantName || "Service";
-  const beauticianName = beautician?.name || "Our team";
+  const beauticianName = specialist?.name || "Our team";
   const currency = appointment.currency || "GBP";
   const price = appointment.price
     ? formatCurrency(appointment.price, currency)
@@ -296,8 +296,8 @@ export async function sendConfirmationEmail({
   let bookingFee = 0;
   let remainingBalance = 0;
 
-  // Check if beautician has in-salon payment enabled
-  if (beautician?.inSalonPayment) {
+  // Check if specialist has in-salon payment enabled
+  if (specialist?.inSalonPayment) {
     paymentStatus = `Pay in salon (${price} due at appointment)`;
   } else if (appointment.payment?.mode === "pay_in_salon") {
     paymentStatus = "Pay at salon";
@@ -457,11 +457,11 @@ Thank you for choosing us!`,
     throw error;
   }
 
-  // Send notification to beautician
-  const beauticianEmail = beautician?.email;
+  // Send notification to specialist
+  const beauticianEmail = specialist?.email;
   console.log("[MAILER] Beautician email:", beauticianEmail || "NOT SET");
   if (beauticianEmail) {
-    console.log("[MAILER] Preparing beautician notification email...");
+    console.log("[MAILER] Preparing specialist notification email...");
 
     const beauticianTextContent = `Hi ${beauticianName},
 
@@ -575,7 +575,7 @@ Please ensure you're prepared for this appointment.`;
     `;
 
     console.log(
-      "[MAILER] Sending beautician notification to:",
+      "[MAILER] Sending specialist notification to:",
       beauticianEmail
     );
     try {
@@ -592,10 +592,10 @@ Please ensure you're prepared for this appointment.`;
       );
     } catch (error) {
       console.error(
-        "[MAILER] ✗ Failed to send beautician notification email:",
+        "[MAILER] ✗ Failed to send specialist notification email:",
         error
       );
-      // Don't throw - beautician notification failure shouldn't block the customer confirmation
+      // Don't throw - specialist notification failure shouldn't block the customer confirmation
     }
   }
 }
@@ -824,32 +824,32 @@ Order ID: ${order._id}`;
 }
 
 /**
- * Send beautician notification for product orders containing their products
+ * Send specialist notification for product orders containing their products
  */
 export async function sendBeauticianProductOrderNotification({
   order,
-  beautician,
+  specialist,
   beauticianItems,
 }) {
   console.log(
     "[MAILER] sendBeauticianProductOrderNotification called for order:",
     order?._id,
-    "beautician:",
-    beautician?.name
+    "specialist:",
+    specialist?.name
   );
   const tx = getTransport();
   if (!tx) {
     console.warn(
-      "[MAILER] No transport - skipping beautician product notification"
+      "[MAILER] No transport - skipping specialist product notification"
     );
     return;
   }
 
-  const beauticianEmail = beautician?.email;
+  const beauticianEmail = specialist?.email;
   console.log("[MAILER] Beautician email:", beauticianEmail || "NOT SET");
   if (!beauticianEmail) {
     console.warn(
-      "[MAILER] No beautician email - skipping beautician product notification"
+      "[MAILER] No specialist email - skipping specialist product notification"
     );
     return;
   }
@@ -858,7 +858,7 @@ export async function sendBeauticianProductOrderNotification({
   const customerName = `${order.shippingAddress.firstName} ${order.shippingAddress.lastName}`;
   const currency = order.currency || "GBP";
 
-  // Calculate totals for beautician's items only
+  // Calculate totals for specialist's items only
   const beauticianTotal = beauticianItems.reduce(
     (sum, item) => sum + (item.price || 0) * item.quantity,
     0
@@ -891,7 +891,7 @@ export async function sendBeauticianProductOrderNotification({
     )
     .join("");
 
-  const textContent = `Hi ${beautician.name},
+  const textContent = `Hi ${specialist.name},
 
 Great news! Your products have been ordered! 🎉
 
@@ -925,7 +925,7 @@ Elite Booker Team`;
       <h2 style="color: #9333ea; border-bottom: 2px solid #9333ea; padding-bottom: 10px;">🎉 Your Products Have Been Ordered!</h2>
       
       <p style="font-size: 16px; color: #374151; margin: 20px 0;">Hi <strong>${
-        beautician.name
+        specialist.name
       }</strong>,</p>
       
       <p style="color: #374151; margin-bottom: 20px;">Great news! A customer has ordered your products through Elite Booker!</p>
@@ -990,7 +990,7 @@ Elite Booker Team`;
   `;
 
   console.log(
-    "[MAILER] Sending beautician product notification to:",
+    "[MAILER] Sending specialist product notification to:",
     beauticianEmail
   );
   console.log("[MAILER] Order number:", order.orderNumber);
@@ -1011,10 +1011,10 @@ Elite Booker Team`;
     );
   } catch (error) {
     console.error(
-      "[MAILER] ✗ Failed to send beautician product notification:",
+      "[MAILER] ✗ Failed to send specialist product notification:",
       error
     );
-    // Don't throw - beautician notification failure shouldn't block other emails
+    // Don't throw - specialist notification failure shouldn't block other emails
   }
 }
 

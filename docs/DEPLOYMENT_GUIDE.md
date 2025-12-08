@@ -148,7 +148,7 @@ Expected Output:
 [MIGRATION] Migrated 15 admins
 [MIGRATION] Migrated 245 appointments
 [MIGRATION] Migrated 12 services
-[MIGRATION] Migrated 8 beauticians
+[MIGRATION] Migrated 8 specialists
 [MIGRATION] Migrated 1 settings
 [MIGRATION] Migration completed successfully!
 ```
@@ -165,7 +165,7 @@ db.tenants.find({}).pretty()
 # Check data has tenantId
 db.appointments.findOne()
 db.services.findOne()
-db.beauticians.findOne()
+db.specialists.findOne()
 ```
 
 ---

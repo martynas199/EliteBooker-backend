@@ -9,26 +9,26 @@ async function clearTestStripeAccounts() {
     await mongoose.connect(process.env.MONGO_URI);
     console.log("Connected to MongoDB");
 
-    // Find all beauticians with Stripe accounts
-    const beauticians = await Beautician.find({
+    // Find all specialists with Stripe accounts
+    const specialists = await Beautician.find({
       stripeAccountId: { $exists: true, $ne: null },
     });
 
     console.log(
-      `Found ${beauticians.length} beautician(s) with Stripe accounts`
+      `Found ${specialists.length} specialist(s) with Stripe accounts`
     );
 
-    for (const beautician of beauticians) {
-      console.log(`\nBeautician: ${beautician.name}`);
-      console.log(`Current Stripe Account: ${beautician.stripeAccountId}`);
-      console.log(`Email: ${beautician.email}`);
+    for (const specialist of specialists) {
+      console.log(`\nBeautician: ${specialist.name}`);
+      console.log(`Current Stripe Account: ${specialist.stripeAccountId}`);
+      console.log(`Email: ${specialist.email}`);
 
       // Clear the Stripe account ID
-      beautician.stripeAccountId = null;
-      beautician.stripeOnboardingComplete = false;
-      await beautician.save();
+      specialist.stripeAccountId = null;
+      specialist.stripeOnboardingComplete = false;
+      await specialist.save();
 
-      console.log(`✓ Cleared Stripe account for ${beautician.name}`);
+      console.log(`✓ Cleared Stripe account for ${specialist.name}`);
     }
 
     console.log("\n✅ All test Stripe accounts cleared!");

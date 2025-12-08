@@ -246,7 +246,7 @@ POST /api/bookings/create
 
 // Backend Flow:
 // 1. Verify lock exists and matches lockId
-// 2. Validate booking data (beautician, service exist)
+// 2. Validate booking data (specialist, service exist)
 // 3. Double-check for existing booking (DB safety)
 // 4. Create booking in database
 // 5. Release lock

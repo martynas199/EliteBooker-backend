@@ -107,7 +107,7 @@ const s2 = await Service.create({
   ],
   beauticianId: b1._id,
 });
-console.log("Seeded beauticians:", b1.name, b2.name);
+console.log("Seeded specialists:", b1.name, b2.name);
 console.log("Seeded services:", s1.name, s2.name);
 await mongoose.disconnect();
 process.exit(0);

@@ -31,12 +31,12 @@ const adminSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["admin", "super_admin", "salon-admin", "beautician"],
+      enum: ["admin", "super_admin", "salon-admin", "specialist"],
       default: "admin",
     },
     beauticianId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Beautician",
+      ref: "Specialist",
       default: null,
     },
     active: {

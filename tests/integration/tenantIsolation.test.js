@@ -222,17 +222,17 @@ describe("Cross-Tenant Access Prevention - API Endpoints", () => {
         active: true,
       });
 
-      const beautician = await Beautician.create({
+      const specialist = await Beautician.create({
         tenantId: tenant1._id,
         name: "Beautician One",
-        email: "beautician@salon-one.com",
+        email: "specialist@salon-one.com",
         active: true,
       });
 
       const appointment = await Appointment.create({
         tenantId: tenant1._id,
         serviceId: service._id,
-        beauticianId: beautician._id,
+        beauticianId: specialist._id,
         start: new Date("2025-12-01T10:00:00"),
         end: new Date("2025-12-01T11:00:00"),
         price: 5000,
@@ -275,17 +275,17 @@ describe("Cross-Tenant Access Prevention - API Endpoints", () => {
         active: true,
       });
 
-      const beautician = await Beautician.create({
+      const specialist = await Beautician.create({
         tenantId: tenant1._id,
         name: "Beautician One",
-        email: "beautician@salon-one.com",
+        email: "specialist@salon-one.com",
         active: true,
       });
 
       const appointment = await Appointment.create({
         tenantId: tenant1._id,
         serviceId: service._id,
-        beauticianId: beautician._id,
+        beauticianId: specialist._id,
         start: new Date("2025-12-01T10:00:00"),
         end: new Date("2025-12-01T11:00:00"),
         price: 5000,
@@ -327,17 +327,17 @@ describe("Cross-Tenant Access Prevention - API Endpoints", () => {
         active: true,
       });
 
-      const beautician = await Beautician.create({
+      const specialist = await Beautician.create({
         tenantId: tenant1._id,
         name: "Beautician One",
-        email: "beautician@salon-one.com",
+        email: "specialist@salon-one.com",
         active: true,
       });
 
       const appointment = await Appointment.create({
         tenantId: tenant1._id,
         serviceId: service._id,
-        beauticianId: beautician._id,
+        beauticianId: specialist._id,
         start: new Date("2025-12-01T10:00:00"),
         end: new Date("2025-12-01T11:00:00"),
         price: 5000,
@@ -417,17 +417,17 @@ describe("Cross-Tenant Access Prevention - API Endpoints", () => {
         active: true,
       });
 
-      const beautician = await Beautician.create({
+      const specialist = await Beautician.create({
         tenantId: tenant1._id,
         name: "Beautician One",
-        email: "beautician@salon-one.com",
+        email: "specialist@salon-one.com",
         active: true,
       });
 
       await Appointment.create({
         tenantId: tenant1._id,
         serviceId: service._id,
-        beauticianId: beautician._id,
+        beauticianId: specialist._id,
         start: new Date("2025-12-01T10:00:00"),
         end: new Date("2025-12-01T11:00:00"),
         price: 5000,
@@ -465,17 +465,17 @@ describe("Cross-Tenant Access Prevention - API Endpoints", () => {
         active: true,
       });
 
-      const beautician = await Beautician.create({
+      const specialist = await Beautician.create({
         tenantId: tenant1._id,
         name: "Beautician One",
-        email: "beautician@salon-one.com",
+        email: "specialist@salon-one.com",
         active: true,
       });
 
       await Appointment.create({
         tenantId: tenant1._id,
         serviceId: service._id,
-        beauticianId: beautician._id,
+        beauticianId: specialist._id,
         start: new Date("2025-12-01T10:00:00"),
         end: new Date("2025-12-01T11:00:00"),
         price: 5000,

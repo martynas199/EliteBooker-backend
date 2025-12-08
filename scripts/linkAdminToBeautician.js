@@ -5,7 +5,7 @@
  * node scripts/linkAdminToBeautician.js <adminEmail> <beauticianEmail>
  *
  * Example:
- * node scripts/linkAdminToBeautician.js admin@salon.com beautician@salon.com
+ * node scripts/linkAdminToBeautician.js admin@salon.com specialist@salon.com
  */
 
 import mongoose from "mongoose";
@@ -36,11 +36,11 @@ async function linkAdminToBeautician(adminEmail, beauticianEmail) {
     }
     console.log(`✅ Found admin: ${admin.name} (${admin.email})`);
 
-    // Find beautician
-    const beautician = await Beautician.findOne({ email: beauticianEmail });
-    if (!beautician) {
+    // Find specialist
+    const specialist = await Beautician.findOne({ email: beauticianEmail });
+    if (!specialist) {
       console.error(`❌ Beautician not found with email: ${beauticianEmail}`);
-      console.log("\n📋 Available beauticians:");
+      console.log("\n📋 Available specialists:");
       const allBeauticians = await Beautician.find({});
       allBeauticians.forEach((b) => {
         console.log(`   - ${b.name} (${b.email || "no email"})`);
@@ -48,19 +48,19 @@ async function linkAdminToBeautician(adminEmail, beauticianEmail) {
       process.exit(1);
     }
     console.log(
-      `✅ Found beautician: ${beautician.name} (${
-        beautician.email || "no email"
+      `✅ Found specialist: ${specialist.name} (${
+        specialist.email || "no email"
       })`
     );
 
     // Link them
-    admin.beauticianId = beautician._id;
+    admin.beauticianId = specialist._id;
     await admin.save();
 
-    console.log("\n🎉 Successfully linked admin to beautician!");
+    console.log("\n🎉 Successfully linked admin to specialist!");
     console.log(`   Admin: ${admin.name} (${admin.email})`);
-    console.log(`   Beautician: ${beautician.name}`);
-    console.log(`   Beautician ID: ${beautician._id}`);
+    console.log(`   Beautician: ${specialist.name}`);
+    console.log(`   Beautician ID: ${specialist._id}`);
     console.log(
       "\n✅ Now log out and log back in to see Stripe Connect settings!"
     );
@@ -79,7 +79,7 @@ if (args.length !== 2) {
     "Usage: node scripts/linkAdminToBeautician.js <adminEmail> <beauticianEmail>"
   );
   console.log(
-    "Example: node scripts/linkAdminToBeautician.js admin@salon.com beautician@salon.com"
+    "Example: node scripts/linkAdminToBeautician.js admin@salon.com specialist@salon.com"
   );
   process.exit(1);
 }

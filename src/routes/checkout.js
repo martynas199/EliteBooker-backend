@@ -52,19 +52,19 @@ r.get("/confirm", async (req, res, next) => {
 
     console.log("[CHECKOUT CONFIRM] Found appointment:", appt._id);
 
-    // Get beautician to determine which Stripe account has the session
-    const beautician = await Specialist.findById(appt.beauticianId).lean();
+    // Get specialist to determine which Stripe account has the session
+    const specialist = await Specialist.findById(appt.beauticianId).lean();
 
     // Retrieve session from the correct account
     let stripe;
     if (
-      beautician?.stripeAccountId &&
-      beautician?.stripeStatus === "connected"
+      specialist?.stripeAccountId &&
+      specialist?.stripeStatus === "connected"
     ) {
-      // Direct charge - session is on beautician's account
+      // Direct charge - session is on specialist's account
       stripe = getStripe(Specialist.stripeAccountId);
       console.log(
-        "[CHECKOUT CONFIRM] Retrieving from beautician account:",
+        "[CHECKOUT CONFIRM] Retrieving from specialist account:",
         Specialist.stripeAccountId
       );
     } else {
@@ -122,7 +122,7 @@ r.get("/confirm", async (req, res, next) => {
     );
     console.log("[CHECKOUT CONFIRM] amountTotal:", amountTotal);
 
-    // Platform fee (beautician already loaded above)
+    // Platform fee (specialist already loaded above)
     const platformFee = Number(process.env.STRIPE_PLATFORM_FEE || 50);
 
     // Build stripe payment data
@@ -152,16 +152,16 @@ r.get("/confirm", async (req, res, next) => {
       );
     }
 
-    // Add Connect data if beautician was connected
+    // Add Connect data if specialist was connected
     if (
-      beautician?.stripeAccountId &&
-      beautician?.stripeStatus === "connected"
+      specialist?.stripeAccountId &&
+      specialist?.stripeStatus === "connected"
     ) {
       stripeData.platformFee = platformFee;
       stripeData.beauticianStripeAccount = Specialist.stripeAccountId;
       console.log("[CHECKOUT CONFIRM] Stripe Connect payment tracked");
 
-      // Update beautician's total earnings (amount minus platform fee, converted to pounds)
+      // Update specialist's total earnings (amount minus platform fee, converted to pounds)
       const earningsInPounds = (amountTotal - platformFee) / 100;
       await Specialist.findByIdAndUpdate(appt.beauticianId, {
         $inc: { totalEarnings: earningsInPounds },
@@ -209,7 +209,7 @@ r.get("/confirm", async (req, res, next) => {
       await sendConfirmationEmail({
         appointment: confirmedAppt,
         service: confirmedAppt.serviceId,
-        beautician: confirmedAppt.beauticianId,
+        specialist: confirmedAppt.beauticianId,
       });
       console.log(
         "[CHECKOUT CONFIRM] Confirmation email sent to:",
@@ -263,17 +263,17 @@ r.post("/create-session", async (req, res, next) => {
         (v) => v.name === variantName
       );
       if (!variant) return res.status(404).json({ error: "Variant not found" });
-      let beautician = null;
+      let specialist = null;
       if (any) {
-        beautician = await Specialist.findOne({
+        specialist = await Specialist.findOne({
           _id: { $in: service.beauticianIds },
           active: true,
         }).lean();
       } else {
-        beautician = await Specialist.findById(beauticianId).lean();
+        specialist = await Specialist.findById(beauticianId).lean();
       }
-      if (!beautician)
-        return res.status(400).json({ error: "No beautician available" });
+      if (!specialist)
+        return res.status(400).json({ error: "No specialist available" });
       const start = new Date(startISO);
       const end = new Date(
         start.getTime() +
@@ -322,8 +322,8 @@ r.post("/create-session", async (req, res, next) => {
           "Deposit mode requested but STRIPE_DEPOSIT_PERCENT not configured (1-99)",
       });
     }
-    // Get beautician to check payment settings and Stripe Connect status
-    const beautician = await Specialist.findById(appt.beauticianId).lean();
+    // Get specialist to check payment settings and Stripe Connect status
+    const specialist = await Specialist.findById(appt.beauticianId).lean();
 
     // Get tenant for platform fee, currency settings, and URLs
     const tenant = req.tenant;
@@ -338,9 +338,9 @@ r.post("/create-session", async (req, res, next) => {
 
     const baseAmount = Number(appt.price || 0);
 
-    // If beautician accepts in-salon payment, charge only the booking fee
+    // If specialist accepts in-salon payment, charge only the booking fee
     let amountBeforeFee;
-    if (beautician?.inSalonPayment) {
+    if (specialist?.inSalonPayment) {
       amountBeforeFee = 0; // No service charge, only booking fee
     } else {
       // Normal payment flow
@@ -356,10 +356,10 @@ r.post("/create-session", async (req, res, next) => {
       return res.status(400).json({ error: "Invalid amount" });
 
     // Multi-tenant Stripe Connect setup
-    // Use platform Stripe account and transfer to beautician if they're connected
+    // Use platform Stripe account and transfer to specialist if they're connected
     const stripe = getStripe();
     const useConnect =
-      beautician?.stripeAccountId && beautician?.stripeStatus === "connected";
+      specialist?.stripeAccountId && specialist?.stripeStatus === "connected";
 
     // Create or find Stripe customer with pre-filled information
     let stripeCustomerId = null;
@@ -467,7 +467,7 @@ r.post("/create-session", async (req, res, next) => {
     }
 
     // Multi-tenant Stripe Connect configuration
-    // Use platform account and transfer to beautician after taking platform fee
+    // Use platform account and transfer to specialist after taking platform fee
     if (useConnect) {
       sessionConfig.payment_intent_data = {
         application_fee_amount: platformFee, // £0.50 to platform

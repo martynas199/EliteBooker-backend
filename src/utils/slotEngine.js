@@ -15,7 +15,7 @@ function overlaps(a, b) {
   return a.start < b.end && b.start < a.end;
 }
 export function computeSlots({
-  beautician,
+  specialist,
   variant,
   date,
   appointments,
@@ -25,7 +25,7 @@ export function computeSlots({
   const dayName = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"][
     dayjs(date).day()
   ];
-  const hours = beautician.workingHours?.[dayName];
+  const hours = specialist.workingHours?.[dayName];
   if (!hours || !hours.start || !hours.end) return [];
 
   const duration =
@@ -55,7 +55,7 @@ export function computeSlots({
 
     // Check if slot overlaps with time-off period
     // Time-off periods are stored as full dates (start of day to end of day)
-    const isTimeOff = (beautician.timeOff || []).some((off) => {
+    const isTimeOff = (specialist.timeOff || []).some((off) => {
       const offStart = new Date(off.start);
       const offEnd = new Date(off.end);
       // Slot overlaps if: slotStart < offEnd AND offStart < slotEnd

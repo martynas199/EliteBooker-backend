@@ -89,7 +89,7 @@ const CommonParamsSchema = z.object({
 
 const ForBeauticianParamsSchema = CommonParamsSchema.and(
   z.object({
-    beautician: BeauticianSchema,
+    specialist: BeauticianSchema,
     appointments: z.array(AppointmentSchema).default([]),
     extraBlackouts: z
       .array(z.object({ startISO: z.string(), endISO: z.string() }))
@@ -102,7 +102,7 @@ const ForBeauticianParamsSchema = CommonParamsSchema.and(
 
 const AnyStaffParamsSchema = CommonParamsSchema.and(
   z.object({
-    beauticians: z.array(BeauticianSchema),
+    specialists: z.array(BeauticianSchema),
     appointmentsByBeautician: z.record(z.array(AppointmentSchema)).default({}),
     extraBlackoutsByBeautician: z
       .record(z.array(z.object({ startISO: z.string(), endISO: z.string() })))
@@ -115,10 +115,10 @@ const NextParamsSchema = CommonParamsSchema.and(
   z
     .object({
       horizonDays: z.number().int().positive().max(90).default(30),
-      // Either single beautician or any-staff mode
-      beautician: BeauticianSchema.optional(),
+      // Either single specialist or any-staff mode
+      specialist: BeauticianSchema.optional(),
       appointments: z.array(AppointmentSchema).optional(),
-      beauticians: z.array(BeauticianSchema).optional(),
+      specialists: z.array(BeauticianSchema).optional(),
       appointmentsByBeautician: z.record(z.array(AppointmentSchema)).optional(),
       extraBlackouts: z
         .array(z.object({ startISO: z.string(), endISO: z.string() }))
@@ -129,11 +129,11 @@ const NextParamsSchema = CommonParamsSchema.and(
     })
     .refine(
       (v) =>
-        (v.beautician && v.appointments) ||
-        (Array.isArray(v.beauticians) && v.appointmentsByBeautician),
+        (v.specialist && v.appointments) ||
+        (Array.isArray(v.specialists) && v.appointmentsByBeautician),
       {
         message:
-          "Provide either { beautician, appointments } or { beauticians, appointmentsByBeautician }",
+          "Provide either { specialist, appointments } or { specialists, appointmentsByBeautician }",
       }
     )
 );
@@ -234,7 +234,9 @@ export function buildWorkingWindows(
   // Priority 2: Handle new array format: [{dayOfWeek: 1, start: "09:00", end: "17:00"}, ...]
   // Note: There can be multiple entries for the same day (e.g., morning and afternoon shifts)
   else if (Array.isArray(workingHours)) {
-    const matchingEntries = workingHours.filter((wh) => wh.dayOfWeek === dayOfWeek);
+    const matchingEntries = workingHours.filter(
+      (wh) => wh.dayOfWeek === dayOfWeek
+    );
     dayEntries = matchingEntries.filter((wh) => wh.start && wh.end);
   }
   // Priority 3: Handle legacy object format: {mon: {start, end, breaks}, tue: ...}
@@ -337,12 +339,12 @@ function buildBlockingIntervals({
   }
   // clamp to date
   const clamped = blocks.map((iv) => clampToDay(iv, date, tz)).filter(Boolean);
-  
+
   return mergeOverlaps(clamped);
 }
 
 /**
- * Compute slots for a specific beautician.
+ * Compute slots for a specific specialist.
  * @param {object} params
  * @returns {{ startISO:string, endISO:string, beauticianId?:string }[]}
  */
@@ -353,26 +355,26 @@ export function computeSlotsForBeautician(params) {
     salonTz: tz,
     stepMin,
     service,
-    beautician,
+    specialist,
     appointments,
     extraBlackouts,
     dayStartOverride,
     dayEndOverride,
   } = p;
-  if (beautician.active === false) return [];
+  if (specialist.active === false) return [];
 
   console.log(
-    "[computeSlotsForBeautician] beautician.customSchedule:",
-    beautician.customSchedule
+    "[computeSlotsForBeautician] specialist.customSchedule:",
+    specialist.customSchedule
   );
   const windows = buildWorkingWindows(
-    beautician.workingHours,
+    specialist.workingHours,
     date,
     {
       dayStartOverride,
       dayEndOverride,
     },
-    beautician.customSchedule || {} // Pass custom schedule if it exists
+    specialist.customSchedule || {} // Pass custom schedule if it exists
   );
   if (!windows || windows.length === 0) return [];
 
@@ -381,7 +383,7 @@ export function computeSlotsForBeautician(params) {
     date,
     tz,
     appointments,
-    timeOff: beautician.timeOff || [],
+    timeOff: specialist.timeOff || [],
     extraBlackouts,
   });
 
@@ -414,7 +416,7 @@ export function computeSlotsForBeautician(params) {
       out.push({
         startISO: slotIv.start.toISOString(),
         endISO: slotIv.end.toISOString(),
-        beauticianId: beautician._id ? String(beautician._id) : undefined,
+        beauticianId: specialist._id ? String(specialist._id) : undefined,
       });
     }
   }
@@ -423,8 +425,8 @@ export function computeSlotsForBeautician(params) {
 }
 
 /**
- * Compute slots for "any staff". Dedupe start times across beauticians.
- * Adds an extension field beauticianIds (array) to indicate which beauticians are available for that time.
+ * Compute slots for "any staff". Dedupe start times across specialists.
+ * Adds an extension field beauticianIds (array) to indicate which specialists are available for that time.
  * @param {object} params
  * @returns {{ startISO:string, endISO:string, beauticianId?:string, beauticianIds?:string[] }[]}
  */
@@ -435,20 +437,20 @@ export function computeSlotsAnyStaff(params) {
     salonTz: tz,
     stepMin,
     service,
-    beauticians,
+    specialists,
     appointmentsByBeautician,
     extraBlackoutsByBeautician,
   } = p;
 
   const map = new Map(); // startISO -> { endISO, beauticianIds:Set }
-  for (const b of beauticians) {
+  for (const b of specialists) {
     if (b.active === false) continue;
     const slots = computeSlotsForBeautician({
       date,
       salonTz: tz,
       stepMin,
       service,
-      beautician: b,
+      specialist: b,
       appointments: appointmentsByBeautician[String(b._id)] || [],
       extraBlackouts: (extraBlackoutsByBeautician || {})[String(b._id)] || [],
     });
@@ -472,7 +474,7 @@ export function computeSlotsAnyStaff(params) {
 
 /**
  * Find the earliest next available slot within the horizon.
- * Accepts either single-beautician or any-staff params (union), same rules as compute functions.
+ * Accepts either single-specialist or any-staff params (union), same rules as compute functions.
  * @param {object} params
  * @returns {{ startISO:string, endISO:string, beauticianId?:string, beauticianIds?:string[] } | null}
  */
@@ -483,24 +485,24 @@ export function nextAvailableSlot(params) {
 
   for (let i = 0; i < horizonDays; i++) {
     const dStr = cur.format("YYYY-MM-DD");
-    if (p.beautician) {
+    if (p.specialist) {
       const slots = computeSlotsForBeautician({
         date: dStr,
         salonTz: tz,
         stepMin,
         service,
-        beautician: p.beautician,
+        specialist: p.specialist,
         appointments: p.appointments || [],
         extraBlackouts: p.extraBlackouts || [],
       });
       if (slots.length) return slots[0];
-    } else if (p.beauticians) {
+    } else if (p.specialists) {
       const slots = computeSlotsAnyStaff({
         date: dStr,
         salonTz: tz,
         stepMin,
         service,
-        beauticians: p.beauticians,
+        specialists: p.specialists,
         appointmentsByBeautician: p.appointmentsByBeautician || {},
         extraBlackoutsByBeautician: p.extraBlackoutsByBeautician || {},
       });
@@ -514,7 +516,7 @@ export function nextAvailableSlot(params) {
 // -------------------------- Usage examples --------------------------
 
 /**
-Example (single beautician):
+Example (single specialist):
 
 import { computeSlotsForBeautician } from "./slotPlanner.js";
 
@@ -523,7 +525,7 @@ const slots = computeSlotsForBeautician({
   salonTz: "Europe/London",
   stepMin: 15,
   service: { durationMin: 60, bufferBeforeMin: 5, bufferAfterMin: 10 },
-  beautician: {
+  specialist: {
     _id: "b1",
     active: true,
     workingHours: { sun: { start: "10:00", end: "18:00", breaks:[{ start:"13:00", end:"13:30" }] } },
@@ -541,7 +543,7 @@ const anySlots = computeSlotsAnyStaff({
   salonTz: "Europe/London",
   stepMin: 15,
   service: { durationMin: 45 },
-  beauticians: [b1, b2, b3],
+  specialists: [b1, b2, b3],
   appointmentsByBeautician: {
     [b1._id]: b1Appts,
     [b2._id]: b2Appts,

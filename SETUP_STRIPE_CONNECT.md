@@ -2,11 +2,11 @@
 
 ## Problem
 
-The "Connect with Stripe" button doesn't appear in Settings because your admin account is not linked to a beautician account.
+The "Connect with Stripe" button doesn't appear in Settings because your admin account is not linked to a specialist account.
 
 ## Solution
 
-Link your admin account to a beautician using the provided scripts.
+Link your admin account to a specialist using the provided scripts.
 
 ---
 
@@ -14,7 +14,7 @@ Link your admin account to a beautician using the provided scripts.
 
 ### **Step 1: List All Accounts**
 
-See which admins and beauticians exist in your database:
+See which admins and specialists exist in your database:
 
 ```bash
 cd c:\Users\user\Desktop\beauty-salon-backend
@@ -50,7 +50,7 @@ node scripts/listAccounts.js
 Use the emails from Step 1 to link them:
 
 ```bash
-node scripts/linkAdminToBeautician.js <admin-email> <beautician-email>
+node scripts/linkAdminToBeautician.js <admin-email> <specialist-email>
 ```
 
 **Example:**
@@ -64,9 +64,9 @@ node scripts/linkAdminToBeautician.js admin@salon.com sarah@salon.com
 ```
 ✅ Connected to MongoDB
 ✅ Found admin: Admin Name (admin@salon.com)
-✅ Found beautician: Sarah Johnson (sarah@salon.com)
+✅ Found specialist: Sarah Johnson (sarah@salon.com)
 
-🎉 Successfully linked admin to beautician!
+🎉 Successfully linked admin to specialist!
    Admin: Admin Name (admin@salon.com)
    Beautician: Sarah Johnson
    Beautician ID: 507f1f77bcf86cd799439011
@@ -98,18 +98,18 @@ You should now see the **"Stripe Connect Settings"** section at the top of Setti
 
 ## 🔍 Alternative: If No Beautician Exists
 
-If you don't have any beauticians in the database yet, create one first:
+If you don't have any specialists in the database yet, create one first:
 
 ### **Option A: Via Admin Panel**
 
 1. Go to `http://localhost:5173/admin/staff`
 2. Click "Add Staff Member"
-3. Fill in beautician details (include email!)
+3. Fill in specialist details (include email!)
 4. Save
 
 ### **Option B: Via Database Script**
 
-Create a quick script to add a beautician:
+Create a quick script to add a specialist:
 
 ```bash
 node -e "
@@ -118,7 +118,7 @@ import('mongodb').then(async ({ MongoClient }) => {
   await client.connect();
   const db = client.db();
 
-  await db.collection('beauticians').insertOne({
+  await db.collection('specialists').insertOne({
     name: 'Your Name',
     email: 'your@email.com',
     phone: '+44 1234 567890',
@@ -138,7 +138,7 @@ import('mongodb').then(async ({ MongoClient }) => {
 
 ## 📊 What Gets Updated
 
-When you link an admin to a beautician:
+When you link an admin to a specialist:
 
 **Admin Model** gets:
 
@@ -199,7 +199,7 @@ After linking and re-logging in:
 
 ### Issue: "Beautician not found"
 
-**Solution:** Create a beautician first via admin panel or database script.
+**Solution:** Create a specialist first via admin panel or database script.
 
 ### Issue: Still don't see Stripe Connect after re-login
 
@@ -226,8 +226,8 @@ cd c:\Users\user\Desktop\beauty-salon-backend
 # 1. See all accounts
 node scripts/listAccounts.js
 
-# 2. Link admin to beautician
-node scripts/linkAdminToBeautician.js admin@salon.com beautician@salon.com
+# 2. Link admin to specialist
+node scripts/linkAdminToBeautician.js admin@salon.com specialist@salon.com
 
 # 3. Restart backend (if needed)
 npm run dev
@@ -240,8 +240,8 @@ npm run dev
 ## 📝 Files Modified
 
 - ✅ `src/models/Admin.js` - Added `beauticianId` field
-- ✅ `scripts/listAccounts.js` - List all admins and beauticians
-- ✅ `scripts/linkAdminToBeautician.js` - Link an admin to a beautician
+- ✅ `scripts/listAccounts.js` - List all admins and specialists
+- ✅ `scripts/linkAdminToBeautician.js` - Link an admin to a specialist
 
 ---
 

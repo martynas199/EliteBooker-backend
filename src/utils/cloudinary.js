@@ -31,7 +31,7 @@ function ensureConfigured() {
 /**
  * Upload an image to Cloudinary.
  * @param {string|Buffer} filePathOrBuffer - Local path of file to upload OR buffer from multer.
- * @param {string|object} folderOrOptions - Folder to upload to (e.g., 'services', 'beauticians') OR full options object
+ * @param {string|object} folderOrOptions - Folder to upload to (e.g., 'services', 'specialists') OR full options object
  * @returns {Promise<object>} Cloudinary upload result with secure_url, public_id, etc.
  */
 export async function uploadImage(

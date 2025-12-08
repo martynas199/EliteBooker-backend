@@ -27,11 +27,11 @@ export function checkServicePermission(action = "edit") {
       }
 
       // BEAUTICIAN role: Check if service is assigned to them
-      if (admin.role === "admin" || admin.role === "beautician") {
+      if (admin.role === "admin" || admin.role === "specialist") {
         if (!admin.beauticianId) {
           return res.status(403).json({
             error: "Access denied",
-            message: "Your account is not linked to a beautician profile.",
+            message: "Your account is not linked to a specialist profile.",
           });
         }
 
@@ -41,7 +41,7 @@ export function checkServicePermission(action = "edit") {
           return res.status(404).json({ error: "Service not found" });
         }
 
-        // Check if beautician is assigned (primary or additional)
+        // Check if specialist is assigned (primary or additional)
         const beauticianIdStr = String(admin.beauticianId);
         const isPrimary =
           service.primaryBeauticianId &&

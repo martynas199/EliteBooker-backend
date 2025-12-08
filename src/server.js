@@ -9,7 +9,7 @@ import cookieParser from "cookie-parser";
 import mongoose from "mongoose";
 import passport from "./config/passport.js";
 import servicesRouter from "./routes/services.js";
-import beauticiansRouter from "./routes/beauticians.js";
+import beauticiansRouter from "./routes/specialists.js";
 import specialistsRouter from "./routes/specialists.js";
 import slotsRouter from "./routes/slots.js";
 import checkoutRouter from "./routes/checkout.js";
@@ -180,7 +180,7 @@ app.use("/api/locks", readLimiter, locksRouter);
 
 // Public READ-ONLY routes with lenient rate limiting (BEFORE general limiter)
 app.use("/api/services", readLimiter, servicesRouter);
-app.use("/api/beauticians", readLimiter, beauticiansRouter); // Legacy endpoint for backward compatibility
+app.use("/api/specialists", readLimiter, beauticiansRouter); // Legacy endpoint for backward compatibility
 app.use("/api/specialists", readLimiter, specialistsRouter); // New endpoint
 app.use("/api/slots", readLimiter, slotsRouter);
 app.use("/api/salon", readLimiter, salonRouter);

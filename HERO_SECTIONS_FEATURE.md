@@ -26,7 +26,7 @@ Created a new luxury showcase section feature for the services page that matches
      - `POST /api/hero-sections` - Create new hero section
      - `PATCH /api/hero-sections/:id` - Update hero section
      - `DELETE /api/hero-sections/:id` - Delete hero section (with Cloudinary cleanup)
-     - `POST /api/hero-sections/:id/upload-center-image` - Upload beautician image
+     - `POST /api/hero-sections/:id/upload-center-image` - Upload specialist image
      - `POST /api/hero-sections/:id/upload-product-image` - Upload product image
 
 ### Files Modified:
@@ -104,7 +104,7 @@ Updated Tailwind configuration to use gold color palette:
 1. Navigate to Admin → Hero Sections
 2. Click "Add Hero Section"
 3. Fill in text content (title, subtitle, CTA)
-4. Upload center image (beautician photo)
+4. Upload center image (specialist photo)
 5. Fill in product details
 6. Upload product image
 7. Set active status and display order

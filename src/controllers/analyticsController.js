@@ -306,7 +306,7 @@ export const getProfitAnalytics = async (req, res) => {
           totalProfit: Math.round(item.totalProfit * 100) / 100,
           averageMargin: Math.round(item.averageMargin * 100) / 100,
         })),
-      beauticians: Object.values(beauticianAnalytics)
+      specialists: Object.values(beauticianAnalytics)
         .sort((a, b) => b.totalProfit - a.totalProfit)
         .map((item) => ({
           ...item,

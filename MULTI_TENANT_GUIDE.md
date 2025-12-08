@@ -40,7 +40,7 @@ We use the **"Tenant ID per Document"** approach:
 - Role-based access control:
   - `super-admin` → All tenants
   - `salon-admin` → Own salon only
-  - `beautician` → Own salon, limited access
+  - `specialist` → Own salon, limited access
   - `customer` → Own bookings only
 
 ### 3. **Flexible Tenant Resolution**
@@ -245,7 +245,7 @@ const services = await query.exec();
 ```
 super-admin (Platform Owner)
   └── salon-admin (Salon Owner)
-      ├── beautician (Staff)
+      ├── specialist (Staff)
       └── customer (Client)
 ```
 
@@ -255,7 +255,7 @@ super-admin (Platform Owner)
 | ------------------ | ----------- | -------------- | ---------- | --------- |
 | View all tenants   | ✅          | ❌             | ❌         | ❌        |
 | Manage own salon   | ✅          | ✅             | ❌         | ❌        |
-| Manage beauticians | ✅          | ✅             | ❌         | ❌        |
+| Manage specialists | ✅          | ✅             | ❌         | ❌        |
 | Manage services    | ✅          | ✅             | View only  | View only |
 | View appointments  | ✅          | ✅ (own salon) | ✅ (own)   | ✅ (own)  |
 | Manage products    | ✅          | ✅             | ✅ (own)   | ❌        |
@@ -291,7 +291,7 @@ const paymentIntent = await stripe.paymentIntents.create({
   currency: "gbp",
   application_fee_amount: 50, // £0.50
   transfer_data: {
-    destination: beautician.stripeAccountId,
+    destination: specialist.stripeAccountId,
   },
 });
 ```
@@ -345,8 +345,8 @@ document.documentElement.style.setProperty(
 
 ### Tenant-Specific Logic
 
-- **Working hours** → Per tenant + per beautician
-- **Cancellation policy** → Per tenant or beautician
+- **Working hours** → Per tenant + per specialist
+- **Cancellation policy** → Per tenant or specialist
 - **Time zones** → Per tenant
 - **Buffer times** → Per tenant settings
 - **Max advance booking** → Per tenant
@@ -416,7 +416,7 @@ Returns:
 
 - Total bookings
 - Total revenue
-- Active beauticians
+- Active specialists
 - Customer count
 - Product sales
 - Growth metrics

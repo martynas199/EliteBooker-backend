@@ -48,7 +48,7 @@ const baseServiceSchema = z.object({
   variants: z.array(variantSchema).min(1, "At least one variant is required"),
   primaryBeauticianId: z
     .string()
-    .regex(/^[0-9a-fA-F]{24}$/, "Invalid beautician ID"),
+    .regex(/^[0-9a-fA-F]{24}$/, "Invalid specialist ID"),
   additionalBeauticianIds: z
     .array(z.string().regex(/^[0-9a-fA-F]{24}$/))
     .optional(),

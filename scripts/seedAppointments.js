@@ -13,19 +13,19 @@ async function seedAppointments() {
     await mongoose.connect(MONGO_URI);
     console.log("Connected to MongoDB");
 
-    // Get existing beauticians and services
-    const beauticians = await Beautician.find();
+    // Get existing specialists and services
+    const specialists = await Beautician.find();
     const services = await Service.find();
 
-    if (beauticians.length === 0 || services.length === 0) {
+    if (specialists.length === 0 || services.length === 0) {
       console.log(
-        "No beauticians or services found. Please run the main seed script first."
+        "No specialists or services found. Please run the main seed script first."
       );
       process.exit(1);
     }
 
     console.log(
-      `Found ${beauticians.length} beauticians and ${services.length} services`
+      `Found ${specialists.length} specialists and ${services.length} services`
     );
 
     // Clear existing appointments
@@ -47,8 +47,8 @@ async function seedAppointments() {
 
       for (let j = 0; j < numAppointments; j++) {
         const service = services[Math.floor(Math.random() * services.length)];
-        const beautician =
-          beauticians[Math.floor(Math.random() * beauticians.length)];
+        const specialist =
+          specialists[Math.floor(Math.random() * specialists.length)];
         const variant = service.variants[0];
 
         // Random time between 9am and 4pm
@@ -74,7 +74,7 @@ async function seedAppointments() {
             .format("HH:mm"),
           serviceId: service._id,
           variantName: variant.name,
-          beauticianId: beautician._id,
+          beauticianId: specialist._id,
           price: variant.price,
           durationMin: variant.durationMin,
           status: "completed", // All appointments are completed
@@ -101,10 +101,10 @@ async function seedAppointments() {
     const byBeautician = {};
 
     appointments.forEach((apt) => {
-      const beautician = beauticians.find((b) =>
+      const specialist = specialists.find((b) =>
         b._id.equals(apt.beauticianId)
       );
-      const name = beautician?.name || "Unknown";
+      const name = specialist?.name || "Unknown";
       if (!byBeautician[name]) {
         byBeautician[name] = { count: 0, revenue: 0 };
       }

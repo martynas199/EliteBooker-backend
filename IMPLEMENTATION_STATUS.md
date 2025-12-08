@@ -12,7 +12,7 @@
 - **Product Model** (`src/models/Product.js`)
   - Added `beauticianId` to track product ownership
 - **Order Model** (`src/models/Order.js`)
-  - Added `stripeConnectPayments` array for multi-beautician orders
+  - Added `stripeConnectPayments` array for multi-specialist orders
   - Added `refundStatus`, `refundedAt`, `refundReason` fields
   - Added `beauticianId` to order items
 
@@ -34,18 +34,18 @@ Added handlers for:
 - `payment_intent.succeeded` - Confirm booking/order payment
 - `payment_intent.payment_failed` - Mark payment failures
 - `charge.refunded` - Handle refunds for bookings & products
-- `account.updated` - Sync beautician Stripe status
-- `payout.paid` - Track beautician payouts
+- `account.updated` - Sync specialist Stripe status
+- `payout.paid` - Track specialist payouts
 
 ### 4. Revenue Reporting System
 
 **File:** `src/routes/reports.js`
 
 - `GET /api/reports/revenue` - Platform-wide revenue with filters
-  - Aggregate bookings & product sales by beautician
-  - Calculate platform fees vs beautician earnings
+  - Aggregate bookings & product sales by specialist
+  - Calculate platform fees vs specialist earnings
   - Support date range filtering
-- `GET /api/reports/beautician-earnings/:beauticianId` - Individual earnings
+- `GET /api/reports/specialist-earnings/:beauticianId` - Individual earnings
   - Detailed booking history with platform fees
   - Product sales breakdown
   - Recent transactions
@@ -90,7 +90,7 @@ Added handlers for:
 
 3. **Admin Revenue Dashboard**
    - Platform earnings summary
-   - Revenue by beautician table
+   - Revenue by specialist table
    - Date range filter
    - Export to CSV functionality
    - Revenue charts/graphs
@@ -106,8 +106,8 @@ Added handlers for:
 
 5. **Update Product Checkout**
 
-   - Modify product checkout to group items by beautician
-   - Create separate PaymentIntents for each beautician
+   - Modify product checkout to group items by specialist
+   - Create separate PaymentIntents for each specialist
    - Store Connect payment details in Order
 
 6. **Implement Refund Logic**
@@ -127,14 +127,14 @@ Added handlers for:
 
 ### Short Term (User Experience)
 
-1. Build beautician earnings dashboard
+1. Build specialist earnings dashboard
 2. Build admin revenue dashboard
 3. Add email notifications for payouts
 4. Create CSV export functionality
 
 ### Long Term (Advanced Features)
 
-1. Handle multi-beautician product orders (split payments)
+1. Handle multi-specialist product orders (split payments)
 2. Dynamic platform fee configuration
 3. Commission-based product sales
 4. Dispute management UI
@@ -160,22 +160,22 @@ Configure webhook in Stripe Dashboard:
 
 ### Phase 1: Connect Setup
 
-- [ ] Create beautician Stripe account
+- [ ] Create specialist Stripe account
 - [ ] Complete onboarding flow
 - [ ] Verify status syncs to database
 - [ ] Access Express dashboard
 
 ### Phase 2: Booking Payments
 
-- [ ] Book service with connected beautician
+- [ ] Book service with connected specialist
 - [ ] Verify £0.50 platform fee captured
-- [ ] Verify beautician receives remaining amount
+- [ ] Verify specialist receives remaining amount
 - [ ] Check totalEarnings updated
 
 ### Phase 3: Product Payments
 
-- [ ] Purchase product from connected beautician
-- [ ] Verify 100% goes to beautician
+- [ ] Purchase product from connected specialist
+- [ ] Verify 100% goes to specialist
 - [ ] Verify no platform fee charged
 - [ ] Check payment tracked in Order
 
@@ -191,7 +191,7 @@ Configure webhook in Stripe Dashboard:
 
 - [ ] View platform revenue report
 - [ ] Filter by date range
-- [ ] View individual beautician earnings
+- [ ] View individual specialist earnings
 - [ ] Verify calculations correct
 
 ## 📚 Files Created/Modified
@@ -239,13 +239,13 @@ Configure webhook in Stripe Dashboard:
 
 1. **Express Accounts** - Chosen for simplicity, Stripe handles KYC/compliance
 2. **£0.50 Flat Fee** - Simple, predictable cost for bookings
-3. **No Product Fee** - Encourages beauticians to add products
-4. **Separate Payment Intents** - Allows multi-beautician orders
+3. **No Product Fee** - Encourages specialists to add products
+4. **Separate Payment Intents** - Allows multi-specialist orders
 5. **Webhook-Driven** - Reliable status updates via Stripe webhooks
 
 ## ⚠️ Important Notes
 
-- All beauticians must complete Stripe onboarding before accepting payments
+- All specialists must complete Stripe onboarding before accepting payments
 - Platform fee is charged per booking, not per product
 - Refunds automatically reverse transfers and fees
 - Payouts handled entirely by Stripe (2-day rolling basis)

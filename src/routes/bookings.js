@@ -112,14 +112,14 @@ router.post("/create", async (req, res) => {
     console.log("[Bookings] Lock verified successfully");
 
     // Step 2: Validate booking data
-    // Check if beautician exists and is active
-    const beautician = await Specialist.findOne({
+    // Check if specialist exists and is active
+    const specialist = await Specialist.findOne({
       _id: beauticianId,
       tenantId,
       active: true,
     });
 
-    if (!beautician) {
+    if (!specialist) {
       // Release lock before returning error
       await lockService.releaseLock({
         tenantId,

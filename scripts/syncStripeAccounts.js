@@ -39,9 +39,9 @@ async function syncStripeAccounts() {
     const accounts = await stripe.accounts.list({ limit: 100 });
     console.log(`Found ${accounts.data.length} Stripe Connect accounts\n`);
 
-    // Get all beauticians
-    const beauticians = await Beautician.find({});
-    console.log(`Found ${beauticians.length} beauticians in database\n`);
+    // Get all specialists
+    const specialists = await Beautician.find({});
+    console.log(`Found ${specialists.length} specialists in database\n`);
 
     console.log("=== Syncing Stripe Accounts ===\n");
 
@@ -59,48 +59,48 @@ async function syncStripeAccounts() {
       console.log(`   Status: ${isComplete ? "✅ COMPLETE" : "⏳ PENDING"}`);
 
       if (accountEmail) {
-        // Try to find beautician by email
-        const beautician = beauticians.find(
+        // Try to find specialist by email
+        const specialist = specialists.find(
           (b) => b.email?.toLowerCase() === accountEmail.toLowerCase()
         );
 
-        if (beautician) {
-          console.log(`   Found beautician: ${beautician.name}`);
+        if (specialist) {
+          console.log(`   Found specialist: ${specialist.name}`);
 
-          // Update beautician with Stripe info
-          beautician.stripeAccountId = accountId;
-          beautician.stripeStatus = isComplete ? "connected" : "pending";
-          beautician.stripeOnboardingCompleted = isComplete;
+          // Update specialist with Stripe info
+          specialist.stripeAccountId = accountId;
+          specialist.stripeStatus = isComplete ? "connected" : "pending";
+          specialist.stripeOnboardingCompleted = isComplete;
 
-          await beautician.save();
+          await specialist.save();
           console.log(
-            `   ✅ Updated ${beautician.name}'s Stripe info in database`
+            `   ✅ Updated ${specialist.name}'s Stripe info in database`
           );
         } else {
-          console.log(`   ⚠️  No beautician found with email: ${accountEmail}`);
+          console.log(`   ⚠️  No specialist found with email: ${accountEmail}`);
         }
       } else {
         console.log(
-          `   ⚠️  No email on Stripe account, cannot match to beautician`
+          `   ⚠️  No email on Stripe account, cannot match to specialist`
         );
       }
     }
 
     console.log("\n\n=== Final Beautician Status ===\n");
 
-    // Refresh beauticians data
+    // Refresh specialists data
     const updatedBeauticians = await Beautician.find({});
 
-    for (const beautician of updatedBeauticians) {
-      console.log(`${beautician.name}:`);
-      console.log(`  Email: ${beautician.email || "NOT SET"}`);
+    for (const specialist of updatedBeauticians) {
+      console.log(`${specialist.name}:`);
+      console.log(`  Email: ${specialist.email || "NOT SET"}`);
       console.log(
-        `  Stripe Account ID: ${beautician.stripeAccountId || "NOT SET"}`
+        `  Stripe Account ID: ${specialist.stripeAccountId || "NOT SET"}`
       );
-      console.log(`  Stripe Status: ${beautician.stripeStatus || "NOT SET"}`);
+      console.log(`  Stripe Status: ${specialist.stripeStatus || "NOT SET"}`);
       console.log(
         `  Onboarding Completed: ${
-          beautician.stripeOnboardingCompleted || false
+          specialist.stripeOnboardingCompleted || false
         }`
       );
       console.log("---");

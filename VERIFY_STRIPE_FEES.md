@@ -42,7 +42,7 @@ When you use `on_behalf_of` with destination charges:
 
 ### **Option 2: Check Connected Account Balance**
 
-1. Go to **Connect** → **Accounts** → Click beautician account
+1. Go to **Connect** → **Accounts** → Click specialist account
 2. Click **"View in Dashboard"** or **"Sign in to account"**
 3. Go to **Balance** → **Transactions**
 4. Look at the **balance changes over time**
@@ -142,4 +142,4 @@ If in your **Platform Account** you see:
 
 - Net received: **£0.50** (not £48.85 or similar)
 
-Then **it's working!** The beautician is paying the Stripe fees from their balance, and you're only getting your £0.50 application fee.
+Then **it's working!** The specialist is paying the Stripe fees from their balance, and you're only getting your £0.50 application fee.

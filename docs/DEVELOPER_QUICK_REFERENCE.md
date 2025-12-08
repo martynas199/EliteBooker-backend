@@ -81,7 +81,7 @@ booking-app/
 │   │   ├── routes/
 │   │   │   ├── tenants.js            ⭐ Tenant CRUD
 │   │   │   ├── checkout.js           Stripe payments
-│   │   │   ├── beauticians.js        Stripe Connect
+│   │   │   ├── specialists.js        Stripe Connect
 │   │   │   └── webhooks.js           Stripe webhooks
 │   │   └── server.js
 │   ├── scripts/
@@ -157,7 +157,7 @@ const otherTenantService = await Service.findById(otherServiceId);
 
 - `super-admin` - Platform-wide access
 - `salon-admin` - Full tenant management
-- `beautician` - Own schedule only
+- `specialist` - Own schedule only
 - `customer` - Booking only
 
 ---
@@ -235,14 +235,14 @@ router.post(
   requireTenant,
   requireAdmin,
   async (req, res) => {
-    const beautician = await Beautician.findById(req.params.id);
+    const specialist = await Beautician.findById(req.params.id);
 
     // Create Connect account
     const account = await stripe.accounts.create({
       type: "express",
-      email: beautician.email,
+      email: specialist.email,
       metadata: {
-        beauticianId: beautician._id.toString(),
+        beauticianId: specialist._id.toString(),
         tenantId: req.tenant._id.toString(),
       },
     });
@@ -256,9 +256,9 @@ router.post(
     });
 
     // Save account ID
-    beautician.stripeAccountId = account.id;
-    beautician.stripeStatus = "pending";
-    await beautician.save();
+    specialist.stripeAccountId = account.id;
+    specialist.stripeStatus = "pending";
+    await specialist.save();
 
     res.json({ url: accountLink.url });
   }
@@ -266,7 +266,7 @@ router.post(
 
 // Frontend: Redirect to Stripe
 const handleStripeConnect = async (beauticianId) => {
-  const { url } = await api.post(`/beauticians/${beauticianId}/stripe/onboard`);
+  const { url } = await api.post(`/specialists/${beauticianId}/stripe/onboard`);
   window.location.href = url; // Redirects to Stripe onboarding
 };
 ```
@@ -278,7 +278,7 @@ const handleStripeConnect = async (beauticianId) => {
 router.post("/", requireTenant, async (req, res) => {
   const { appointmentId } = req.body;
   const appointment = await Appointment.findById(appointmentId);
-  const beautician = await Beautician.findById(appointment.beautician);
+  const specialist = await Beautician.findById(appointment.specialist);
 
   // Calculate platform fee
   const platformFee = req.tenant.paymentSettings.platformFeePerBooking || 50; // £0.50
@@ -299,7 +299,7 @@ router.post("/", requireTenant, async (req, res) => {
     payment_intent_data: {
       application_fee_amount: platformFee, // Platform fee
       transfer_data: {
-        destination: beautician.stripeAccountId, // Transfer to beautician
+        destination: specialist.stripeAccountId, // Transfer to specialist
       },
       metadata: {
         appointmentId: appointment._id.toString(),
@@ -493,7 +493,7 @@ console.log('Payouts enabled:', account.payouts_enabled);
 
 ### Issue: Platform fee not collected
 
-**Symptoms:** Full amount transferred to beautician
+**Symptoms:** Full amount transferred to specialist
 
 **Debug:**
 
@@ -531,7 +531,7 @@ db.tenants.aggregate([{ $group: { _id: "$status", count: { $sum: 1 } } }]);
 // Critical: Should return 0
 db.appointments.find({ tenantId: { $exists: false } }).count();
 db.services.find({ tenantId: { $exists: false } }).count();
-db.beauticians.find({ tenantId: { $exists: false } }).count();
+db.specialists.find({ tenantId: { $exists: false } }).count();
 
 // If any found, run migration:
 node scripts/migrate-to-multitenant.js

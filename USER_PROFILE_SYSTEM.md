@@ -64,7 +64,7 @@
 
 #### **Features:**
 
-- ✅ Booking history with service & beautician details
+- ✅ Booking history with service & specialist details
 - ✅ Order history with product details
 - ✅ Profile updates (name, email, phone)
 - ✅ Password change with current password verification

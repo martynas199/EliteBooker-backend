@@ -92,7 +92,7 @@ const BeauticianSchema = new mongoose.Schema(
       default: "not_connected",
     },
     stripeOnboardingCompleted: { type: Boolean, default: false },
-    stripePayoutsEnabled: { type: Boolean, default: false }, // Whether beautician can receive payouts
+    stripePayoutsEnabled: { type: Boolean, default: false }, // Whether specialist can receive payouts
     totalEarnings: { type: Number, default: 0 }, // Total revenue from bookings + products
     totalPayouts: { type: Number, default: 0 }, // Total amount paid out by Stripe
     lastPayoutDate: Date,
@@ -114,7 +114,7 @@ const BeauticianSchema = new mongoose.Schema(
 );
 
 // Performance indexes for common queries
-BeauticianSchema.index({ active: 1, createdAt: -1 }); // Active beauticians
+BeauticianSchema.index({ active: 1, createdAt: -1 }); // Active specialists
 BeauticianSchema.index({ email: 1 }); // Email lookups
 BeauticianSchema.index({ stripeStatus: 1 }); // Stripe onboarding status
 BeauticianSchema.index({ stripeAccountId: 1 }); // Already has index

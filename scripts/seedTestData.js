@@ -234,8 +234,8 @@ async function seedDatabase() {
       console.log(`  ✓ Created services for: ${tenant.name}`);
     }
 
-    // Create staff/beauticians for each tenant
-    // NOTE: Creating only 1 beautician per tenant so SalonLanding shows ServicesPage directly
+    // Create staff/specialists for each tenant
+    // NOTE: Creating only 1 specialist per tenant so SalonLanding shows ServicesPage directly
     console.log("💆 Creating staff members...");
     const staff = [
       {

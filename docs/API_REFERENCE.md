@@ -7,7 +7,7 @@ Complete API documentation for multi-tenant endpoints.
 1. [Authentication](#authentication)
 2. [Tenant Management](#tenant-management)
 3. [Tenant Resolution](#tenant-resolution)
-4. [Beautician Stripe Connect](#beautician-stripe-connect)
+4. [Beautician Stripe Connect](#specialist-stripe-connect)
 5. [Admin Routes](#admin-routes)
 6. [Error Codes](#error-codes)
 
@@ -23,7 +23,7 @@ Multi-tenant JWT tokens include:
 {
   "id": "user_id",
   "tenantId": "tenant_id",
-  "role": "salon-admin | beautician | customer | super-admin",
+  "role": "salon-admin | specialist | customer | super-admin",
   "iat": 1234567890,
   "exp": 1234567890
 }
@@ -399,7 +399,7 @@ router.get("/", (req, res) => {
 
 ### Initiate Stripe Connect Onboarding
 
-**Endpoint:** `POST /api/beauticians/:id/stripe/onboard`
+**Endpoint:** `POST /api/specialists/:id/stripe/onboard`
 
 **Auth Required:** Yes (Admin only)
 
@@ -416,7 +416,7 @@ router.get("/", (req, res) => {
 **Usage:**
 
 ```javascript
-const response = await api.post(`/api/beauticians/${id}/stripe/onboard`);
+const response = await api.post(`/api/specialists/${id}/stripe/onboard`);
 window.location.href = response.data.url;
 ```
 
@@ -431,7 +431,7 @@ window.location.href = response.data.url;
 
 ### Check Stripe Connect Status
 
-**Endpoint:** `GET /api/beauticians/:id/stripe/status`
+**Endpoint:** `GET /api/specialists/:id/stripe/status`
 
 **Auth Required:** Yes (Admin only)
 
@@ -471,7 +471,7 @@ window.location.href = response.data.url;
 
 ### Disconnect Stripe Account
 
-**Endpoint:** `POST /api/beauticians/:id/stripe/disconnect`
+**Endpoint:** `POST /api/specialists/:id/stripe/disconnect`
 
 **Auth Required:** Yes (Admin only)
 
@@ -520,11 +520,11 @@ DELETE /api/services/:id           # Delete service (tenant-filtered)
 ### Beauticians
 
 ```http
-GET    /api/beauticians            # List beauticians (tenant-filtered)
-GET    /api/beauticians/:id        # Get beautician (tenant-filtered)
-POST   /api/beauticians            # Create beautician
-PUT    /api/beauticians/:id        # Update beautician (tenant-filtered)
-DELETE /api/beauticians/:id        # Delete beautician (tenant-filtered)
+GET    /api/specialists            # List specialists (tenant-filtered)
+GET    /api/specialists/:id        # Get specialist (tenant-filtered)
+POST   /api/specialists            # Create specialist
+PUT    /api/specialists/:id        # Update specialist (tenant-filtered)
+DELETE /api/specialists/:id        # Delete specialist (tenant-filtered)
 ```
 
 ### Products
@@ -677,7 +677,7 @@ Endpoints that return lists support pagination:
 - `account.updated` - Beautician account status changed
 - `account.application.authorized` - Beautician authorized platform
 - `account.application.deauthorized` - Beautician disconnected
-- `payout.paid` - Payout sent to beautician
+- `payout.paid` - Payout sent to specialist
 
 **Webhook Signature Verification:**
 

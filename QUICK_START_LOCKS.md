@@ -178,7 +178,7 @@ curl -X POST http://localhost:4000/api/locks/acquire \
   -H "Content-Type: application/json" \
   -d '{
     "tenantId": "test-tenant",
-    "resourceId": "beautician-1",
+    "resourceId": "specialist-1",
     "date": "2025-03-10",
     "startTime": "14:00",
     "duration": 60
@@ -221,7 +221,7 @@ curl -X POST http://localhost:4000/api/bookings/create \
   -d '{
     "lockId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "tenantId": "test-tenant",
-    "beauticianId": "beautician-1",
+    "beauticianId": "specialist-1",
     "serviceId": "service-1",
     "date": "2025-03-10",
     "startTime": "14:00",

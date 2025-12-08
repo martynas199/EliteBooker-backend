@@ -100,7 +100,7 @@ const servicesData = [
   },
 ];
 
-// Sample beautician/staff data - names vary by tenant
+// Sample specialist/staff data - names vary by tenant
 const getBeauticiansData = (tenantName) => {
   const staffSets = {
     default: [
@@ -133,7 +133,7 @@ const getBeauticiansData = (tenantName) => {
         email: "sarah@example.com",
         phone: "+447700900002",
         specialties: ["Facial", "Massage", "Beauty"],
-        bio: "Certified beautician specializing in skincare and massage therapy",
+        bio: "Certified specialist specializing in skincare and massage therapy",
         active: true,
         image: {
           provider: "placeholder",
@@ -261,18 +261,18 @@ async function seedProductionData() {
       );
     }
 
-    // Create beauticians
+    // Create specialists
     console.log("\n👥 Creating staff members...");
     const beauticiansData = getBeauticiansData(tenant.name);
     const createdBeauticians = [];
     for (const beauticianData of beauticiansData) {
-      const beautician = await Beautician.create({
+      const specialist = await Beautician.create({
         ...beauticianData,
         tenantId,
       });
-      createdBeauticians.push(beautician);
+      createdBeauticians.push(specialist);
       console.log(
-        `   ✅ Created: ${beautician.name} (${beautician.specialties.join(
+        `   ✅ Created: ${specialist.name} (${specialist.specialties.join(
           ", "
         )})`
       );

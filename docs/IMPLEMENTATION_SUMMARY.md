@@ -60,7 +60,7 @@ Successfully transformed a single-tenant beauty booking application into a compl
 
 3. **Application Layer**
    - JWT tokens include `tenantId` field
-   - 4 user roles: super-admin, salon-admin, beautician, customer
+   - 4 user roles: super-admin, salon-admin, specialist, customer
    - All routes automatically tenant-scoped
    - Frontend TenantContext for state management
 
@@ -74,7 +74,7 @@ Flow: Customer → Platform Account → Beautician Account
 Money Example (£50 service):
 1. Customer charged: £50.00
 2. Platform fee: -£0.50 (configurable)
-3. Transfer to beautician: £49.50
+3. Transfer to specialist: £49.50
 
 Stripe Configuration:
 - Platform uses Stripe account (collect all payments)
@@ -114,7 +114,7 @@ Stripe Configuration:
 | `src/routes/checkout.js`    | 317-347, 460-475 | Changed to platform account with transfer_data pattern       |
 | `src/routes/orders.js`      | 571-603          | Added platform fees for product payments                     |
 | `src/routes/webhooks.js`    | +120 lines       | Added Connect webhook handlers (account.updated, etc.)       |
-| `src/routes/beauticians.js` | +150 lines       | Added 3 Stripe Connect endpoints (onboard/status/disconnect) |
+| `src/routes/specialists.js` | +150 lines       | Added 3 Stripe Connect endpoints (onboard/status/disconnect) |
 | `src/models/Beautician.js`  | +8 fields        | Added stripeAccountId, stripeStatus, stripePayoutsEnabled    |
 
 #### Authentication Updates
@@ -271,7 +271,7 @@ schema.plugin(multiTenantPlugin);
 
   - Platform receives all payments
   - Deducts application fee
-  - Transfers remainder to beautician
+  - Transfers remainder to specialist
   - Full payment control
 
 - [x] **Beautician Onboarding**
@@ -398,7 +398,7 @@ schema.plugin(multiTenantPlugin);
 
 - **super-admin:** Platform-wide access, tenant management
 - **salon-admin:** Full tenant management
-- **beautician:** Own schedule and appointments
+- **specialist:** Own schedule and appointments
 - **customer:** View services, book appointments
 
 ✅ **Rate Limiting**
@@ -487,7 +487,7 @@ Coverage:    86% (critical paths covered)
 
 - ✅ Step 1: Tenant signup via POST /api/tenants/create
 - ✅ Step 2: Admin authentication
-- ✅ Step 3: Create beautician
+- ✅ Step 3: Create specialist
 - ✅ Step 4: Initiate Stripe Connect
 - ✅ Step 5: Create service
 - ✅ Step 6: Check available slots
@@ -684,7 +684,7 @@ Coverage:    86% (critical paths covered)
 
    - All appointments → defaultTenantId
    - All services → defaultTenantId
-   - All beauticians → defaultTenantId
+   - All specialists → defaultTenantId
    - All products → defaultTenantId
    - All customers → defaultTenantId
 

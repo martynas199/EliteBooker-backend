@@ -82,7 +82,7 @@ class LockService {
    * Uses hash tags for Redis Cluster to ensure same resource locks stay on same shard
    *
    * @param {Object} params - Lock parameters
-   * @param {string} params.resourceId - Resource (beautician/room) identifier
+   * @param {string} params.resourceId - Resource (specialist/room) identifier
    * @param {string} params.date - Date in YYYY-MM-DD format
    * @param {string} params.startTime - Start time in HH:mm format
    * @returns {string} Redis key
@@ -97,7 +97,7 @@ class LockService {
    * Uses Redis SET with NX (only set if not exists) and PX (TTL in milliseconds)
    *
    * @param {Object} params - Lock parameters
-   * @param {string} params.resourceId - Resource identifier (beautician ID)
+   * @param {string} params.resourceId - Resource identifier (specialist ID)
    * @param {string} params.date - Date in YYYY-MM-DD format
    * @param {string} params.startTime - Start time in HH:mm format
    * @param {number} [params.duration] - Booking duration in minutes (for validation)
@@ -162,7 +162,7 @@ class LockService {
    * Used during booking creation to ensure lock ownership
    *
    * @param {Object} params - Verification parameters
-   * @param {string} params.resourceId - Resource identifier (beautician ID)
+   * @param {string} params.resourceId - Resource identifier (specialist ID)
    * @param {string} params.date - Date in YYYY-MM-DD format
    * @param {string} params.startTime - Start time in HH:mm format
    * @param {string} params.lockId - Lock identifier to verify
@@ -219,7 +219,7 @@ class LockService {
    * Only the owner of the lock can release it
    *
    * @param {Object} params - Release parameters
-   * @param {string} params.resourceId - Resource identifier (beautician ID)
+   * @param {string} params.resourceId - Resource identifier (specialist ID)
    * @param {string} params.date - Date in YYYY-MM-DD format
    * @param {string} params.startTime - Start time in HH:mm format
    * @param {string} params.lockId - Lock identifier for ownership verification
@@ -270,7 +270,7 @@ class LockService {
    * Uses Lua script to ensure atomicity (verify ownership before extending)
    *
    * @param {Object} params - Refresh parameters
-   * @param {string} params.resourceId - Resource identifier (beautician ID)
+   * @param {string} params.resourceId - Resource identifier (specialist ID)
    * @param {string} params.date - Date in YYYY-MM-DD format
    * @param {string} params.startTime - Start time in HH:mm format
    * @param {string} params.lockId - Lock identifier for ownership verification
@@ -322,7 +322,7 @@ class LockService {
   /**
    * Get all active locks (Admin monitoring)
    *
-   * @param {string} [resourceId] - Optional: filter by specific resource (beautician ID)
+   * @param {string} [resourceId] - Optional: filter by specific resource (specialist ID)
    * @param {number} [limit=100] - Maximum number of locks to return
    * @returns {Promise<Array>} List of active locks
    */
@@ -395,7 +395,7 @@ class LockService {
    * Bypasses ownership verification
    *
    * @param {Object} params - Force release parameters
-   * @param {string} params.resourceId - Resource identifier (beautician ID)
+   * @param {string} params.resourceId - Resource identifier (specialist ID)
    * @param {string} params.date - Date in YYYY-MM-DD format
    * @param {string} params.startTime - Start time in HH:mm format
    * @returns {Promise<Object>} Release result

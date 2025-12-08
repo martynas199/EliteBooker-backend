@@ -4,9 +4,9 @@
 
 ### Upload Profile Image
 
-**POST** `/api/beauticians/:id/upload-image`
+**POST** `/api/specialists/:id/upload-image`
 
-Upload a profile image for a beautician to Cloudinary.
+Upload a profile image for a specialist to Cloudinary.
 
 #### Requirements
 
@@ -29,8 +29,8 @@ Upload a profile image for a beautician to Cloudinary.
   "message": "Image uploaded successfully",
   "image": {
     "provider": "cloudinary",
-    "id": "beauticians/abc123...",
-    "url": "https://res.cloudinary.com/your-cloud/image/upload/v123/beauticians/abc.jpg",
+    "id": "specialists/abc123...",
+    "url": "https://res.cloudinary.com/your-cloud/image/upload/v123/specialists/abc.jpg",
     "alt": "Beautician Name",
     "width": 1200,
     "height": 1200
@@ -49,7 +49,7 @@ Upload a profile image for a beautician to Cloudinary.
 ### cURL
 
 ```bash
-curl -X POST http://localhost:4000/api/beauticians/507f1f77bcf86cd799439011/upload-image \
+curl -X POST http://localhost:4000/api/specialists/507f1f77bcf86cd799439011/upload-image \
   -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
   -F "image=@/path/to/profile-photo.jpg"
 ```
@@ -60,7 +60,7 @@ curl -X POST http://localhost:4000/api/beauticians/507f1f77bcf86cd799439011/uplo
 const formData = new FormData();
 formData.append("image", fileInput.files[0]);
 
-const response = await fetch(`/api/beauticians/${beauticianId}/upload-image`, {
+const response = await fetch(`/api/specialists/${beauticianId}/upload-image`, {
   method: "POST",
   headers: {
     Authorization: "Bearer YOUR_ADMIN_TOKEN",
@@ -80,9 +80,9 @@ The `Beautician` model stores images in the following format:
 {
   image: {
     provider: "cloudinary",        // Always "cloudinary" for uploaded images
-    id: "beauticians/abc123...",   // Cloudinary public_id (for deletion)
+    id: "specialists/abc123...",   // Cloudinary public_id (for deletion)
     url: "https://res.cloudinary.com/...", // Full image URL
-    alt: "Beautician Name",        // Alt text (defaults to beautician name)
+    alt: "Beautician Name",        // Alt text (defaults to specialist name)
     width: 1200,                   // Image width in pixels
     height: 1200                   // Image height in pixels
   }
@@ -93,17 +93,17 @@ The `Beautician` model stores images in the following format:
 
 1. **Automatic Old Image Deletion**: When uploading a new image, the old image is automatically deleted from Cloudinary
 2. **Temporary File Cleanup**: Temporary files are always cleaned up, even on error
-3. **Cloudinary Organization**: Images are uploaded to the `beauticians` folder
+3. **Cloudinary Organization**: Images are uploaded to the `specialists` folder
 4. **Metadata Storage**: Width, height, and public_id are stored for future use
 
 ## Frontend Integration
 
 The frontend uses a two-step process:
 
-1. **Save Beautician**: Create/update beautician without image
+1. **Save Beautician**: Create/update specialist without image
 2. **Upload Image**: If a new image was selected, upload it separately
 
-This ensures the beautician is saved even if image upload fails.
+This ensures the specialist is saved even if image upload fails.
 
 See `src/admin/pages/Staff.jsx` for implementation example.
 

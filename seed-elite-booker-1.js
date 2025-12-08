@@ -32,10 +32,10 @@ async function seedEliteBooker1() {
 
     console.log("✓ Found tenant:", tenant.name);
 
-    // Create beauticians/staff
-    console.log("\nCreating beauticians...");
+    // Create specialists/staff
+    console.log("\nCreating specialists...");
 
-    const beauticians = [
+    const specialists = [
       {
         name: "Sarah Johnson",
         email: "sarah@elite-booker-1.com",
@@ -108,16 +108,16 @@ async function seedEliteBooker1() {
     ];
 
     const createdBeauticians = [];
-    for (const beautician of beauticians) {
+    for (const specialist of specialists) {
       const existing = await Beautician.findOne({
-        email: beautician.email,
+        email: specialist.email,
         tenantId: tenant._id,
       });
 
       if (!existing) {
-        const created = await Beautician.create(beautician);
+        const created = await Beautician.create(specialist);
         createdBeauticians.push(created);
-        console.log(`✓ Created beautician: ${created.name}`);
+        console.log(`✓ Created specialist: ${created.name}`);
       } else {
         createdBeauticians.push(existing);
         console.log(`✓ Beautician already exists: ${existing.name}`);

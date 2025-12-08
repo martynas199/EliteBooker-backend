@@ -358,7 +358,7 @@ const blogTemplates = {
 <p>Beautiful, well-groomed brows frame your face and enhance your natural beauty. At Noble Elegance in Wisbech, our ${name.toLowerCase()} service delivers professional results that will have you loving your brows.</p>
 
 <h2>What is ${name}?</h2>
-<p>${name} is a professional treatment that enhances the appearance of your eyebrows, creating fuller, more defined, and perfectly shaped brows. Our skilled beauticians in Wisbech use premium products and proven techniques to deliver stunning results.</p>
+<p>${name} is a professional treatment that enhances the appearance of your eyebrows, creating fuller, more defined, and perfectly shaped brows. Our skilled specialists in Wisbech use premium products and proven techniques to deliver stunning results.</p>
 
 <h2>Benefits</h2>
 <ul>
@@ -505,7 +505,7 @@ const blogTemplates = {
 <p>Treat your skin to the luxury it deserves with ${name.toLowerCase()} at Noble Elegance in Wisbech. Our professional facial treatments combine advanced techniques with premium products to deliver visible, lasting results.</p>
 
 <h2>What is ${name}?</h2>
-<p>${name} is a professional skincare treatment designed to cleanse, exfoliate, nourish, and rejuvenate your skin. Our experienced beauticians customize each treatment to address your specific skin concerns and goals.</p>
+<p>${name} is a professional skincare treatment designed to cleanse, exfoliate, nourish, and rejuvenate your skin. Our experienced specialists customize each treatment to address your specific skin concerns and goals.</p>
 
 <h2>Benefits</h2>
 <ul>
@@ -664,7 +664,7 @@ const blogTemplates = {
       `Smooth, hair-free skin with ${name.toLowerCase()} at Noble Elegance. Professional waxing in Wisbech using gentle techniques.`,
     content: (name) => `
 <h2>Professional ${name} at Noble Elegance</h2>
-<p>Achieve smooth, hair-free skin with ${name.toLowerCase()} at Noble Elegance in Wisbech. Our experienced beauticians use premium wax and gentle techniques for comfortable, effective hair removal.</p>
+<p>Achieve smooth, hair-free skin with ${name.toLowerCase()} at Noble Elegance in Wisbech. Our experienced specialists use premium wax and gentle techniques for comfortable, effective hair removal.</p>
 
 <h2>Benefits of ${name}</h2>
 <ul>
@@ -710,7 +710,7 @@ const blogTemplates = {
 
 <h2>Why Choose Noble Elegance?</h2>
 <ul>
-  <li>Experienced, professional beauticians</li>
+  <li>Experienced, professional specialists</li>
   <li>Premium quality wax for sensitive skin</li>
   <li>Hygienic, private treatment rooms</li>
   <li>Comfortable, professional environment</li>

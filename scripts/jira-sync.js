@@ -67,7 +67,7 @@ const FEATURES = {
       priority: "High",
       estimate: "0h",
       description:
-        "Admin tools for managing services, variants, beauticians, and pricing",
+        "Admin tools for managing services, variants, specialists, and pricing",
       labels: ["mvp", "admin", "complete"],
     },
     {

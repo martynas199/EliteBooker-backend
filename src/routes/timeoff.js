@@ -13,15 +13,15 @@ const router = express.Router();
 
 /**
  * GET /api/timeoff
- * Get all time-off periods for all beauticians
+ * Get all time-off periods for all specialists
  */
 router.get("/", async (req, res) => {
   try {
-    const beauticians = await Specialist.find({}, "name timeOff").lean();
+    const specialists = await Specialist.find({}, "name timeOff").lean();
 
-    // Flatten time-off with beautician info
+    // Flatten time-off with specialist info
     const allTimeOff = [];
-    for (const beautician of beauticians) {
+    for (const specialist of specialists) {
       if (Specialist.timeOff && Specialist.timeOff.length > 0) {
         for (const timeOff of Specialist.timeOff) {
           allTimeOff.push({
@@ -45,7 +45,7 @@ router.get("/", async (req, res) => {
 
 /**
  * POST /api/timeoff
- * Add a new time-off period for a beautician
+ * Add a new time-off period for a specialist
  */
 router.post("/", async (req, res) => {
   try {
@@ -123,28 +123,28 @@ router.post("/", async (req, res) => {
       endDate: endDate.toISOString(),
     });
 
-    // Find beautician
-    const beautician = await Specialist.findById(beauticianId);
-    if (!beautician) {
+    // Find specialist
+    const specialist = await Specialist.findById(beauticianId);
+    if (!specialist) {
       return res.status(404).json({ error: "Beautician not found" });
     }
 
     // Add time-off period
-    Specialist.timeOff = Specialist.timeOff || [];
-    Specialist.timeOff.push({
+    specialist.timeOff = specialist.timeOff || [];
+    specialist.timeOff.push({
       start: startDate,
       end: endDate,
       reason: reason || "",
     });
 
-    await Specialist.save();
+    await specialist.save();
 
-    // Return the newly added time-off with beautician info
-    const newTimeOff = Specialist.timeOff[Specialist.timeOff.length - 1];
+    // Return the newly added time-off with specialist info
+    const newTimeOff = specialist.timeOff[specialist.timeOff.length - 1];
     res.json({
       _id: newTimeOff._id,
-      beauticianId: Specialist._id,
-      beauticianName: Specialist.name,
+      beauticianId: specialist._id,
+      beauticianName: specialist.name,
       start: newTimeOff.start,
       end: newTimeOff.end,
       reason: newTimeOff.reason,
@@ -157,23 +157,23 @@ router.post("/", async (req, res) => {
 
 /**
  * DELETE /api/timeoff/:beauticianId/:timeOffId
- * Remove a time-off period from a beautician
+ * Remove a time-off period from a specialist
  */
 router.delete("/:beauticianId/:timeOffId", async (req, res) => {
   try {
     const { beauticianId, timeOffId } = req.params;
 
-    const beautician = await Specialist.findById(beauticianId);
-    if (!beautician) {
+    const specialist = await Specialist.findById(beauticianId);
+    if (!specialist) {
       return res.status(404).json({ error: "Beautician not found" });
     }
 
     // Remove time-off period
-    Specialist.timeOff = (Specialist.timeOff || []).filter(
+    specialist.timeOff = (specialist.timeOff || []).filter(
       (timeOff) => timeOff._id.toString() !== timeOffId
     );
 
-    await Specialist.save();
+    await specialist.save();
 
     res.json({ message: "Time-off period removed successfully" });
   } catch (error) {

@@ -1,5 +1,5 @@
 /**
- * List all admins and beauticians in the database
+ * List all admins and specialists in the database
  * Helps you see which accounts exist before linking
  *
  * Usage: node scripts/listAccounts.js
@@ -44,21 +44,21 @@ async function listAccounts() {
       });
     }
 
-    // List all beauticians
+    // List all specialists
     console.log("\n💇 BEAUTICIAN ACCOUNTS:");
     console.log("━".repeat(60));
-    const beauticians = await Beautician.find({});
-    if (beauticians.length === 0) {
-      console.log("   (No beauticians found)");
+    const specialists = await Beautician.find({});
+    if (specialists.length === 0) {
+      console.log("   (No specialists found)");
     } else {
-      beauticians.forEach((beautician, idx) => {
-        console.log(`${idx + 1}. ${beautician.name}`);
-        console.log(`   ID: ${beautician._id}`);
-        console.log(`   Email: ${beautician.email || "(no email)"}`);
-        console.log(`   Active: ${beautician.active ? "Yes" : "No"}`);
-        console.log(`   Stripe Status: ${beautician.stripeStatus}`);
-        if (beautician.stripeAccountId) {
-          console.log(`   Stripe Account: ${beautician.stripeAccountId}`);
+      specialists.forEach((specialist, idx) => {
+        console.log(`${idx + 1}. ${specialist.name}`);
+        console.log(`   ID: ${specialist._id}`);
+        console.log(`   Email: ${specialist.email || "(no email)"}`);
+        console.log(`   Active: ${specialist.active ? "Yes" : "No"}`);
+        console.log(`   Stripe Status: ${specialist.stripeStatus}`);
+        if (specialist.stripeAccountId) {
+          console.log(`   Stripe Account: ${specialist.stripeAccountId}`);
         }
         console.log();
       });
@@ -69,18 +69,18 @@ async function listAccounts() {
     console.log("━".repeat(60));
     console.log("Run this command:");
     console.log(
-      "node scripts/linkAdminToBeautician.js <admin-email> <beautician-email>"
+      "node scripts/linkAdminToBeautician.js <admin-email> <specialist-email>"
     );
     console.log("\nExample:");
-    if (admins.length > 0 && beauticians.length > 0) {
+    if (admins.length > 0 && specialists.length > 0) {
       console.log(
         `node scripts/linkAdminToBeautician.js ${admins[0].email} ${
-          beauticians[0].email || beauticians[0].name
+          specialists[0].email || specialists[0].name
         }`
       );
     } else {
       console.log(
-        "node scripts/linkAdminToBeautician.js admin@salon.com beautician@salon.com"
+        "node scripts/linkAdminToBeautician.js admin@salon.com specialist@salon.com"
       );
     }
   } catch (error) {

@@ -27,8 +27,8 @@ A complete, turnkey booking platform that includes:
 #### 1. **Intuitive Booking Experience**
 
 - Browse available services with detailed descriptions and pricing
-- View real-time availability for each beautician
-- Select your preferred beautician
+- View real-time availability for each specialist
+- Select your preferred specialist
 - Book appointments 24/7 from any device
 - Receive instant email confirmation
 
@@ -55,7 +55,7 @@ A complete, turnkey booking platform that includes:
 - **Real-time Overview** - See today's appointments at a glance
 - **Appointment Management** - View, manage, and track all bookings
 - **Revenue Analytics** - Track income with detailed breakdowns
-- **Staff Management** - Manage beauticians and their schedules
+- **Staff Management** - Manage specialists and their schedules
 - **Service Management** - Add/edit services and pricing variants
 - **Working Hours** - Set weekly schedules and special hours
 - **Time Off Management** - Block dates for holidays/closures
@@ -287,7 +287,7 @@ Your monthly fee includes all future updates and improvements!
 >
 > **— Sarah J., Luxury Beauty Spa**
 
-> _"Our clients love the convenience of booking online. The admin dashboard makes managing our 5 beauticians so much easier. Best investment we've made this year."_
+> _"Our clients love the convenience of booking online. The admin dashboard makes managing our 5 specialists so much easier. Best investment we've made this year."_
 >
 > **— Michael R., City Salon & Spa**
 

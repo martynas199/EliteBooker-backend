@@ -27,7 +27,7 @@ All Stripe Connect features have been implemented for both backend and frontend.
 
 - **Order Model**: Multi-party product payments
 
-  - `stripeConnectPayments[]` - Array of beautician transfers
+  - `stripeConnectPayments[]` - Array of specialist transfers
   - `refundStatus`, `refundedAt`, `refundReason` - Refund tracking
 
 - **Product Model**: Owner tracking
@@ -45,19 +45,19 @@ All Stripe Connect features have been implemented for both backend and frontend.
 **Reports Routes** (`/api/reports`):
 
 - ✅ `GET /revenue` - Platform-wide revenue with date filters
-  - Total revenue, platform fees, beautician earnings
+  - Total revenue, platform fees, specialist earnings
   - Bookings vs products breakdown
-  - Per-beautician aggregation
-- ✅ `GET /beautician-earnings/:beauticianId` - Individual earnings
+  - Per-specialist aggregation
+- ✅ `GET /specialist-earnings/:beauticianId` - Individual earnings
   - Booking revenue with platform fees
-  - Product sales (100% to beautician)
+  - Product sales (100% to specialist)
   - Recent transactions
 
 **Checkout Routes** (Enhanced):
 
 - ✅ Booking checkout: Adds `application_fee_amount` (50 pence) and `transfer_data`
-- ✅ Booking confirm: Tracks Connect payment, updates beautician earnings
-- ✅ Fallback: Regular payment if beautician not connected
+- ✅ Booking confirm: Tracks Connect payment, updates specialist earnings
+- ✅ Fallback: Regular payment if specialist not connected
 
 **Orders Routes** (Enhanced):
 
@@ -70,8 +70,8 @@ All Stripe Connect features have been implemented for both backend and frontend.
 - ✅ `payment_intent.succeeded` - Confirm payments
 - ✅ `payment_intent.payment_failed` - Mark failures
 - ✅ `charge.refunded` - Handle booking/order refunds
-- ✅ `account.updated` - Sync beautician Stripe status
-- ✅ `payout.paid` - Track beautician payouts
+- ✅ `account.updated` - Sync specialist Stripe status
+- ✅ `payout.paid` - Track specialist payouts
 
 #### 3. Payment Utilities ✅
 
@@ -173,21 +173,21 @@ VITE_API_URL=http://localhost:4000
 
 ### Booking Flow (Stripe Connect)
 
-1. Customer books service with beautician
+1. Customer books service with specialist
 2. Payment Intent created with:
    - `application_fee_amount: 50` (£0.50 platform fee)
    - `transfer_data: { destination: beauticianStripeAccount }`
 3. On payment success:
    - Beautician receives: `price - £0.50` → Direct to their bank
    - Platform receives: `£0.50` → Platform Stripe account
-4. Webhook confirms payment, updates `beautician.totalEarnings`
+4. Webhook confirms payment, updates `specialist.totalEarnings`
 
 ### Product Flow (Stripe Connect)
 
-1. Customer buys products from multiple beauticians
+1. Customer buys products from multiple specialists
 2. Order checkout creates session with line items
 3. After payment success:
-   - For each beautician: 100% transfer via Connect
+   - For each specialist: 100% transfer via Connect
    - `transfer_data: { destination: beauticianStripeAccount, amount: fullProductPrice }`
 4. No platform fees on products
 
@@ -196,9 +196,9 @@ VITE_API_URL=http://localhost:4000
 1. Admin/customer requests refund
 2. Backend calls `refundPayment()` with:
    - `refundApplicationFee: true` - Platform fee refunded to customer
-   - `reverseTransfer: true` - Funds taken back from beautician account
+   - `reverseTransfer: true` - Funds taken back from specialist account
 3. Customer receives full refund
-4. Platform and beautician accounts adjusted automatically
+4. Platform and specialist accounts adjusted automatically
 
 ---
 
@@ -241,11 +241,11 @@ VITE_API_URL=http://localhost:4000
 
 - Platform revenue overview:
   - Total platform fees collected
-  - Total beautician earnings
+  - Total specialist earnings
   - Bookings vs products split
   - Transaction counts
 - Date range filtering
-- Per-beautician breakdown
+- Per-specialist breakdown
 - Visual charts
 
 ---
@@ -299,7 +299,7 @@ payout.paid
 
 3. **End-to-End Testing**:
 
-   - Create test beautician
+   - Create test specialist
    - Complete Stripe onboarding in test mode
    - Book service, verify payment split
    - Buy product, verify 100% transfer
@@ -317,7 +317,7 @@ payout.paid
 ### Platform Fee Structure
 
 - **Bookings**: £0.50 per appointment (fixed fee)
-- **Products**: 0% (100% to beautician)
+- **Products**: 0% (100% to specialist)
 - **Refunds**: Automatically reversed (platform fee returned to customer)
 
 ### Stripe Account Type
@@ -330,7 +330,7 @@ payout.paid
 
 - **Bookings**: Immediate transfer minus platform fee
 - **Products**: Immediate 100% transfer
-- **Timing**: Funds appear in beautician Stripe balance immediately, then payout to bank account per their payout schedule
+- **Timing**: Funds appear in specialist Stripe balance immediately, then payout to bank account per their payout schedule
 
 ### Security
 

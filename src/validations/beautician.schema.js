@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-// Working hours schema for beautician schedule
+// Working hours schema for specialist schedule
 const workingHoursSchema = z.object({
   dayOfWeek: z.number().int().min(0).max(6), // 0 = Sunday, 6 = Saturday
   start: z
@@ -36,7 +36,7 @@ const timeOffSchema = z.object({
   reason: z.string().max(500).optional(),
 });
 
-// Image schema for beautician profile
+// Image schema for specialist profile
 // Allow null or a valid complete image object
 const imageSchema = z
   .union([
@@ -52,7 +52,7 @@ const imageSchema = z
   ])
   .optional();
 
-// Base beautician schema (common fields)
+// Base specialist schema (common fields)
 const baseBeauticianSchema = z.object({
   name: z.string().min(1, "Name is required").max(200),
   email: z.string().email("Invalid email").optional(),
@@ -71,10 +71,10 @@ const baseBeauticianSchema = z.object({
     .optional(),
 });
 
-// Create beautician schema (POST)
+// Create specialist schema (POST)
 export const createBeauticianSchema = baseBeauticianSchema;
 
-// Update beautician schema (PATCH) - all fields optional
+// Update specialist schema (PATCH) - all fields optional
 export const updateBeauticianSchema = baseBeauticianSchema.partial();
 
 // Query params schema for list endpoint
@@ -90,11 +90,11 @@ export const listBeauticiansQuerySchema = z.object({
 
 // ID param schema (for :id routes)
 export const beauticianIdSchema = z.object({
-  id: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid beautician ID"),
+  id: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid specialist ID"),
 });
 
 /**
- * Validate beautician creation data
+ * Validate specialist creation data
  * @param {unknown} data
  * @returns {{ success: true, data: object } | { success: false, errors: array }}
  */
@@ -117,7 +117,7 @@ export function validateCreateBeautician(data) {
 }
 
 /**
- * Validate beautician update data
+ * Validate specialist update data
  * @param {unknown} data
  * @returns {{ success: true, data: object } | { success: false, errors: array }}
  */

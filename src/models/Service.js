@@ -19,21 +19,21 @@ const ServiceSchema = new mongoose.Schema(
     category: String,
     imageUrl: String,
     variants: [VariantSchema],
-    // Admin system field (preferred) - single primary beautician
+    // Admin system field (preferred) - single primary specialist
     primaryBeauticianId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Beautician",
+      ref: "Specialist",
       index: true, // Index for role-based queries
     },
-    // Admin system field - additional beauticians who can perform this service
+    // Admin system field - additional specialists who can perform this service
     additionalBeauticianIds: [
-      { type: mongoose.Schema.Types.ObjectId, ref: "Beautician" },
+      { type: mongoose.Schema.Types.ObjectId, ref: "Specialist" },
     ],
-    // Preferred single-beautician assignment (legacy)
-    beauticianId: { type: mongoose.Schema.Types.ObjectId, ref: "Beautician" },
+    // Preferred single-specialist assignment (legacy)
+    beauticianId: { type: mongoose.Schema.Types.ObjectId, ref: "Specialist" },
     // Backwards-compatibility for older data
     beauticianIds: [
-      { type: mongoose.Schema.Types.ObjectId, ref: "Beautician" },
+      { type: mongoose.Schema.Types.ObjectId, ref: "Specialist" },
     ],
     // Additional fields for admin system
     price: Number,

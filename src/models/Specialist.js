@@ -122,5 +122,5 @@ SpecialistSchema.index({ stripeAccountId: 1 }); // Already has index
 // Apply multi-tenant plugin
 SpecialistSchema.plugin(multiTenantPlugin);
 
-// Export with collection name "beauticians" to maintain backward compatibility with existing database
-export default mongoose.model("Specialist", SpecialistSchema, "beauticians");
+// Export with collection name "specialists" to maintain backward compatibility with existing database
+export default mongoose.model("Specialist", SpecialistSchema, "specialists");

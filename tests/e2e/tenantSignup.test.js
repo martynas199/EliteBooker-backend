@@ -105,7 +105,7 @@ describe("E2E: Complete Multi-Tenant Flow", () => {
     console.log("✓ Admin authenticated and can access dashboard");
   });
 
-  it("Step 3: Should create a beautician for the tenant", async () => {
+  it("Step 3: Should create a specialist for the tenant", async () => {
     const beauticianData = {
       name: "Jane Smith",
       email: "jane@mybeautysalon.com",
@@ -115,7 +115,7 @@ describe("E2E: Complete Multi-Tenant Flow", () => {
     };
 
     const response = await request(app)
-      .post("/api/beauticians")
+      .post("/api/specialists")
       .set("Authorization", `Bearer ${adminToken}`)
       .send(beauticianData)
       .expect(201);
@@ -128,9 +128,9 @@ describe("E2E: Complete Multi-Tenant Flow", () => {
     console.log("✓ Beautician created:", response.body.name);
   });
 
-  it("Step 4: Should initiate Stripe Connect onboarding for beautician", async () => {
+  it("Step 4: Should initiate Stripe Connect onboarding for specialist", async () => {
     const response = await request(app)
-      .post(`/api/beauticians/${beauticianId}/stripe/onboard`)
+      .post(`/api/specialists/${beauticianId}/stripe/onboard`)
       .set("Authorization", `Bearer ${adminToken}`)
       .expect(200);
 
@@ -368,14 +368,14 @@ describe("E2E: Multi-Tenant Summary", () => {
   it("Should log complete flow summary", async () => {
     const tenants = await Tenant.countDocuments({});
     const admins = await Admin.countDocuments({});
-    const beauticians = await Beautician.countDocuments({});
+    const specialists = await Beautician.countDocuments({});
     const services = await Service.countDocuments({});
     const appointments = await Appointment.countDocuments({});
 
     console.log("\n📊 Multi-Tenant Test Summary:");
     console.log(`   Tenants Created: ${tenants}`);
     console.log(`   Admins Created: ${admins}`);
-    console.log(`   Beauticians Created: ${beauticians}`);
+    console.log(`   Beauticians Created: ${specialists}`);
     console.log(`   Services Created: ${services}`);
     console.log(`   Appointments Created: ${appointments}`);
     console.log("\n✅ All multi-tenant E2E tests passed!\n");

@@ -1,5 +1,5 @@
 /**
- * Script to list all beauticians in the database
+ * Script to list all specialists in the database
  *
  * Usage:
  * node scripts/listBeauticians.js
@@ -24,23 +24,23 @@ async function listBeauticians() {
     await mongoose.connect(mongoUri);
     console.log("✅ Connected to MongoDB\n");
 
-    // Find all beauticians
-    const beauticians = await Beautician.find({}).lean();
+    // Find all specialists
+    const specialists = await Beautician.find({}).lean();
 
-    if (beauticians.length === 0) {
-      console.log("⚠️  No beauticians found in the database.");
+    if (specialists.length === 0) {
+      console.log("⚠️  No specialists found in the database.");
       console.log(
-        "\nYou need to create a beautician first through the admin dashboard:"
+        "\nYou need to create a specialist first through the admin dashboard:"
       );
-      console.log("1. Go to /admin/beauticians");
+      console.log("1. Go to /admin/specialists");
       console.log("2. Click 'Add Beautician'");
       console.log("3. Fill in the details and save");
       console.log(
-        "4. Then run this script again to get the beautician's email"
+        "4. Then run this script again to get the specialist's email"
       );
     } else {
       console.log("📋 Available Beauticians:\n");
-      beauticians.forEach((b, index) => {
+      specialists.forEach((b, index) => {
         console.log(`${index + 1}. ${b.name}`);
         console.log(`   Email: ${b.email || "(no email)"}`);
         console.log(`   ID: ${b._id}`);

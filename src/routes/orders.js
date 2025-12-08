@@ -107,36 +107,36 @@ router.get("/confirm-checkout", async (req, res) => {
     order.stripePaymentIntentId =
       session.payment_intent?.id || session.payment_intent;
 
-    // Process Stripe Connect payment for beautician-owned products
-    // For destination charges, payment is automatically sent to beautician
-    // We only need to update the payment status and beautician earnings
+    // Process Stripe Connect payment for specialist-owned products
+    // For destination charges, payment is automatically sent to specialist
+    // We only need to update the payment status and specialist earnings
     if (order.stripeConnectPayments && order.stripeConnectPayments.length > 0) {
       for (const payment of order.stripeConnectPayments) {
-        const beautician = await Specialist.findById(payment.beauticianId);
+        const specialist = await Specialist.findById(payment.beauticianId);
 
         if (
-          beautician &&
+          specialist &&
           Specialist.stripeAccountId &&
           Specialist.stripeStatus === "connected"
         ) {
           try {
-            // Destination charge: payment already sent directly to beautician
+            // Destination charge: payment already sent directly to specialist
             // Beautician pays all Stripe fees, platform pays nothing
             payment.status = "succeeded";
             payment.paymentIntentId =
               session.payment_intent?.id || session.payment_intent;
 
-            // Update beautician earnings
+            // Update specialist earnings
             await Specialist.findByIdAndUpdate(Specialist._id, {
               $inc: { totalEarnings: payment.amount },
             });
 
             console.log(
-              `[PRODUCT ORDER] Direct payment processed for beautician ${Specialist._id} - amount: £${payment.amount}`
+              `[PRODUCT ORDER] Direct payment processed for specialist ${Specialist._id} - amount: £${payment.amount}`
             );
           } catch (error) {
             console.error(
-              `[PRODUCT ORDER] Payment processing failed for beautician ${Specialist._id}:`,
+              `[PRODUCT ORDER] Payment processing failed for specialist ${Specialist._id}:`,
               error
             );
             payment.status = "failed";
@@ -189,7 +189,7 @@ router.get("/confirm-checkout", async (req, res) => {
 
       // Send admin notification email
 
-      // Send notifications to beauticians for their products
+      // Send notifications to specialists for their products
       const itemsByBeautician = {};
       for (const item of populatedOrder.items) {
         const beauticianId = item.productId?.beauticianId;
@@ -204,11 +204,11 @@ router.get("/confirm-checkout", async (req, res) => {
 
       for (const [beauticianId, items] of Object.entries(itemsByBeautician)) {
         try {
-          const beautician = await Specialist.findById(beauticianId);
-          if (beautician?.email) {
+          const specialist = await Specialist.findById(beauticianId);
+          if (specialist?.email) {
             await sendBeauticianProductOrderNotification({
               order: populatedOrder,
-              beautician,
+              specialist,
               beauticianItems: items,
             });
             console.log(
@@ -217,10 +217,10 @@ router.get("/confirm-checkout", async (req, res) => {
           }
         } catch (beauticianEmailErr) {
           console.error(
-            `[ORDER CONFIRM] Failed to send beautician notification to ${beauticianId}:`,
+            `[ORDER CONFIRM] Failed to send specialist notification to ${beauticianId}:`,
             beauticianEmailErr
           );
-          // Continue with other beauticians
+          // Continue with other specialists
         }
       }
     } catch (emailErr) {
@@ -285,7 +285,7 @@ router.post("/checkout", async (req, res) => {
         .json({ error: "Order must have at least one item" });
     }
 
-    // Validate and prepare items with beautician info
+    // Validate and prepare items with specialist info
     const validatedItems = [];
     let subtotal = 0;
 
@@ -299,10 +299,10 @@ router.post("/checkout", async (req, res) => {
           .json({ error: `Product not found: ${item.productId}` });
       }
 
-      // Security: Validate beautician ownership
+      // Security: Validate specialist ownership
       if (!product.beauticianId) {
         return res.status(400).json({
-          error: `Product "${product.title}" is not assigned to a beautician`,
+          error: `Product "${product.title}" is not assigned to a specialist`,
         });
       }
 
@@ -353,13 +353,13 @@ router.post("/checkout", async (req, res) => {
         });
       }
 
-      // Security: Validate beautician has connected Stripe account
+      // Security: Validate specialist has connected Stripe account
       if (
         !product.beauticianId.stripeAccountId ||
         product.beauticianId.stripeStatus !== "connected"
       ) {
         return res.status(400).json({
-          error: `Product "${product.title}" belongs to a beautician who hasn't set up payment processing yet. Please contact support.`,
+          error: `Product "${product.title}" belongs to a specialist who hasn't set up payment processing yet. Please contact support.`,
         });
       }
 
@@ -372,7 +372,7 @@ router.post("/checkout", async (req, res) => {
         quantity: item.quantity,
         image: product.image?.url || product.images?.[0]?.url || "",
         beauticianId: product.beauticianId._id,
-        beautician: product.beauticianId,
+        specialist: product.beauticianId,
       });
 
       subtotal += price * item.quantity;
@@ -417,7 +417,7 @@ router.post("/checkout", async (req, res) => {
 
     await order.save();
 
-    // Group items by beautician for Stripe Connect
+    // Group items by specialist for Stripe Connect
     const itemsByBeautician = new Map();
     for (const item of validatedItems) {
       const beauticianId = item.beauticianId.toString();
@@ -427,11 +427,11 @@ router.post("/checkout", async (req, res) => {
       itemsByBeautician.get(beauticianId).push(item);
     }
 
-    // Security: Enforce single beautician per order
+    // Security: Enforce single specialist per order
     if (itemsByBeautician.size > 1) {
       return res.status(400).json({
         error:
-          "Cannot checkout with products from multiple beauticians. Please complete separate orders for each Specialist.",
+          "Cannot checkout with products from multiple specialists. Please complete separate orders for each Specialist.",
       });
     }
 
@@ -457,7 +457,7 @@ router.post("/checkout", async (req, res) => {
         });
       }
 
-      // Track payment for beautician-owned products
+      // Track payment for specialist-owned products
       const firstItem = items[0];
       const itemsTotal = items.reduce(
         (sum, item) => sum + item.price * item.quantity,
@@ -493,21 +493,21 @@ router.post("/checkout", async (req, res) => {
     });
 
     // Create Stripe Checkout session
-    // IMPORTANT: For product orders, payments go directly to beauticians
-    // - Single beautician: destination charge (beautician pays ALL fees)
-    // - Multiple beauticians: RESTRICT to single beautician per order
+    // IMPORTANT: For product orders, payments go directly to specialists
+    // - Single specialist: destination charge (specialist pays ALL fees)
+    // - Multiple specialists: RESTRICT to single specialist per order
     // - NO application_fee_amount for products (no platform fee)
     // - NO transfers (avoid platform paying fees)
 
-    // Validate single beautician per order
+    // Validate single specialist per order
     if (stripeConnectPayments.length > 1) {
       return res.status(400).json({
         error:
-          "Cannot checkout with products from multiple beauticians. Please complete separate orders for each Specialist.",
+          "Cannot checkout with products from multiple specialists. Please complete separate orders for each Specialist.",
       });
     }
 
-    // Validate beautician Stripe account
+    // Validate specialist Stripe account
     if (stripeConnectPayments.length === 1) {
       const payment = stripeConnectPayments[0];
       if (!payment.beauticianStripeAccount) {
@@ -599,7 +599,7 @@ router.post("/checkout", async (req, res) => {
       };
 
       console.log(
-        `[PRODUCT CHECKOUT] Payment with ${platformFee}p platform fee to beautician ${payment.beauticianId}`
+        `[PRODUCT CHECKOUT] Payment with ${platformFee}p platform fee to specialist ${payment.beauticianId}`
       );
     }
 
@@ -925,7 +925,7 @@ router.post("/:id/refund", async (req, res) => {
     // For product orders with destination charges, use reverse_transfer
     const refund = await stripe.refunds.create({
       payment_intent: order.stripePaymentIntentId,
-      reverse_transfer: true, // Return money from beautician to customer
+      reverse_transfer: true, // Return money from specialist to customer
       metadata: {
         orderId: String(order._id),
         reason: reason || "Customer request",
@@ -939,7 +939,7 @@ router.post("/:id/refund", async (req, res) => {
         if (payment.status === "succeeded") {
           payment.status = "refunded";
 
-          // Deduct from beautician earnings
+          // Deduct from specialist earnings
           await Specialist.findByIdAndUpdate(payment.beauticianId, {
             $inc: { totalEarnings: -payment.amount },
           });

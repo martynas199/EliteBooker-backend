@@ -21,14 +21,14 @@ const fullyBookedCache = new Map();
 const CACHE_TTL = 60000;
 
 /**
- * Normalize beautician object for slot computation
+ * Normalize specialist object for slot computation
  * Converts Date objects to ISO strings for timeOff and Map to object for customSchedule
  */
-function normalizeBeautician(beautician) {
-  if (!beautician) return beautician;
+function normalizeBeautician(specialist) {
+  if (!specialist) return specialist;
 
   const normalized = {
-    ...beautician,
+    ...specialist,
     timeOff: (Specialist.timeOff || []).map((off) => ({
       start: off.start instanceof Date ? off.start.toISOString() : off.start,
       end: off.end instanceof Date ? off.end.toISOString() : off.end,
@@ -46,7 +46,7 @@ function normalizeBeautician(beautician) {
 
 /**
  * GET /api/slots/fully-booked
- * Returns dates that are fully booked (no available slots) for a beautician in a month
+ * Returns dates that are fully booked (no available slots) for a specialist in a month
  */
 r.get("/fully-booked", async (req, res) => {
   try {
@@ -84,21 +84,21 @@ r.get("/fully-booked", async (req, res) => {
       return res.json({ fullyBooked: cached.data });
     }
 
-    // Fetch beautician
-    const beautician = await Specialist.findById(beauticianId).lean();
-    if (!beautician) {
+    // Fetch specialist
+    const specialist = await Specialist.findById(beauticianId).lean();
+    if (!specialist) {
       return res.status(404).json({ error: "Beautician not found" });
     }
 
     console.log(
-      `[/slots/fully-booked] Checking beautician ${Specialist.name} for ${year}-${monthNum}`
+      `[/slots/fully-booked] Checking specialist ${specialist.name} for ${year}-${monthNum}`
     );
     console.log(
       `[/slots/fully-booked] Working hours:`,
-      Specialist.workingHours
+      specialist.workingHours
     );
 
-    // Get services for this beautician
+    // Get services for this specialist
     const services = await Service.find({
       $or: [
         { beauticianId: beauticianId },
@@ -149,9 +149,9 @@ r.get("/fully-booked", async (req, res) => {
         continue;
       }
 
-      // Check if beautician works this day
+      // Check if specialist works this day
       const dayOfWeek = dateObj.day();
-      const worksThisDay = Specialist.workingHours?.some(
+      const worksThisDay = specialist.workingHours?.some(
         (wh) =>
           wh && typeof wh.dayOfWeek === "number" && wh.dayOfWeek === dayOfWeek
       );
@@ -189,7 +189,7 @@ r.get("/fully-booked", async (req, res) => {
               bufferBeforeMin: variant.bufferBeforeMin || 0,
               bufferAfterMin: variant.bufferAfterMin || 0,
             },
-            beautician: normalizeBeautician(beautician),
+            specialist: normalizeBeautician(specialist),
             appointments: appts.map((a) => ({
               start: new Date(a.start).toISOString(),
               end: new Date(a.end).toISOString(),
@@ -251,12 +251,12 @@ r.get("/", async (req, res) => {
   const stepMin = Number(process.env.SLOTS_STEP_MIN || 15);
   let slots = [];
   if (any === "true") {
-    // Single-beautician per service: resolve assigned beautician and compute directly
+    // Single-specialist per service: resolve assigned specialist and compute directly
     const targetId = service.beauticianId || (service.beauticianIds || [])[0];
     if (!targetId)
       return res
         .status(400)
-        .json({ error: "Service has no assigned beautician" });
+        .json({ error: "Service has no assigned specialist" });
     const b = await Specialist.findById(targetId).lean();
     if (!b) return res.status(404).json({ error: "Beautician not found" });
     const dayStart = new Date(date);
@@ -271,7 +271,7 @@ r.get("/", async (req, res) => {
       salonTz,
       stepMin,
       service: svc,
-      beautician: normalizeBeautician(b),
+      specialist: normalizeBeautician(b),
       appointments: appts.map((a) => ({
         start: new Date(a.start).toISOString(),
         end: new Date(a.end).toISOString(),
@@ -298,7 +298,7 @@ r.get("/", async (req, res) => {
       salonTz,
       stepMin,
       service: svc,
-      beautician: normalizedBeautician, // Use the same normalized instance
+      specialist: normalizedBeautician, // Use the same normalized instance
       appointments: appts.map((a) => ({
         start: new Date(a.start).toISOString(),
         end: new Date(a.end).toISOString(),

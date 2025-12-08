@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Google Calendar integration allows beauticians to automatically sync their appointments to their personal Google Calendar. When a booking is made, confirmed, or cancelled, it's automatically reflected in their calendar.
+The Google Calendar integration allows specialists to automatically sync their appointments to their personal Google Calendar. When a booking is made, confirmed, or cancelled, it's automatically reflected in their calendar.
 
 ## Setup Steps
 
@@ -99,7 +99,7 @@ Each calendar event includes:
 
 - OAuth 2.0 secure authentication
 - Tokens stored encrypted in database
-- Only beauticians can connect their own calendar
+- Only specialists can connect their own calendar
 - Automatic token refresh (no re-authorization needed)
 
 ## Disconnect Calendar
@@ -121,12 +121,12 @@ Beauticians can disconnect their Google Calendar at any time from the Settings p
 ### "Token expired"
 
 - The system automatically refreshes tokens
-- If it fails, beautician needs to reconnect their calendar
+- If it fails, specialist needs to reconnect their calendar
 
 ### Events not syncing
 
 - Check backend logs for errors
-- Verify beautician has `googleCalendar.enabled = true` in database
+- Verify specialist has `googleCalendar.enabled = true` in database
 - Check that appointment has `beauticianId` set
 
 ## API Endpoints
@@ -135,7 +135,7 @@ Beauticians can disconnect their Google Calendar at any time from the Settings p
 
 Get Google OAuth URL to connect calendar
 
-- **Auth**: Required (beautician only)
+- **Auth**: Required (specialist only)
 - **Returns**: `{ authUrl: string }`
 
 ### `GET /api/calendar/callback`
@@ -149,7 +149,7 @@ OAuth callback handler (used by Google after authorization)
 
 Disconnect Google Calendar
 
-- **Auth**: Required (beautician only)
+- **Auth**: Required (specialist only)
 - **Returns**: `{ success: boolean }`
 
 ### `GET /api/calendar/status`

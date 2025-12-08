@@ -92,8 +92,8 @@ Tests the complete multi-tenant workflow:
 
 1. **Tenant Signup**: Creates new tenant via `/api/tenants/create`
 2. **Admin Authentication**: Verifies admin JWT token and dashboard access
-3. **Beautician Creation**: Creates beautician within tenant context
-4. **Stripe Connect**: Initiates beautician Stripe Connect onboarding
+3. **Beautician Creation**: Creates specialist within tenant context
+4. **Stripe Connect**: Initiates specialist Stripe Connect onboarding
 5. **Service Creation**: Creates bookable service
 6. **Slot Availability**: Checks available time slots
 7. **Appointment Booking**: Creates customer appointment
@@ -140,7 +140,7 @@ Tests the complete multi-tenant workflow:
 - `/api/tenants/*`
 - `/api/appointments/*`
 - `/api/services/*`
-- `/api/beauticians/*`
+- `/api/specialists/*`
 
 ## Common Issues & Solutions
 

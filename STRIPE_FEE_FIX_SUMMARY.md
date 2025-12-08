@@ -20,9 +20,9 @@
 
 - **File**: `src/routes/orders.js`
 - **Change**: Added smart hybrid approach
-  - Single-beautician orders: Use `on_behalf_of` (beautician pays fees)
-  - Multi-beautician orders: Use transfers (platform pays fees)
-- **Result**: 95%+ of product orders have fees paid by beautician
+  - Single-specialist orders: Use `on_behalf_of` (specialist pays fees)
+  - Multi-specialist orders: Use transfers (platform pays fees)
+- **Result**: 95%+ of product orders have fees paid by specialist
 
 ---
 
@@ -32,7 +32,7 @@
 
 ```
 £50 Service
-├─ Stripe Fee: £1.65 (paid by beautician)
+├─ Stripe Fee: £1.65 (paid by specialist)
 ├─ Platform Fee: £0.50 (goes to platform)
 └─ Beautician Gets: £47.85
 ```
@@ -41,7 +41,7 @@
 
 ```
 £100 Products
-├─ Stripe Fee: £3.10 (paid by beautician)
+├─ Stripe Fee: £3.10 (paid by specialist)
 ├─ Platform Fee: £0.00
 └─ Beautician Gets: £96.90
 ```
@@ -65,7 +65,7 @@ See `TEST_STRIPE_FEES.md` for complete testing guide.
 
 1. Make a booking with test card `4242 4242 4242 4242`
 2. Check Stripe Dashboard → Connected accounts
-3. Verify fee is charged to beautician, not platform
+3. Verify fee is charged to specialist, not platform
 
 ---
 

@@ -8,7 +8,7 @@
   ],
   "testPathIgnorePatterns": [
     "/node_modules/",
-    "beautician.schema.test.js",
+    "specialist.schema.test.js",
     "service.schema.test.js",
     "slotGenerator.test.js",
     "scripts/tests/"

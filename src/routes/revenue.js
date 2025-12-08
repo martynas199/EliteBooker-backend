@@ -7,7 +7,7 @@ const router = express.Router();
 /**
  * GET /api/revenue
  * Query params: startDate, endDate (YYYY-MM-DD)
- * Returns revenue analytics by beautician
+ * Returns revenue analytics by specialist
  */
 router.get("/", async (req, res) => {
   try {
@@ -43,7 +43,7 @@ router.get("/", async (req, res) => {
       .populate("serviceId", "name")
       .lean();
 
-    // Group by beautician and calculate revenue
+    // Group by specialist and calculate revenue
     const revenueByBeautician = {};
 
     appointments.forEach((apt) => {
@@ -53,7 +53,7 @@ router.get("/", async (req, res) => {
 
       if (!revenueByBeautician[beauticianId]) {
         revenueByBeautician[beauticianId] = {
-          beautician: beauticianName,
+          specialist: beauticianName,
           beauticianId: beauticianId,
           revenue: 0,
           bookings: 0,
@@ -74,7 +74,7 @@ router.get("/", async (req, res) => {
     // Convert to array and sort by revenue (descending)
     const result = Object.values(revenueByBeautician)
       .map((item) => ({
-        beautician: item.beautician,
+        specialist: item.specialist,
         beauticianId: item.beauticianId,
         revenue: parseFloat(item.revenue.toFixed(2)),
         bookings: item.bookings,
@@ -90,7 +90,7 @@ router.get("/", async (req, res) => {
       endDate,
       totalRevenue: parseFloat(totalRevenue.toFixed(2)),
       totalBookings: appointments.length,
-      beauticians: result,
+      specialists: result,
     });
   } catch (err) {
     console.error("Revenue API error:", err);

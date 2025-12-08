@@ -219,6 +219,11 @@ const TenantSchema = new mongoose.Schema(
       enableMemberships: { type: Boolean, default: false },
       enableReviews: { type: Boolean, default: true },
       enableLoyaltyProgram: { type: Boolean, default: false },
+      // Platform Features
+      smsConfirmations: { type: Boolean, default: false },
+      smsReminders: { type: Boolean, default: false },
+      onlinePayments: { type: Boolean, default: true },
+      emailNotifications: { type: Boolean, default: true },
     },
     // Trial and demo flags
     isTrial: {

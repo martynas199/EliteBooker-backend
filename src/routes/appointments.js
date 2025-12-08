@@ -41,7 +41,7 @@ r.get("/", async (req, res) => {
           a.serviceId && typeof a.serviceId === "object" && a.serviceId._id
             ? a.serviceId
             : null,
-        beautician:
+        specialist:
           a.beauticianId &&
           typeof a.beauticianId === "object" &&
           a.beauticianId._id
@@ -74,7 +74,7 @@ r.get("/", async (req, res) => {
           a.serviceId && typeof a.serviceId === "object" && a.serviceId._id
             ? a.serviceId
             : null,
-        beautician:
+        specialist:
           a.beauticianId &&
           typeof a.beauticianId === "object" &&
           a.beauticianId._id
@@ -97,7 +97,7 @@ r.get("/:id", async (req, res) => {
     Service.findById(a.serviceId).lean(),
     Specialist.findById(a.beauticianId).lean(),
   ]);
-  res.json({ ...a, service: s || null, beautician: b || null });
+  res.json({ ...a, service: s || null, specialist: b || null });
 });
 r.post("/", async (req, res) => {
   const {
@@ -114,17 +114,17 @@ r.post("/", async (req, res) => {
   if (!service) return res.status(404).json({ error: "Service not found" });
   const variant = (service.variants || []).find((v) => v.name === variantName);
   if (!variant) return res.status(404).json({ error: "Variant not found" });
-  let beautician = null;
+  let specialist = null;
   if (any) {
-    beautician = await Specialist.findOne({
+    specialist = await Specialist.findOne({
       _id: { $in: service.beauticianIds },
       active: true,
     }).lean();
   } else {
-    beautician = await Specialist.findById(beauticianId).lean();
+    specialist = await Specialist.findById(beauticianId).lean();
   }
-  if (!beautician)
-    return res.status(400).json({ error: "No beautician available" });
+  if (!specialist)
+    return res.status(400).json({ error: "No specialist available" });
   const start = new Date(startISO);
   const end = new Date(
     start.getTime() +
@@ -168,7 +168,7 @@ r.post("/", async (req, res) => {
   sendConfirmationEmail({
     appointment: appt.toObject(),
     service,
-    beautician,
+    specialist,
   }).catch((err) => {
     console.error("Failed to send confirmation email:", err);
   });
@@ -204,7 +204,7 @@ r.post("/:id/cancel", async (req, res) => {
       });
     }
     const policy = (await CancellationPolicy.findOne({
-      scope: "beautician",
+      scope: "specialist",
       beauticianId: appt.beauticianId,
     }).lean()) ||
       (await CancellationPolicy.findOne({ scope: "salon" }).lean()) || {
@@ -333,7 +333,7 @@ r.get("/:id/cancel/preview", async (req, res) => {
     const appt = await Appointment.findById(id).lean();
     if (!appt) return res.status(404).json({ error: "Appointment not found" });
     const policy = (await CancellationPolicy.findOne({
-      scope: "beautician",
+      scope: "specialist",
       beauticianId: appt.beauticianId,
     }).lean()) ||
       (await CancellationPolicy.findOne({ scope: "salon" }).lean()) || {
@@ -404,7 +404,7 @@ r.patch("/:id", async (req, res) => {
       return res.status(404).json({ error: "Appointment not found" });
     }
 
-    // Check if time slot is available for the new time/beautician
+    // Check if time slot is available for the new time/specialist
     if (start && beauticianId) {
       const appointmentStart = new Date(start);
       const appointmentEnd = end
@@ -421,7 +421,7 @@ r.patch("/:id", async (req, res) => {
       if (conflict) {
         return res
           .status(409)
-          .json({ error: "Time slot not available for this beautician" });
+          .json({ error: "Time slot not available for this specialist" });
       }
     }
 
@@ -450,7 +450,7 @@ r.patch("/:id", async (req, res) => {
           updated.serviceId && typeof updated.serviceId === "object"
             ? updated.serviceId
             : null,
-        beautician:
+        specialist:
           updated.beauticianId && typeof updated.beauticianId === "object"
             ? updated.beauticianId
             : null,
@@ -464,18 +464,18 @@ r.patch("/:id", async (req, res) => {
   }
 });
 
-// Delete all appointments for a specific beautician
-r.delete("/beautician/:beauticianId", async (req, res) => {
+// Delete all appointments for a specific specialist
+r.delete("/specialist/:beauticianId", async (req, res) => {
   try {
     const { beauticianId } = req.params;
 
-    // Verify beautician exists
-    const beautician = await Specialist.findById(beauticianId);
-    if (!beautician) {
+    // Verify specialist exists
+    const specialist = await Specialist.findById(beauticianId);
+    if (!specialist) {
       return res.status(404).json({ error: "Beautician not found" });
     }
 
-    // Delete all appointments for this beautician
+    // Delete all appointments for this specialist
     const result = await Appointment.deleteMany({ beauticianId });
 
     res.json({

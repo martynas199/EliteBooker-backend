@@ -3,11 +3,11 @@ import { describe, it } from "node:test";
 import {
   validateCreateBeautician,
   validateUpdateBeautician,
-} from "../src/validations/beautician.schema.js";
+} from "../src/validations/specialist.schema.js";
 
 describe("Beautician Schema Validation", () => {
   describe("validateCreateBeautician", () => {
-    it("should validate a valid beautician", () => {
+    it("should validate a valid specialist", () => {
       const validBeautician = {
         name: "Jane Doe",
         email: "jane@example.com",
@@ -48,7 +48,7 @@ describe("Beautician Schema Validation", () => {
       assert.ok(result.errors.some((e) => e.path === "email"));
     });
 
-    it("should validate beautician with working hours", () => {
+    it("should validate specialist with working hours", () => {
       const validBeautician = {
         name: "Jane Doe",
         workingHours: [
@@ -103,7 +103,7 @@ describe("Beautician Schema Validation", () => {
       assert.equal(result.success, false);
     });
 
-    it("should validate beautician with time off", () => {
+    it("should validate specialist with time off", () => {
       const validBeautician = {
         name: "Jane Doe",
         timeOff: [
@@ -135,7 +135,7 @@ describe("Beautician Schema Validation", () => {
       assert.equal(result.success, false);
     });
 
-    it("should validate beautician with image", () => {
+    it("should validate specialist with image", () => {
       const validBeautician = {
         name: "Jane Doe",
         image: {
@@ -163,7 +163,7 @@ describe("Beautician Schema Validation", () => {
       assert.ok(result.errors.some((e) => e.path === "color"));
     });
 
-    it("should validate beautician with minimal fields", () => {
+    it("should validate specialist with minimal fields", () => {
       const minimalBeautician = {
         name: "Jane Doe",
       };

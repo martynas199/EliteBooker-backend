@@ -10,8 +10,8 @@ All backend functionality for Stripe Connect has been successfully implemented a
 
 - **Beautician**: Added Stripe Connect fields (account ID, status, earnings tracking)
 - **Appointment**: Extended payment tracking with platform fees and Connect data
-- **Product**: Added beautician ownership field
-- **Order**: Added multi-beautician payment tracking and refund status
+- **Product**: Added specialist ownership field
+- **Order**: Added multi-specialist payment tracking and refund status
 
 #### 2. API Endpoints ✅
 
@@ -25,12 +25,12 @@ All backend functionality for Stripe Connect has been successfully implemented a
 **Revenue Reporting** (`/api/reports/`)
 
 - `GET /revenue` - Platform-wide revenue with date filtering
-- `GET /beautician-earnings/:beauticianId` - Individual earnings breakdown
+- `GET /specialist-earnings/:beauticianId` - Individual earnings breakdown
 
 **Product Checkout** (`/api/orders/`)
 
 - `POST /checkout` - Create Stripe checkout session with Connect transfers
-- `GET /confirm-checkout` - Process transfers to beauticians after payment
+- `GET /confirm-checkout` - Process transfers to specialists after payment
 - `POST /:id/refund` - Full refund with reversed transfers
 
 #### 3. Payment Flows ✅
@@ -38,16 +38,16 @@ All backend functionality for Stripe Connect has been successfully implemented a
 **Booking Payments** (`/api/checkout/`)
 
 - Automatically deducts £0.50 platform fee
-- Transfers remaining amount to beautician's Stripe account
-- Tracks earnings and updates beautician totals
-- Falls back to regular payment if beautician not connected
+- Transfers remaining amount to specialist's Stripe account
+- Tracks earnings and updates specialist totals
+- Falls back to regular payment if specialist not connected
 
 **Product Payments** (`/api/orders/checkout`)
 
-- Groups products by beautician ownership
+- Groups products by specialist ownership
 - Creates transfers after payment completion
 - 100% goes to product owner (no platform fee)
-- Supports multi-beautician orders
+- Supports multi-specialist orders
 
 #### 4. Refund Logic ✅
 
@@ -55,14 +55,14 @@ All backend functionality for Stripe Connect has been successfully implemented a
 
 - Enhanced `refundPayment()` function with Connect parameters
 - `refund_application_fee: true` - Returns £0.50 to platform
-- `reverse_transfer: true` - Takes money back from beautician
+- `reverse_transfer: true` - Takes money back from specialist
 - Automatic earnings deduction
 
 **Product Refunds** (`/api/orders/:id/refund`)
 
-- Reverses all transfers to beauticians
+- Reverses all transfers to specialists
 - Restores product stock
-- Deducts from beautician earnings
+- Deducts from specialist earnings
 - Updates order and payment status
 
 #### 5. Webhook Handlers ✅
@@ -72,8 +72,8 @@ Enhanced `/api/webhooks/stripe` with Connect events:
 - `payment_intent.succeeded` - Confirm booking/order
 - `payment_intent.payment_failed` - Mark failures
 - `charge.refunded` - Handle refunds
-- `account.updated` - Sync beautician Stripe status
-- `payout.paid` - Track beautician payouts
+- `account.updated` - Sync specialist Stripe status
+- `payout.paid` - Track specialist payouts
 
 #### 6. Documentation ✅
 
@@ -162,7 +162,7 @@ Display:
 - [ ] Payout history
 - [ ] Date range filter
 
-API call: `GET /api/reports/beautician-earnings/:beauticianId`
+API call: `GET /api/reports/specialist-earnings/:beauticianId`
 
 ### Priority 3: Admin Revenue Dashboard
 
@@ -172,7 +172,7 @@ Display:
 
 - [ ] Platform earnings (total £0.50 fees collected)
 - [ ] Total platform revenue
-- [ ] Revenue by beautician (table)
+- [ ] Revenue by specialist (table)
 - [ ] Date range filter
 - [ ] Export to CSV button
 - [ ] Revenue charts (optional)
@@ -185,26 +185,26 @@ API call: `GET /api/reports/revenue?startDate=X&endDate=Y`
 
 ### Backend Testing (Can be done via Postman/curl)
 
-- [ ] Create beautician Stripe account
+- [ ] Create specialist Stripe account
 - [ ] Complete onboarding flow
 - [ ] Check account status updates
-- [ ] Book service with connected beautician
+- [ ] Book service with connected specialist
 - [ ] Verify platform fee and transfer
 - [ ] Cancel booking and verify refund
-- [ ] Purchase product from beautician
+- [ ] Purchase product from specialist
 - [ ] Verify product transfer
 - [ ] Refund product order
 - [ ] Check revenue reports
 
 ### Frontend Testing (After UI implementation)
 
-- [ ] Connect button appears for unconnected beauticians
+- [ ] Connect button appears for unconnected specialists
 - [ ] Onboarding redirect works
 - [ ] Status updates after onboarding
 - [ ] Earnings display correctly
 - [ ] Dashboard link opens Stripe Express
 - [ ] Admin can view platform revenue
-- [ ] Admin can view beautician breakdowns
+- [ ] Admin can view specialist breakdowns
 
 ---
 
@@ -234,8 +234,8 @@ Configure webhook in Stripe Dashboard:
 ✅ **No Platform Fee on Products**: 100% goes to product owner
 ✅ **Automatic Refunds**: Reverses transfers and platform fees
 ✅ **Real-time Status**: Webhooks sync account and payout status
-✅ **Comprehensive Reporting**: Platform and beautician earnings tracking
-✅ **Graceful Fallback**: Works without Connect if beautician not connected
+✅ **Comprehensive Reporting**: Platform and specialist earnings tracking
+✅ **Graceful Fallback**: Works without Connect if specialist not connected
 
 ---
 
@@ -261,7 +261,7 @@ Configure webhook in Stripe Dashboard:
 
 4. **Optional Enhancements**
    - Commission-based product fees
-   - Custom platform fee per beautician
+   - Custom platform fee per specialist
    - Advanced analytics and charts
    - Payout schedule customization
 

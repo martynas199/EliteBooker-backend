@@ -161,7 +161,7 @@ Password: SecurePass456!
 
 4. **Staff** - `/admin/staff`
 
-   - ✅ Can add beauticians
+   - ✅ Can add specialists
    - ✅ Beauticians tagged with tenantId
 
 5. **Settings** - `/admin/tenant-settings`
@@ -296,7 +296,7 @@ db.tenants.findOne({ slug: "elegant-beauty-salon" }).businessInfo.phone;
 **Verify:**
 
 ```javascript
-db.beauticians.findOne({ email: "jessica@elegant-beauty.com" });
+db.specialists.findOne({ email: "jessica@elegant-beauty.com" });
 // Should have tenantId matching Elegant Beauty Salon
 ```
 
@@ -322,20 +322,20 @@ db.beauticians.findOne({ email: "jessica@elegant-beauty.com" });
 **Expected Results:**
 
 ✅ Stripe account created  
-✅ Account ID saved to beautician record  
+✅ Account ID saved to specialist record  
 ✅ Status updated to "connected"  
 ✅ Can accept payments
 
 **Verify:**
 
 ```javascript
-const beautician = db.beauticians.findOne({
+const specialist = db.specialists.findOne({
   email: "jessica@elegant-beauty.com",
 });
 
-console.log(beautician.stripeAccountId); // Should be "acct_..."
-console.log(beautician.stripeStatus); // Should be "connected"
-console.log(beautician.stripeOnboardingCompleted); // Should be true
+console.log(specialist.stripeAccountId); // Should be "acct_..."
+console.log(specialist.stripeStatus); // Should be "connected"
+console.log(specialist.stripeOnboardingCompleted); // Should be true
 ```
 
 ### 5.3 Check Stripe Status
@@ -391,14 +391,14 @@ console.log(beautician.stripeOnboardingCompleted); // Should be true
 
 1. Open new incognito window (simulate customer)
 2. Navigate to `http://localhost:5173/salon/elegant-beauty-salon`
-3. Browse services and beauticians
+3. Browse services and specialists
 
 **Expected Results:**
 
 ✅ Tenant branding applied (purple colors)  
 ✅ Logo displayed  
 ✅ Only Elegant Beauty services shown  
-✅ Only Elegant Beauty beauticians shown  
+✅ Only Elegant Beauty specialists shown  
 ✅ No data from Modern Spa visible
 
 ### 7.2 Select Service and Beautician
@@ -783,7 +783,7 @@ stripe listen --forward-to localhost:4000/api/webhooks/stripe
 - [ ] Onboarding flow works
 - [ ] Payments processed correctly
 - [ ] Platform fees deducted
-- [ ] Transfers to beauticians work
+- [ ] Transfers to specialists work
 - [ ] Webhooks handled correctly
 
 ---

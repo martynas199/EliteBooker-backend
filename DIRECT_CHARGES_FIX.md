@@ -12,7 +12,7 @@ We were using **Destination Charges** which always make the platform pay Stripe 
 
 ### **Solution**
 
-Switched to **Direct Charges** - creating the checkout session directly on the beautician's Stripe account.
+Switched to **Direct Charges** - creating the checkout session directly on the specialist's Stripe account.
 
 ---
 
@@ -23,14 +23,14 @@ Switched to **Direct Charges** - creating the checkout session directly on the b
 **Before (Destination Charges):**
 
 ```javascript
-// Platform creates session, transfers to beautician
+// Platform creates session, transfers to specialist
 const stripe = getStripe(); // Platform account
 const session = await stripe.checkout.sessions.create({
   payment_intent_data: {
     application_fee_amount: 50,
-    on_behalf_of: beautician.stripeAccountId, // This didn't work!
+    on_behalf_of: specialist.stripeAccountId, // This didn't work!
     transfer_data: {
-      destination: beautician.stripeAccountId,
+      destination: specialist.stripeAccountId,
     },
   },
   // ... other config
@@ -41,11 +41,11 @@ const session = await stripe.checkout.sessions.create({
 
 ```javascript
 // Beautician creates session directly on their account
-const stripe = getStripe(beautician.stripeAccountId); // Connected account!
+const stripe = getStripe(specialist.stripeAccountId); // Connected account!
 const session = await stripe.checkout.sessions.create({
   payment_intent_data: {
     application_fee_amount: 50, // Platform gets £0.50
-    // No transfer_data needed - charge is directly on beautician account
+    // No transfer_data needed - charge is directly on specialist account
   },
   // ... other config
 });
@@ -69,7 +69,7 @@ Per £50 booking:
 ```
 Per £50 booking:
   Gross:     £50.00
-  Stripe fee: -£1.83  (beautician pays this)
+  Stripe fee: -£1.83  (specialist pays this)
   App fee:    -£0.50  (to platform)
   Net:       £47.67  ✅
 ```
@@ -89,7 +89,7 @@ Per £50 booking:
      - Net amount: £0.50
 
 4. **Check Beautician Account**:
-   - Go to Connect → Accounts → Click beautician
+   - Go to Connect → Accounts → Click specialist
    - View their payments
    - **Payment breakdown** should show:
      - Payment amount: £50.00
@@ -105,23 +105,23 @@ Per £50 booking:
 - Platform account creates PaymentIntent
 - Funds collected on platform account
 - Platform pays Stripe fees (~£1.83)
-- Platform transfers net amount to beautician
+- Platform transfers net amount to specialist
 - Platform takes application fee (£0.50)
 - **Result**: Platform loses ~£1.33 per booking
 
 ### **Direct Charges** (New - Works):
 
 - Beautician account creates PaymentIntent
-- Funds collected directly on beautician account
+- Funds collected directly on specialist account
 - **Beautician pays Stripe fees** (~£1.83)
 - Platform automatically receives application fee (£0.50)
-- **Result**: Platform gains £0.50 per booking, beautician pays their own fees
+- **Result**: Platform gains £0.50 per booking, specialist pays their own fees
 
 ---
 
 ## ⚠️ Important Notes
 
-1. **Only works for connected beauticians**: If beautician isn't connected to Stripe, booking falls back to platform account (platform pays fees)
+1. **Only works for connected specialists**: If specialist isn't connected to Stripe, booking falls back to platform account (platform pays fees)
 
 2. **Application fee goes to platform automatically**: No manual transfer needed - Stripe handles it
 
@@ -137,7 +137,7 @@ Per £50 booking:
 
 - Platform receives: £48.17 (£50 - £1.83 fees)
 - Platform keeps: £0.50 (app fee)
-- Platform transfers: £47.67 to beautician
+- Platform transfers: £47.67 to specialist
 - **Platform net**: -£1.33 loss per booking 💸
 
 ### **After Fix:**

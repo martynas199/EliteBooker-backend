@@ -1,7 +1,7 @@
 /**
  * Google Calendar Integration
  *
- * Allows beauticians to sync appointments to their Google Calendar
+ * Allows specialists to sync appointments to their Google Calendar
  * Uses OAuth 2.0 for authentication
  */
 
@@ -29,13 +29,13 @@ const SCOPES = [
 ];
 
 /**
- * Generate Google OAuth URL for beautician to authorize
+ * Generate Google OAuth URL for specialist to authorize
  */
 export function getAuthUrl(beauticianId) {
   const authUrl = oauth2Client.generateAuthUrl({
     access_type: "offline",
     scope: SCOPES,
-    state: beauticianId, // Pass beautician ID in state parameter
+    state: beauticianId, // Pass specialist ID in state parameter
     prompt: "consent", // Force consent screen to get refresh token
   });
   return authUrl;
@@ -50,7 +50,7 @@ export async function getTokensFromCode(code) {
 }
 
 /**
- * Store Google Calendar tokens for beautician
+ * Store Google Calendar tokens for specialist
  */
 export async function saveTokensForBeautician(beauticianId, tokens) {
   await Specialist.findByIdAndUpdate(beauticianId, {
@@ -62,16 +62,16 @@ export async function saveTokensForBeautician(beauticianId, tokens) {
 }
 
 /**
- * Get authenticated calendar client for beautician
+ * Get authenticated calendar client for specialist
  */
 async function getCalendarClient(beauticianId) {
-  const beautician = await Specialist.findById(beauticianId);
+  const specialist = await Specialist.findById(beauticianId);
 
   if (
-    !beautician?.googleCalendar?.enabled ||
+    !specialist?.googleCalendar?.enabled ||
     !Specialist.googleCalendar.accessToken
   ) {
-    throw new Error("Google Calendar not enabled for this beautician");
+    throw new Error("Google Calendar not enabled for this specialist");
   }
 
   // Set credentials
@@ -214,7 +214,7 @@ export async function deleteCalendarEvent(beauticianId, eventId) {
 }
 
 /**
- * Disconnect Google Calendar for beautician
+ * Disconnect Google Calendar for specialist
  */
 export async function disconnectCalendar(beauticianId) {
   await Specialist.findByIdAndUpdate(beauticianId, {

@@ -13,13 +13,13 @@ const PolicySchema = new mongoose.Schema(
   {
     scope: {
       type: String,
-      enum: ["salon", "beautician"],
+      enum: ["salon", "specialist"],
       default: "salon",
       index: true,
     },
     beauticianId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Beautician",
+      ref: "Specialist",
       index: true,
     },
     currency: { type: String, default: "GBP" },

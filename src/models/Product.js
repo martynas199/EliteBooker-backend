@@ -85,10 +85,10 @@ const ProductSchema = new Schema(
       type: String,
       required: true,
     },
-    // Stripe Connect: Product belongs to a beautician
+    // Stripe Connect: Product belongs to a specialist
     beauticianId: {
       type: Schema.Types.ObjectId,
-      ref: "Beautician",
+      ref: "Specialist",
       index: true,
       default: null, // null means platform-owned products
     },
