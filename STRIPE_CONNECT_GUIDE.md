@@ -12,7 +12,7 @@ This system uses **Stripe Connect Express** accounts to enable direct payouts to
 ```
 Client Payment → Stripe → Split Payment:
                            ├─ Platform Fee (£0.50 for bookings)
-                           └─ Beautician Account (rest of amount)
+                           └─ Specialist Account (rest of amount)
 ```
 
 ## Setup Instructions
@@ -67,7 +67,7 @@ POST /api/connect/onboard
 Content-Type: application/json
 
 {
-  "beauticianId": "64a1b2c3d4e5f6...",
+  "specialistId": "64a1b2c3d4e5f6...",
   "email": "specialist@example.com"
 }
 
@@ -82,7 +82,7 @@ Response:
 #### Check Account Status
 
 ```http
-GET /api/connect/status/:beauticianId
+GET /api/connect/status/:specialistId
 
 Response:
 {
@@ -98,7 +98,7 @@ Response:
 #### Generate Dashboard Link
 
 ```http
-POST /api/connect/dashboard-link/:beauticianId
+POST /api/connect/dashboard-link/:specialistId
 
 Response:
 {
@@ -123,7 +123,7 @@ Response:
   },
   "specialists": [
     {
-      "beauticianId": "...",
+      "specialistId": "...",
       "beauticianName": "Jane Doe",
       "bookings": {
         "count": 45,
@@ -141,10 +141,10 @@ Response:
 }
 ```
 
-#### Get Beautician Earnings
+#### Get Specialist Earnings
 
 ```http
-GET /api/reports/specialist-earnings/:beauticianId
+GET /api/reports/specialist-earnings/:specialistId
 
 Response:
 {
@@ -184,7 +184,7 @@ const paymentIntent = await stripe.paymentIntents.create({
   },
   metadata: {
     appointmentId: appointment._id,
-    beauticianId: specialist._id,
+    specialistId: specialist._id,
     type: "booking",
   },
 });
@@ -202,10 +202,10 @@ When a client buys a product:
 
 ```javascript
 // Group items by specialist
-const itemsByBeautician = groupBy(items, (item) => item.productId.beauticianId);
+const itemsByBeautician = groupBy(items, (item) => item.productId.specialistId);
 
 // Create separate Payment Intent for each specialist
-for (const [beauticianId, items] of itemsByBeautician) {
+for (const [specialistId, items] of itemsByBeautician) {
   const total = items.reduce(
     (sum, item) => sum + item.price * item.quantity,
     0
@@ -220,7 +220,7 @@ for (const [beauticianId, items] of itemsByBeautician) {
     },
     metadata: {
       orderId: order._id,
-      beauticianId: beauticianId,
+      specialistId: specialistId,
       type: "product",
     },
   });
@@ -262,7 +262,7 @@ const refund = await stripe.refunds.create({
 
 ## Database Schema
 
-### Beautician Model
+### Specialist Model
 
 ```javascript
 {
@@ -295,7 +295,7 @@ const refund = await stripe.refunds.create({
 ```javascript
 {
   stripeConnectPayments: [{
-    beauticianId: ObjectId,
+    specialistId: ObjectId,
     beauticianStripeAccount: String,
     amount: Number,
     paymentIntentId: String,
@@ -329,7 +329,7 @@ const refund = await stripe.refunds.create({
 2. Complete payment (£50.00)
 3. Verify:
    - Platform receives £0.50
-   - Beautician receives £49.50
+   - Specialist receives £49.50
    - `totalEarnings` updated
 
 **Refund:**
@@ -338,7 +338,7 @@ const refund = await stripe.refunds.create({
 2. Verify:
    - Client refunded £50.00
    - Platform refunded £0.50
-   - Beautician balance reduced by £49.50
+   - Specialist balance reduced by £49.50
 
 **Product Sale:**
 
@@ -359,20 +359,20 @@ Stripe handles all KYC verification during onboarding:
 ### Payouts
 
 - Automatic daily payouts (after 2-day rolling basis)
-- Beauticians can view in Stripe Express dashboard
+- Specialists can view in Stripe Express dashboard
 - Platform has no control over payout timing
 
 ### Tax Reporting
 
 - Stripe provides 1099 forms (US) or equivalent
-- Beauticians responsible for own tax reporting
+- Specialists responsible for own tax reporting
 - Platform should provide revenue summaries
 
 ## Troubleshooting
 
-### "Beautician not connected" Error
+### "Specialist not connected" Error
 
-- Beautician hasn't completed onboarding
+- Specialist hasn't completed onboarding
 - Check account status: `GET /api/connect/status/:id`
 - Generate new onboarding link if expired
 
@@ -408,7 +408,7 @@ Stripe handles all KYC verification during onboarding:
 
 ### Phase 2: Frontend Integration (In Progress)
 
-- [ ] Beautician "Connect with Stripe" button
+- [ ] Specialist "Connect with Stripe" button
 - [ ] Onboarding redirect handling
 - [ ] Earnings dashboard for specialists
 - [ ] Admin revenue dashboard

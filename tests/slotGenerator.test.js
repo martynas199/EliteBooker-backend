@@ -82,7 +82,7 @@ function computeSlotsForBeautician({
       slots.push({
         startISO: slotStart.toISOString(),
         endISO: slotEnd.toISOString(),
-        beauticianId: specialist._id,
+        specialistId: specialist._id,
       });
     }
 

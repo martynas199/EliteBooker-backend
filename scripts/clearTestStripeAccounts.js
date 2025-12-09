@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import Beautician from "../src/models/Beautician.js";
+import Specialist from "../src/models/Specialist.js";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -10,7 +10,7 @@ async function clearTestStripeAccounts() {
     console.log("Connected to MongoDB");
 
     // Find all specialists with Stripe accounts
-    const specialists = await Beautician.find({
+    const specialists = await Specialist.find({
       stripeAccountId: { $exists: true, $ne: null },
     });
 
@@ -34,7 +34,7 @@ async function clearTestStripeAccounts() {
     console.log("\n✅ All test Stripe accounts cleared!");
     console.log("\nNext steps:");
     console.log(
-      "1. Beauticians need to go through Stripe Connect onboarding again"
+      "1. Specialists need to go through Stripe Connect onboarding again"
     );
     console.log("2. This time they will create LIVE mode accounts");
     console.log("3. Make sure your backend is using LIVE Stripe keys");

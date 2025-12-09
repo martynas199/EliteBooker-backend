@@ -36,7 +36,7 @@ payment_intent_data.transfer_data = {
 - Customer pays: **£50**
 - Stripe fees (~2.9% + 20p): **£1.65** (paid by specialist)
 - Platform fee: **£0.50**
-- Beautician receives: **£50 - £1.65 - £0.50 = £47.85**
+- Specialist receives: **£50 - £1.65 - £0.50 = £47.85**
 
 **Money Flow:**
 
@@ -47,7 +47,7 @@ Stripe keeps £1.65 (processing fee - from specialist)
   ↓
 Platform gets £0.50 (application fee)
   ↓
-Beautician gets £47.85 (£50 - £1.65 - £0.50)
+Specialist gets £47.85 (£50 - £1.65 - £0.50)
 ```
 
 ---
@@ -62,7 +62,7 @@ Products now use a **smart hybrid approach** based on cart composition.
 
 ### **Implementation**
 
-#### **Single-Beautician Orders** (Most Common)
+#### **Single-Specialist Orders** (Most Common)
 
 Uses destination charges with `on_behalf_of` - specialist pays fees.
 
@@ -70,7 +70,7 @@ Uses destination charges with `on_behalf_of` - specialist pays fees.
 // If single specialist order
 if (stripeConnectPayments.length === 1) {
   sessionConfig.payment_intent_data = {
-    on_behalf_of: payment.beauticianStripeAccount, // Beautician pays fees
+    on_behalf_of: payment.beauticianStripeAccount, // Specialist pays fees
     application_fee_amount: 0, // No platform fee on products
     transfer_data: {
       destination: payment.beauticianStripeAccount,
@@ -79,7 +79,7 @@ if (stripeConnectPayments.length === 1) {
 }
 ```
 
-#### **Multi-Beautician Orders** (Rare)
+#### **Multi-Specialist Orders** (Rare)
 
 Uses transfers after payment - platform pays fees.
 
@@ -87,18 +87,18 @@ Uses transfers after payment - platform pays fees.
 
 ### **How It Works**
 
-#### **Example 1: Single Beautician Order - £100**
+#### **Example 1: Single Specialist Order - £100**
 
 - Customer buys products from one specialist
-- **Beautician pays Stripe fees** (~£3.10)
-- Beautician receives: **£96.90**
+- **Specialist pays Stripe fees** (~£3.10)
+- Specialist receives: **£96.90**
 
-#### **Example 2: Multi-Beautician Order - £100**
+#### **Example 2: Multi-Specialist Order - £100**
 
-- Customer buys £60 from Beautician A + £40 from Beautician B
+- Customer buys £60 from Specialist A + £40 from Specialist B
 - **Platform pays Stripe fees** (~£3.10) as compromise
-- Beautician A receives: **£60**
-- Beautician B receives: **£40**
+- Specialist A receives: **£60**
+- Specialist B receives: **£40**
 - Platform pays: **-£3.10**
 
 ---
@@ -112,34 +112,34 @@ Uses transfers after payment - platform pays fees.
 | Customer pays           | £50.00     |
 | Stripe fee (2.9% + 20p) | -£1.65     |
 | Platform fee            | -£0.50     |
-| **Beautician receives** | **£47.85** |
+| **Specialist receives** | **£47.85** |
 
-### **Single-Beautician Product Order: £100**
+### **Single-Specialist Product Order: £100**
 
 | Item                            | Amount     |
 | ------------------------------- | ---------- |
 | Customer pays                   | £100.00    |
 | Stripe fee (paid by specialist) | -£3.10     |
 | Platform fee                    | £0.00      |
-| **Beautician receives**         | **£96.90** |
+| **Specialist receives**         | **£96.90** |
 
-### **Multi-Beautician Product Order: £100**
+### **Multi-Specialist Product Order: £100**
 
 | Item                          | Amount     | Notes            |
 | ----------------------------- | ---------- | ---------------- |
 | Customer pays                 | £100.00    |                  |
 | Stripe fee (paid by platform) | -£3.10     | Platform absorbs |
-| Beautician A gets             | £60.00     | Their products   |
-| Beautician B gets             | £40.00     | Their products   |
+| Specialist A gets             | £60.00     | Their products   |
+| Specialist B gets             | £40.00     | Their products   |
 | **Platform net**              | **-£3.10** | Fee compromise   |
 
 ---
 
 ## 📝 Current Status
 
-- ✅ **Bookings**: Beautician pays Stripe fees (FIXED)
-- ✅ **Single-Beautician Products**: Beautician pays Stripe fees (FIXED)
-- ⚠️ **Multi-Beautician Products**: Platform pays Stripe fees (acceptable compromise)
+- ✅ **Bookings**: Specialist pays Stripe fees (FIXED)
+- ✅ **Single-Specialist Products**: Specialist pays Stripe fees (FIXED)
+- ⚠️ **Multi-Specialist Products**: Platform pays Stripe fees (acceptable compromise)
 
 ---
 

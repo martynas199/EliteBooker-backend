@@ -100,7 +100,7 @@ router.get("/", requireAdmin, async (req, res) => {
 // Create new admin (requires authentication)
 router.post("/", requireAdmin, async (req, res) => {
   try {
-    const { email, password, name, role, beauticianId } = req.body;
+    const { email, password, name, role, specialistId } = req.body;
 
     // Validate required fields
     if (!email || !password || !name) {
@@ -130,7 +130,7 @@ router.post("/", requireAdmin, async (req, res) => {
       password, // Will be hashed by the pre-save hook
       name,
       role: role || "admin",
-      beauticianId: beauticianId || null,
+      specialistId: specialistId || null,
       active: true,
     });
 
@@ -169,7 +169,7 @@ router.post("/", requireAdmin, async (req, res) => {
 router.patch("/:adminId/link-specialist", requireAdmin, async (req, res) => {
   try {
     const { adminId } = req.params;
-    const { beauticianId } = req.body;
+    const { specialistId } = req.body;
 
     // Find the admin
     const admin = await Admin.findById(adminId);
@@ -178,7 +178,7 @@ router.patch("/:adminId/link-specialist", requireAdmin, async (req, res) => {
     }
 
     // Update the specialist link
-    admin.beauticianId = beauticianId || null;
+    admin.specialistId = specialistId || null;
     await admin.save();
 
     // Return updated admin without password
@@ -187,7 +187,7 @@ router.patch("/:adminId/link-specialist", requireAdmin, async (req, res) => {
       .lean();
 
     res.json({
-      message: beauticianId
+      message: specialistId
         ? "Admin successfully linked to specialist"
         : "Admin successfully unlinked from specialist",
       admin: updatedAdmin,

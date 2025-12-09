@@ -58,12 +58,12 @@ r.get("/fully-booked", async (req, res) => {
       });
     }
 
-    const { beauticianId, year, month } = req.query;
+    const { specialistId, year, month } = req.query;
 
     // Validation
-    if (!beauticianId || !year || !month) {
+    if (!specialistId || !year || !month) {
       return res.status(400).json({
-        error: "Missing required parameters: beauticianId, year, month",
+        error: "Missing required parameters: specialistId, year, month",
       });
     }
 
@@ -75,7 +75,7 @@ r.get("/fully-booked", async (req, res) => {
     }
 
     // Check cache
-    const cacheKey = `${beauticianId}:${year}-${String(monthNum).padStart(
+    const cacheKey = `${specialistId}:${year}-${String(monthNum).padStart(
       2,
       "0"
     )}`;
@@ -85,9 +85,9 @@ r.get("/fully-booked", async (req, res) => {
     }
 
     // Fetch specialist
-    const specialist = await Specialist.findById(beauticianId).lean();
+    const specialist = await Specialist.findById(specialistId).lean();
     if (!specialist) {
-      return res.status(404).json({ error: "Beautician not found" });
+      return res.status(404).json({ error: "Specialist not found" });
     }
 
     console.log(
@@ -101,10 +101,10 @@ r.get("/fully-booked", async (req, res) => {
     // Get services for this specialist
     const services = await Service.find({
       $or: [
-        { beauticianId: beauticianId },
-        { beauticianIds: beauticianId },
-        { primaryBeauticianId: beauticianId },
-        { additionalBeauticianIds: beauticianId },
+        { specialistId: specialistId },
+        { beauticianIds: specialistId },
+        { primaryBeauticianId: specialistId },
+        { additionalBeauticianIds: specialistId },
       ],
       active: { $ne: false },
     }).lean();
@@ -175,7 +175,7 @@ r.get("/fully-booked", async (req, res) => {
           const dayStart = dateObj.toDate();
           const dayEnd = dateObj.add(1, "day").toDate();
           const appts = await Appointment.find({
-            beauticianId,
+            specialistId,
             start: { $gte: dayStart, $lt: dayEnd },
             status: { $ne: "cancelled" },
           }).lean();
@@ -235,7 +235,7 @@ r.get("/", async (req, res) => {
     });
   }
 
-  const { beauticianId, serviceId, variantName, date, any } = req.query;
+  const { specialistId, serviceId, variantName, date, any } = req.query;
   if (!serviceId || !variantName || !date)
     return res.status(400).json({ error: "Missing params" });
   const service = await Service.findById(serviceId).lean();
@@ -252,17 +252,17 @@ r.get("/", async (req, res) => {
   let slots = [];
   if (any === "true") {
     // Single-specialist per service: resolve assigned specialist and compute directly
-    const targetId = service.beauticianId || (service.beauticianIds || [])[0];
+    const targetId = service.specialistId || (service.beauticianIds || [])[0];
     if (!targetId)
       return res
         .status(400)
         .json({ error: "Service has no assigned specialist" });
     const b = await Specialist.findById(targetId).lean();
-    if (!b) return res.status(404).json({ error: "Beautician not found" });
+    if (!b) return res.status(404).json({ error: "Specialist not found" });
     const dayStart = new Date(date);
     const dayEnd = new Date(new Date(date).getTime() + 86400000);
     const appts = await Appointment.find({
-      beauticianId: targetId,
+      specialistId: targetId,
       start: { $gte: dayStart, $lt: dayEnd },
       status: { $ne: "cancelled" },
     }).lean();
@@ -279,13 +279,13 @@ r.get("/", async (req, res) => {
       })),
     });
   } else {
-    const b = await Specialist.findById(beauticianId).lean();
-    if (!b) return res.status(404).json({ error: "Beautician not found" });
+    const b = await Specialist.findById(specialistId).lean();
+    if (!b) return res.status(404).json({ error: "Specialist not found" });
 
     const normalizedBeautician = normalizeBeautician(b);
 
     const appts = await Appointment.find({
-      beauticianId,
+      specialistId,
       start: {
         $gte: new Date(date),
         $lt: new Date(new Date(date).getTime() + 86400000),

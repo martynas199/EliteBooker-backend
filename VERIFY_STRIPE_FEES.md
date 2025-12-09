@@ -74,7 +74,7 @@ Connected Account:
   Receives:   £49.50
 ```
 
-### **WITH `on_behalf_of`** (New way - Beautician pays):
+### **WITH `on_behalf_of`** (New way - Specialist pays):
 
 ```
 Platform Account:
@@ -101,7 +101,7 @@ stripe payment_intents retrieve pi_3SP7bBAN8wTZWWpP3WvbBqar --expand application
 Look for:
 
 - `application_fee_amount: 50` ✅ (Platform gets £0.50)
-- `on_behalf_of: "acct_1SP6S8PL8sEGP84H"` ✅ (Beautician pays Stripe fees)
+- `on_behalf_of: "acct_1SP6S8PL8sEGP84H"` ✅ (Specialist pays Stripe fees)
 
 ---
 
@@ -112,7 +112,7 @@ Look for:
 - Each booking: **Net = £0.50** (only application fee)
 - **No Stripe processing fees** deducted from your balance
 
-### **Connected Account View** (Beautician):
+### **Connected Account View** (Specialist):
 
 - Each booking: **Receives £49.50** (£50 - £0.50 app fee)
 - **Stripe fees (~£1.65) deducted from their overall balance**

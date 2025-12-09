@@ -7,7 +7,7 @@
 
 import mongoose from "mongoose";
 import Admin from "../src/models/Admin.js";
-import Beautician from "../src/models/Beautician.js";
+import Specialist from "../src/models/Specialist.js";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -37,7 +37,7 @@ async function listAccounts() {
         console.log(`   Email: ${admin.email}`);
         console.log(`   Role: ${admin.role}`);
         console.log(
-          `   Beautician ID: ${admin.beauticianId || "(not linked)"}`
+          `   Specialist ID: ${admin.specialistId || "(not linked)"}`
         );
         console.log(`   Active: ${admin.active ? "Yes" : "No"}`);
         console.log();
@@ -47,7 +47,7 @@ async function listAccounts() {
     // List all specialists
     console.log("\n💇 BEAUTICIAN ACCOUNTS:");
     console.log("━".repeat(60));
-    const specialists = await Beautician.find({});
+    const specialists = await Specialist.find({});
     if (specialists.length === 0) {
       console.log("   (No specialists found)");
     } else {

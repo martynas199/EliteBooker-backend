@@ -3,7 +3,7 @@ dotenv.config();
 import mongoose from "mongoose";
 import Appointment from "../src/models/Appointment.js";
 import Service from "../src/models/Service.js";
-import Beautician from "../src/models/Beautician.js";
+import Specialist from "../src/models/Specialist.js";
 import dayjs from "dayjs";
 
 const MONGO_URI = process.env.MONGO_URI;
@@ -14,7 +14,7 @@ async function seedAppointments() {
     console.log("Connected to MongoDB");
 
     // Get existing specialists and services
-    const specialists = await Beautician.find();
+    const specialists = await Specialist.find();
     const services = await Service.find();
 
     if (specialists.length === 0 || services.length === 0) {
@@ -74,7 +74,7 @@ async function seedAppointments() {
             .format("HH:mm"),
           serviceId: service._id,
           variantName: variant.name,
-          beauticianId: specialist._id,
+          specialistId: specialist._id,
           price: variant.price,
           durationMin: variant.durationMin,
           status: "completed", // All appointments are completed
@@ -102,7 +102,7 @@ async function seedAppointments() {
 
     appointments.forEach((apt) => {
       const specialist = specialists.find((b) =>
-        b._id.equals(apt.beauticianId)
+        b._id.equals(apt.specialistId)
       );
       const name = specialist?.name || "Unknown";
       if (!byBeautician[name]) {
@@ -120,7 +120,7 @@ async function seedAppointments() {
         2
       )}`
     );
-    console.log("\n👥 By Beautician:");
+    console.log("\n👥 By Specialist:");
     Object.entries(byBeautician).forEach(([name, stats]) => {
       console.log(
         `  ${name}: ${stats.count} appointments, £${stats.revenue.toFixed(2)}`

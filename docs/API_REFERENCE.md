@@ -7,7 +7,7 @@ Complete API documentation for multi-tenant endpoints.
 1. [Authentication](#authentication)
 2. [Tenant Management](#tenant-management)
 3. [Tenant Resolution](#tenant-resolution)
-4. [Beautician Stripe Connect](#specialist-stripe-connect)
+4. [Specialist Stripe Connect](#specialist-stripe-connect)
 5. [Admin Routes](#admin-routes)
 6. [Error Codes](#error-codes)
 
@@ -395,7 +395,7 @@ router.get("/", (req, res) => {
 
 ---
 
-## Beautician Stripe Connect
+## Specialist Stripe Connect
 
 ### Initiate Stripe Connect Onboarding
 
@@ -424,7 +424,7 @@ window.location.href = response.data.url;
 
 - `401` - Unauthorized
 - `403` - Access denied (wrong tenant)
-- `404` - Beautician not found
+- `404` - Specialist not found
 - `500` - Stripe API error
 
 ---
@@ -465,7 +465,7 @@ window.location.href = response.data.url;
 
 - `401` - Unauthorized
 - `403` - Access denied
-- `404` - Beautician not found
+- `404` - Specialist not found
 
 ---
 
@@ -489,7 +489,7 @@ window.location.href = response.data.url;
 - `401` - Unauthorized
 - `403` - Access denied
 - `400` - No connected account
-- `404` - Beautician not found
+- `404` - Specialist not found
 
 ---
 
@@ -517,7 +517,7 @@ PUT    /api/services/:id           # Update service (tenant-filtered)
 DELETE /api/services/:id           # Delete service (tenant-filtered)
 ```
 
-### Beauticians
+### Specialists
 
 ```http
 GET    /api/specialists            # List specialists (tenant-filtered)
@@ -674,9 +674,9 @@ Endpoints that return lists support pagination:
 - `payment_intent.succeeded` - Payment successful
 - `payment_intent.payment_failed` - Payment failed
 - `charge.refunded` - Payment refunded
-- `account.updated` - Beautician account status changed
-- `account.application.authorized` - Beautician authorized platform
-- `account.application.deauthorized` - Beautician disconnected
+- `account.updated` - Specialist account status changed
+- `account.application.authorized` - Specialist authorized platform
+- `account.application.deauthorized` - Specialist disconnected
 - `payout.paid` - Payout sent to specialist
 
 **Webhook Signature Verification:**

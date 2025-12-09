@@ -346,7 +346,7 @@ function buildBlockingIntervals({
 /**
  * Compute slots for a specific specialist.
  * @param {object} params
- * @returns {{ startISO:string, endISO:string, beauticianId?:string }[]}
+ * @returns {{ startISO:string, endISO:string, specialistId?:string }[]}
  */
 export function computeSlotsForBeautician(params) {
   const p = ForBeauticianParamsSchema.parse(params);
@@ -416,7 +416,7 @@ export function computeSlotsForBeautician(params) {
       out.push({
         startISO: slotIv.start.toISOString(),
         endISO: slotIv.end.toISOString(),
-        beauticianId: specialist._id ? String(specialist._id) : undefined,
+        specialistId: specialist._id ? String(specialist._id) : undefined,
       });
     }
   }
@@ -428,7 +428,7 @@ export function computeSlotsForBeautician(params) {
  * Compute slots for "any staff". Dedupe start times across specialists.
  * Adds an extension field beauticianIds (array) to indicate which specialists are available for that time.
  * @param {object} params
- * @returns {{ startISO:string, endISO:string, beauticianId?:string, beauticianIds?:string[] }[]}
+ * @returns {{ startISO:string, endISO:string, specialistId?:string, beauticianIds?:string[] }[]}
  */
 export function computeSlotsAnyStaff(params) {
   const p = AnyStaffParamsSchema.parse(params);
@@ -476,7 +476,7 @@ export function computeSlotsAnyStaff(params) {
  * Find the earliest next available slot within the horizon.
  * Accepts either single-specialist or any-staff params (union), same rules as compute functions.
  * @param {object} params
- * @returns {{ startISO:string, endISO:string, beauticianId?:string, beauticianIds?:string[] } | null}
+ * @returns {{ startISO:string, endISO:string, specialistId?:string, beauticianIds?:string[] } | null}
  */
 export function nextAvailableSlot(params) {
   const p = NextParamsSchema.parse(params);

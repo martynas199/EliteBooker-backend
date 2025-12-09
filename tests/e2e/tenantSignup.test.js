@@ -4,7 +4,7 @@
  * Tests the complete multi-tenant flow:
  * 1. Tenant signup
  * 2. Admin login
- * 3. Beautician onboarding
+ * 3. Specialist onboarding
  * 4. Customer booking
  * 5. Payment with platform fee
  */
@@ -16,7 +16,7 @@ import { MongoMemoryServer } from "mongodb-memory-server";
 import app from "../../src/server.js";
 import Tenant from "../../src/models/Tenant.js";
 import Admin from "../../src/models/Admin.js";
-import Beautician from "../../src/models/Beautician.js";
+import Specialist from "../../src/models/Specialist.js";
 import Service from "../../src/models/Service.js";
 import Appointment from "../../src/models/Appointment.js";
 
@@ -58,7 +58,7 @@ afterAll(async () => {
 });
 
 describe("E2E: Complete Multi-Tenant Flow", () => {
-  let tenantId, adminToken, beauticianId, serviceId, appointmentId;
+  let tenantId, adminToken, specialistId, serviceId, appointmentId;
 
   it("Step 1: Should create a new tenant via signup", async () => {
     const signupData = {
@@ -123,14 +123,14 @@ describe("E2E: Complete Multi-Tenant Flow", () => {
     expect(response.body.name).toBe("Jane Smith");
     expect(response.body.tenantId).toBe(tenantId);
 
-    beauticianId = response.body._id;
+    specialistId = response.body._id;
 
-    console.log("✓ Beautician created:", response.body.name);
+    console.log("✓ Specialist created:", response.body.name);
   });
 
   it("Step 4: Should initiate Stripe Connect onboarding for specialist", async () => {
     const response = await request(app)
-      .post(`/api/specialists/${beauticianId}/stripe/onboard`)
+      .post(`/api/specialists/${specialistId}/stripe/onboard`)
       .set("Authorization", `Bearer ${adminToken}`)
       .expect(200);
 
@@ -155,7 +155,7 @@ describe("E2E: Complete Multi-Tenant Flow", () => {
           bufferAfterMin: 10,
         },
       ],
-      primaryBeauticianId: beauticianId,
+      primaryBeauticianId: specialistId,
       active: true,
     };
 
@@ -185,7 +185,7 @@ describe("E2E: Complete Multi-Tenant Flow", () => {
       .query({
         date: dateStr,
         serviceId: serviceId,
-        beauticianId: beauticianId,
+        specialistId: specialistId,
         variantName: "Standard", // Required: matches the variant created in Step 5
       })
       .set("X-Tenant-ID", tenantId)
@@ -204,7 +204,7 @@ describe("E2E: Complete Multi-Tenant Flow", () => {
 
     const bookingData = {
       serviceId: serviceId,
-      beauticianId: beauticianId,
+      specialistId: specialistId,
       variantName: "Standard", // Required: matches the variant name
       startISO: tomorrow.toISOString(), // Required: full ISO timestamp
       client: {
@@ -368,14 +368,14 @@ describe("E2E: Multi-Tenant Summary", () => {
   it("Should log complete flow summary", async () => {
     const tenants = await Tenant.countDocuments({});
     const admins = await Admin.countDocuments({});
-    const specialists = await Beautician.countDocuments({});
+    const specialists = await Specialist.countDocuments({});
     const services = await Service.countDocuments({});
     const appointments = await Appointment.countDocuments({});
 
     console.log("\n📊 Multi-Tenant Test Summary:");
     console.log(`   Tenants Created: ${tenants}`);
     console.log(`   Admins Created: ${admins}`);
-    console.log(`   Beauticians Created: ${specialists}`);
+    console.log(`   Specialists Created: ${specialists}`);
     console.log(`   Services Created: ${services}`);
     console.log(`   Appointments Created: ${appointments}`);
     console.log("\n✅ All multi-tenant E2E tests passed!\n");

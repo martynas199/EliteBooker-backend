@@ -112,7 +112,7 @@ router.get("/confirm-checkout", async (req, res) => {
     // We only need to update the payment status and specialist earnings
     if (order.stripeConnectPayments && order.stripeConnectPayments.length > 0) {
       for (const payment of order.stripeConnectPayments) {
-        const specialist = await Specialist.findById(payment.beauticianId);
+        const specialist = await Specialist.findById(payment.specialistId);
 
         if (
           specialist &&
@@ -121,7 +121,7 @@ router.get("/confirm-checkout", async (req, res) => {
         ) {
           try {
             // Destination charge: payment already sent directly to specialist
-            // Beautician pays all Stripe fees, platform pays nothing
+            // Specialist pays all Stripe fees, platform pays nothing
             payment.status = "succeeded";
             payment.paymentIntentId =
               session.payment_intent?.id || session.payment_intent;
@@ -143,7 +143,7 @@ router.get("/confirm-checkout", async (req, res) => {
           }
         } else {
           console.log(
-            `[PRODUCT ORDER] Beautician ${payment.beauticianId} not connected to Stripe`
+            `[PRODUCT ORDER] Specialist ${payment.specialistId} not connected to Stripe`
           );
           payment.status = "failed";
         }
@@ -192,9 +192,9 @@ router.get("/confirm-checkout", async (req, res) => {
       // Send notifications to specialists for their products
       const itemsByBeautician = {};
       for (const item of populatedOrder.items) {
-        const beauticianId = item.productId?.beauticianId;
-        if (beauticianId) {
-          const beauticianIdStr = beauticianId.toString();
+        const specialistId = item.productId?.specialistId;
+        if (specialistId) {
+          const beauticianIdStr = specialistId.toString();
           if (!itemsByBeautician[beauticianIdStr]) {
             itemsByBeautician[beauticianIdStr] = [];
           }
@@ -202,9 +202,9 @@ router.get("/confirm-checkout", async (req, res) => {
         }
       }
 
-      for (const [beauticianId, items] of Object.entries(itemsByBeautician)) {
+      for (const [specialistId, items] of Object.entries(itemsByBeautician)) {
         try {
-          const specialist = await Specialist.findById(beauticianId);
+          const specialist = await Specialist.findById(specialistId);
           if (specialist?.email) {
             await sendBeauticianProductOrderNotification({
               order: populatedOrder,
@@ -212,12 +212,12 @@ router.get("/confirm-checkout", async (req, res) => {
               beauticianItems: items,
             });
             console.log(
-              `[ORDER CONFIRM] Beautician notification sent to ${Specialist.email} for ${items.length} product(s)`
+              `[ORDER CONFIRM] Specialist notification sent to ${Specialist.email} for ${items.length} product(s)`
             );
           }
         } catch (beauticianEmailErr) {
           console.error(
-            `[ORDER CONFIRM] Failed to send specialist notification to ${beauticianId}:`,
+            `[ORDER CONFIRM] Failed to send specialist notification to ${specialistId}:`,
             beauticianEmailErr
           );
           // Continue with other specialists
@@ -291,7 +291,7 @@ router.post("/checkout", async (req, res) => {
 
     for (const item of items) {
       const product = await Product.findById(item.productId).populate(
-        "beauticianId"
+        "specialistId"
       );
       if (!product) {
         return res
@@ -300,7 +300,7 @@ router.post("/checkout", async (req, res) => {
       }
 
       // Security: Validate specialist ownership
-      if (!product.beauticianId) {
+      if (!product.specialistId) {
         return res.status(400).json({
           error: `Product "${product.title}" is not assigned to a specialist`,
         });
@@ -355,8 +355,8 @@ router.post("/checkout", async (req, res) => {
 
       // Security: Validate specialist has connected Stripe account
       if (
-        !product.beauticianId.stripeAccountId ||
-        product.beauticianId.stripeStatus !== "connected"
+        !product.specialistId.stripeAccountId ||
+        product.specialistId.stripeStatus !== "connected"
       ) {
         return res.status(400).json({
           error: `Product "${product.title}" belongs to a specialist who hasn't set up payment processing yet. Please contact support.`,
@@ -371,8 +371,8 @@ router.post("/checkout", async (req, res) => {
         price: price, // Always use database price, never client-provided
         quantity: item.quantity,
         image: product.image?.url || product.images?.[0]?.url || "",
-        beauticianId: product.beauticianId._id,
-        specialist: product.beauticianId,
+        specialistId: product.specialistId._id,
+        specialist: product.specialistId,
       });
 
       subtotal += price * item.quantity;
@@ -401,7 +401,7 @@ router.post("/checkout", async (req, res) => {
         price: item.price,
         quantity: item.quantity,
         image: item.image,
-        beauticianId: item.beauticianId,
+        specialistId: item.specialistId,
       })),
       shippingAddress,
       isCollection: req.body.isCollection || false,
@@ -420,11 +420,11 @@ router.post("/checkout", async (req, res) => {
     // Group items by specialist for Stripe Connect
     const itemsByBeautician = new Map();
     for (const item of validatedItems) {
-      const beauticianId = item.beauticianId.toString();
-      if (!itemsByBeautician.has(beauticianId)) {
-        itemsByBeautician.set(beauticianId, []);
+      const specialistId = item.specialistId.toString();
+      if (!itemsByBeautician.has(specialistId)) {
+        itemsByBeautician.set(specialistId, []);
       }
-      itemsByBeautician.get(beauticianId).push(item);
+      itemsByBeautician.get(specialistId).push(item);
     }
 
     // Security: Enforce single specialist per order
@@ -441,7 +441,7 @@ router.post("/checkout", async (req, res) => {
     const lineItems = [];
     const stripeConnectPayments = [];
 
-    for (const [beauticianId, items] of itemsByBeautician) {
+    for (const [specialistId, items] of itemsByBeautician) {
       for (const item of items) {
         lineItems.push({
           price_data: {
@@ -465,7 +465,7 @@ router.post("/checkout", async (req, res) => {
       );
 
       stripeConnectPayments.push({
-        beauticianId,
+        specialistId,
         beauticianStripeAccount: firstItem.Specialist.stripeAccountId,
         amount: itemsTotal,
         status: "pending",
@@ -591,7 +591,7 @@ router.post("/checkout", async (req, res) => {
         },
         metadata: {
           orderId: String(order._id),
-          beauticianId: String(payment.beauticianId),
+          specialistId: String(payment.specialistId),
           tenantId: tenant?._id?.toString() || "default",
           type: "product_payment",
           platformFee: platformFee,
@@ -599,7 +599,7 @@ router.post("/checkout", async (req, res) => {
       };
 
       console.log(
-        `[PRODUCT CHECKOUT] Payment with ${platformFee}p platform fee to specialist ${payment.beauticianId}`
+        `[PRODUCT CHECKOUT] Payment with ${platformFee}p platform fee to specialist ${payment.specialistId}`
       );
     }
 
@@ -940,7 +940,7 @@ router.post("/:id/refund", async (req, res) => {
           payment.status = "refunded";
 
           // Deduct from specialist earnings
-          await Specialist.findByIdAndUpdate(payment.beauticianId, {
+          await Specialist.findByIdAndUpdate(payment.specialistId, {
             $inc: { totalEarnings: -payment.amount },
           });
         }

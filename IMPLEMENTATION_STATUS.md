@@ -4,26 +4,26 @@
 
 ### 1. Database Models Updated
 
-- **Beautician Model** (`src/models/Beautician.js`)
+- **Specialist Model** (`src/models/Specialist.js`)
   - Added `stripeAccountId`, `stripeStatus`, `stripeOnboardingCompleted`
   - Added `totalEarnings`, `totalPayouts`, `lastPayoutDate` tracking
 - **Appointment Model** (`src/models/Appointment.js`)
   - Extended `payment.stripe` with `platformFee`, `beauticianStripeAccount`, `transferId`
 - **Product Model** (`src/models/Product.js`)
-  - Added `beauticianId` to track product ownership
+  - Added `specialistId` to track product ownership
 - **Order Model** (`src/models/Order.js`)
   - Added `stripeConnectPayments` array for multi-specialist orders
   - Added `refundStatus`, `refundedAt`, `refundReason` fields
-  - Added `beauticianId` to order items
+  - Added `specialistId` to order items
 
 ### 2. Stripe Connect API Routes Created
 
 **File:** `src/routes/connect.js`
 
 - `POST /api/connect/onboard` - Create Express account & onboarding link
-- `GET /api/connect/status/:beauticianId` - Check account verification status
-- `POST /api/connect/dashboard-link/:beauticianId` - Generate dashboard login
-- `DELETE /api/connect/disconnect/:beauticianId` - Disconnect account (admin/testing)
+- `GET /api/connect/status/:specialistId` - Check account verification status
+- `POST /api/connect/dashboard-link/:specialistId` - Generate dashboard login
+- `DELETE /api/connect/disconnect/:specialistId` - Disconnect account (admin/testing)
 
 ### 3. Enhanced Webhook Handlers
 
@@ -45,7 +45,7 @@ Added handlers for:
   - Aggregate bookings & product sales by specialist
   - Calculate platform fees vs specialist earnings
   - Support date range filtering
-- `GET /api/reports/specialist-earnings/:beauticianId` - Individual earnings
+- `GET /api/reports/specialist-earnings/:specialistId` - Individual earnings
   - Detailed booking history with platform fees
   - Product sales breakdown
   - Recent transactions
@@ -73,14 +73,14 @@ Added handlers for:
 
 ### Frontend Integration (Priority)
 
-1. **Beautician Connect UI** - Admin panel
+1. **Specialist Connect UI** - Admin panel
 
    - "Connect with Stripe" button
    - Onboarding redirect handling
    - Status indicator (connected/pending/rejected)
    - Dashboard link button
 
-2. **Beautician Earnings View**
+2. **Specialist Earnings View**
 
    - Total earnings display
    - Booking vs product revenue breakdown
@@ -204,9 +204,9 @@ Configure webhook in Stripe Dashboard:
 
 ### Modified Files
 
-- `src/models/Beautician.js` - Added Stripe fields
+- `src/models/Specialist.js` - Added Stripe fields
 - `src/models/Appointment.js` - Extended payment tracking
-- `src/models/Product.js` - Added beauticianId
+- `src/models/Product.js` - Added specialistId
 - `src/models/Order.js` - Added Connect payment tracking
 - `src/routes/webhooks.js` - Enhanced event handlers
 - `src/server.js` - Registered new routes
@@ -225,7 +225,7 @@ Configure webhook in Stripe Dashboard:
 
 **Frontend:** 0% Complete
 
-- ⏳ Beautician Connect UI
+- ⏳ Specialist Connect UI
 - ⏳ Earnings dashboard
 - ⏳ Admin revenue dashboard
 

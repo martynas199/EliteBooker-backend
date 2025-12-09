@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import Stripe from "stripe";
-import Beautician from "../src/models/Beautician.js";
+import Specialist from "../src/models/Specialist.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -40,7 +40,7 @@ async function syncStripeAccounts() {
     console.log(`Found ${accounts.data.length} Stripe Connect accounts\n`);
 
     // Get all specialists
-    const specialists = await Beautician.find({});
+    const specialists = await Specialist.find({});
     console.log(`Found ${specialists.length} specialists in database\n`);
 
     console.log("=== Syncing Stripe Accounts ===\n");
@@ -86,10 +86,10 @@ async function syncStripeAccounts() {
       }
     }
 
-    console.log("\n\n=== Final Beautician Status ===\n");
+    console.log("\n\n=== Final Specialist Status ===\n");
 
     // Refresh specialists data
-    const updatedBeauticians = await Beautician.find({});
+    const updatedBeauticians = await Specialist.find({});
 
     for (const specialist of updatedBeauticians) {
       console.log(`${specialist.name}:`);

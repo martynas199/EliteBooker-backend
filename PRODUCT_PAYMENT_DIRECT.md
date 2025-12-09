@@ -1,4 +1,4 @@
-# Product Payments - Direct to Beautician (Zero Platform Fees)
+# Product Payments - Direct to Specialist (Zero Platform Fees)
 
 ## Overview
 
@@ -18,7 +18,7 @@ Product purchases now use **destination charges** to send payments directly to s
 
 - **Single specialist per order** (enforced)
 - Direct destination charge to specialist's Stripe account
-- Beautician pays ALL Stripe fees
+- Specialist pays ALL Stripe fees
 - No platform fees
 - No transfers needed
 
@@ -33,7 +33,7 @@ sessionConfig.payment_intent_data = {
   // NO application_fee_amount - zero platform fee
   metadata: {
     orderId: orderId,
-    beauticianId: beauticianId,
+    specialistId: specialistId,
     type: "product_direct_payment",
   },
 };
@@ -43,7 +43,7 @@ sessionConfig.payment_intent_data = {
 
 - Uses `transfer_data.destination` for direct payment
 - NO `application_fee_amount` (unlike services which use 50p)
-- Beautician receives: `payment amount - Stripe fees`
+- Specialist receives: `payment amount - Stripe fees`
 - Platform receives: `£0`
 
 ### 3. Service Bookings (Unchanged)
@@ -62,7 +62,7 @@ payment_intent_data: {
 
 **Service Payment Breakdown:**
 
-- Beautician receives: `payment - Stripe fees - 50p`
+- Specialist receives: `payment - Stripe fees - 50p`
 - Platform receives: `50p` per booking
 - Stripe fees: Deducted before transfer
 
@@ -84,11 +84,11 @@ price =
 - Fake discounts
 - Cart tampering
 
-### 2. Beautician Validation
+### 2. Specialist Validation
 
 ```javascript
 // Validate product ownership
-if (!product.beauticianId) {
+if (!product.specialistId) {
   return res.status(400).json({
     error: "Product is not assigned to a specialist",
   });
@@ -97,7 +97,7 @@ if (!product.beauticianId) {
 // Validate Stripe connection
 if (!specialist.stripeAccountId || specialist.stripeStatus !== "connected") {
   return res.status(400).json({
-    error: "Beautician hasn't set up payment processing",
+    error: "Specialist hasn't set up payment processing",
   });
 }
 ```
@@ -113,7 +113,7 @@ if (!Number.isInteger(item.quantity) || item.quantity < 1) {
 }
 ```
 
-### 4. Single Beautician Enforcement
+### 4. Single Specialist Enforcement
 
 ```javascript
 // Restrict to single specialist per order
@@ -160,7 +160,7 @@ if (itemsByBeautician.size > 1) {
    ```javascript
    // Check if products are from multiple specialists
    const specialists = new Set(
-     cart.items.map((item) => item.product.beauticianId)
+     cart.items.map((item) => item.product.specialistId)
    );
 
    if (specialists.size > 1) {
@@ -179,7 +179,7 @@ if (itemsByBeautician.size > 1) {
    ────────────────
    Total: £75.99
 
-   // Paid directly to: [Beautician Name]
+   // Paid directly to: [Specialist Name]
    // Note: No platform fees for product purchases
    ```
 
@@ -204,7 +204,7 @@ if (itemsByBeautician.size > 1) {
 ```
 Customer pays:    £50.00
 Stripe fee:       -£0.95 (1.5% + 20p)
-Beautician gets:  £49.05
+Specialist gets:  £49.05
 Platform gets:    £0.00
 ```
 
@@ -214,7 +214,7 @@ Platform gets:    £0.00
 Customer pays:    £50.00
 Stripe fee:       -£0.95 (1.5% + 20p)
 Platform fee:     -£0.50 (50p)
-Beautician gets:  £48.55
+Specialist gets:  £48.55
 Platform gets:    £0.50
 ```
 
@@ -237,7 +237,7 @@ const refund = await stripe.refunds.create({
 
 - Money returned from specialist to customer
 - Stripe fees NOT refunded (specialist loses fees)
-- Beautician earnings decremented
+- Specialist earnings decremented
 - Product stock restored
 
 ## Migration Notes
@@ -258,13 +258,13 @@ const refund = await stripe.refunds.create({
 
 ```javascript
 // Log direct payments
-console.log(`[PRODUCT ORDER] Direct payment processed for specialist ${beauticianId} - amount: £${amount}`);
+console.log(`[PRODUCT ORDER] Direct payment processed for specialist ${specialistId} - amount: £${amount}`);
 
 // Track in Stripe metadata
 metadata: {
   type: "product_direct_payment",
   orderId: orderId,
-  beauticianId: beauticianId,
+  specialistId: specialistId,
 }
 ```
 
@@ -277,7 +277,7 @@ metadata: {
 - [ ] Price manipulation blocked
 - [ ] Invalid quantity blocked
 - [ ] Order confirmation emails sent
-- [ ] Beautician earnings updated correctly
+- [ ] Specialist earnings updated correctly
 - [ ] Stock managed correctly
 - [ ] Refunds work (reverse_transfer)
 - [ ] Service bookings still use 50p fee
@@ -326,10 +326,10 @@ metadata: {
 
 ### Common Issues
 
-**Issue:** "Beautician hasn't set up payment processing"
+**Issue:** "Specialist hasn't set up payment processing"
 
-- **Cause:** Beautician's Stripe account not connected
-- **Fix:** Beautician must complete Stripe Connect onboarding
+- **Cause:** Specialist's Stripe account not connected
+- **Fix:** Specialist must complete Stripe Connect onboarding
 
 **Issue:** "Cannot checkout with products from multiple specialists"
 
@@ -351,7 +351,7 @@ console.log(order.stripeConnectPayments);
 // Should have: beauticianStripeAccount, no transferId
 
 // Check specialist earnings
-const specialist = await Beautician.findById(beauticianId);
+const specialist = await Specialist.findById(specialistId);
 console.log(specialist.totalEarnings);
 
 // Check Stripe payment details
@@ -367,14 +367,14 @@ console.log(paymentIntent.application_fee_amount); // Should be null for product
 **New Validations:**
 
 - Single specialist per order (enforced)
-- Beautician must have connected Stripe account
+- Specialist must have connected Stripe account
 - Price validation (uses database, not client)
 - Quantity validation (positive integer)
 
 **New Response Codes:**
 
 - `400`: Multiple specialists in cart
-- `400`: Beautician not connected to Stripe
+- `400`: Specialist not connected to Stripe
 - `400`: Invalid quantity or price
 - `400`: Product not assigned to specialist
 
@@ -392,7 +392,7 @@ console.log(paymentIntent.application_fee_amount); // Should be null for product
 
 ## Future Enhancements
 
-1. **Multi-Beautician Support** (if needed)
+1. **Multi-Specialist Support** (if needed)
 
    - Create separate Stripe sessions per specialist
    - Link sessions with common order group
@@ -404,7 +404,7 @@ console.log(paymentIntent.application_fee_amount); // Should be null for product
    - Display separate payment buttons
    - Group confirmation emails
 
-3. **Beautician Dashboard**
+3. **Specialist Dashboard**
 
    - Show direct payment earnings
    - Display Stripe fee breakdown

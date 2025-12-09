@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import Tenant from "./src/models/Tenant.js";
-import Beautician from "./src/models/Beautician.js";
+import Specialist from "./src/models/Specialist.js";
 import Service from "./src/models/Service.js";
 
 dotenv.config();
@@ -109,18 +109,18 @@ async function seedEliteBooker1() {
 
     const createdBeauticians = [];
     for (const specialist of specialists) {
-      const existing = await Beautician.findOne({
+      const existing = await Specialist.findOne({
         email: specialist.email,
         tenantId: tenant._id,
       });
 
       if (!existing) {
-        const created = await Beautician.create(specialist);
+        const created = await Specialist.create(specialist);
         createdBeauticians.push(created);
         console.log(`✓ Created specialist: ${created.name}`);
       } else {
         createdBeauticians.push(existing);
-        console.log(`✓ Beautician already exists: ${existing.name}`);
+        console.log(`✓ Specialist already exists: ${existing.name}`);
       }
     }
 

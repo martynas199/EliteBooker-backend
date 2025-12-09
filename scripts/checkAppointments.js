@@ -22,7 +22,7 @@ async function checkAppointments() {
 
     console.log("\n📅 Sample appointments:");
     const samples = await Appointment.find()
-      .populate("beauticianId", "name")
+      .populate("specialistId", "name")
       .populate("serviceId", "name")
       .limit(5)
       .lean();

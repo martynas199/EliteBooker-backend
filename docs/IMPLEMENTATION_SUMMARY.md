@@ -69,7 +69,7 @@ Successfully transformed a single-tenant beauty booking application into a compl
 **Stripe Connect - Platform Model**
 
 ```
-Flow: Customer → Platform Account → Beautician Account
+Flow: Customer → Platform Account → Specialist Account
 
 Money Example (£50 service):
 1. Customer charged: £50.00
@@ -78,7 +78,7 @@ Money Example (£50 service):
 
 Stripe Configuration:
 - Platform uses Stripe account (collect all payments)
-- Beauticians use Connect accounts (receive transfers)
+- Specialists use Connect accounts (receive transfers)
 - application_fee_amount pattern
 - Webhook events track status
 ```
@@ -87,7 +87,7 @@ Stripe Configuration:
 
 - Platform controls payment flow
 - Automatic fee collection
-- Beauticians receive payouts directly from Stripe
+- Specialists receive payouts directly from Stripe
 - Transparent money tracking
 - PCI compliance maintained
 
@@ -115,7 +115,7 @@ Stripe Configuration:
 | `src/routes/orders.js`      | 571-603          | Added platform fees for product payments                     |
 | `src/routes/webhooks.js`    | +120 lines       | Added Connect webhook handlers (account.updated, etc.)       |
 | `src/routes/specialists.js` | +150 lines       | Added 3 Stripe Connect endpoints (onboard/status/disconnect) |
-| `src/models/Beautician.js`  | +8 fields        | Added stripeAccountId, stripeStatus, stripePayoutsEnabled    |
+| `src/models/Specialist.js`  | +8 fields        | Added stripeAccountId, stripeStatus, stripePayoutsEnabled    |
 
 #### Authentication Updates
 
@@ -144,7 +144,7 @@ schema.plugin(multiTenantPlugin);
 **Models:**
 
 1. Appointment
-2. Beautician
+2. Specialist
 3. Service
 4. Product
 5. Order
@@ -274,7 +274,7 @@ schema.plugin(multiTenantPlugin);
   - Transfers remainder to specialist
   - Full payment control
 
-- [x] **Beautician Onboarding**
+- [x] **Specialist Onboarding**
 
   - POST `/:id/stripe/onboard` - Creates Connect account
   - Returns Stripe onboarding URL
@@ -345,7 +345,7 @@ schema.plugin(multiTenantPlugin);
 - [x] **E2E Tests (13)**
   - Complete signup→payment flow
   - Tenant creation with admin
-  - Beautician creation and Stripe Connect
+  - Specialist creation and Stripe Connect
   - Service creation
   - Available slots check
   - Appointment creation
@@ -510,7 +510,7 @@ Coverage:    86% (critical paths covered)
 - Platform account setup and API keys
 - Connect OAuth configuration
 - Webhook endpoint creation (8 events)
-- Beautician onboarding flow (frontend + backend code)
+- Specialist onboarding flow (frontend + backend code)
 - Payment flow with platform fees
 - Money flow examples with amounts
 - Webhook event handling (code snippets)
@@ -555,7 +555,7 @@ Coverage:    86% (critical paths covered)
   - POST /api/tenants/:id/suspend (suspend tenant)
   - POST /api/tenants/:id/activate (activate tenant)
 - Tenant resolution methods (5 priority-ordered)
-- Beautician Stripe Connect endpoints (3 total):
+- Specialist Stripe Connect endpoints (3 total):
   - POST /:id/stripe/onboard
   - GET /:id/stripe/status
   - POST /:id/stripe/disconnect
@@ -576,7 +576,7 @@ Coverage:    86% (critical paths covered)
 - Test 2: Admin dashboard access
 - Test 3: Tenant settings management
 - Test 4: Branding customization
-- Test 5: Beautician management
+- Test 5: Specialist management
 - Test 6: Stripe Connect onboarding
 - Test 7: Service creation
 - Test 8: Customer booking flow
@@ -731,7 +731,7 @@ Coverage:    86% (critical paths covered)
 | Active Tenants                   | 10      | 50      | 150     |
 | Total Bookings                   | 200     | 1,500   | 5,000   |
 | Platform Revenue (£0.50/booking) | £100    | £750    | £2,500  |
-| Connected Beauticians            | 30      | 200     | 600     |
+| Connected Specialists            | 30      | 200     | 600     |
 
 ---
 
@@ -756,7 +756,7 @@ Coverage:    86% (critical paths covered)
    - Revenue charts
    - Booking trends
    - Customer retention metrics
-   - Beautician performance
+   - Specialist performance
 
 4. **Mobile Apps**
 
@@ -837,7 +837,7 @@ pm2 logs booking-app
 ✅ **Stripe Connect Excellence**
 
 - Platform fee collection on all transactions
-- Beautician payout automation
+- Specialist payout automation
 - Comprehensive webhook handling
 - Money flow transparency
 

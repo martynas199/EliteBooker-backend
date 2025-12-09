@@ -23,17 +23,17 @@ function getStripe() {
  */
 router.post("/onboard", async (req, res) => {
   try {
-    const { beauticianId, email, refreshUrl, returnUrl } = req.body;
+    const { specialistId, email, refreshUrl, returnUrl } = req.body;
 
-    if (!beauticianId || !email) {
+    if (!specialistId || !email) {
       return res.status(400).json({
-        error: "Missing required fields: beauticianId and email",
+        error: "Missing required fields: specialistId and email",
       });
     }
 
-    const specialist = await Specialist.findById(beauticianId);
+    const specialist = await Specialist.findById(specialistId);
     if (!specialist) {
-      return res.status(404).json({ error: "Beautician not found" });
+      return res.status(404).json({ error: "Specialist not found" });
     }
 
     let stripeAccountId = Specialist.stripeAccountId;
@@ -47,7 +47,7 @@ router.post("/onboard", async (req, res) => {
       } catch (error) {
         // Account doesn't exist in current mode (likely test account with live keys)
         console.log(
-          `Clearing invalid Stripe account ID for specialist ${beauticianId}`
+          `Clearing invalid Stripe account ID for specialist ${specialistId}`
         );
         stripeAccountId = null;
         Specialist.stripeAccountId = null;
@@ -104,16 +104,16 @@ router.post("/onboard", async (req, res) => {
 });
 
 /**
- * GET /api/connect/status/:beauticianId
+ * GET /api/connect/status/:specialistId
  * Check the status of a specialist's Stripe Connect account
  */
-router.get("/status/:beauticianId", async (req, res) => {
+router.get("/status/:specialistId", async (req, res) => {
   try {
-    const { beauticianId } = req.params;
+    const { specialistId } = req.params;
 
-    const specialist = await Specialist.findById(beauticianId);
+    const specialist = await Specialist.findById(specialistId);
     if (!specialist) {
-      return res.status(404).json({ error: "Beautician not found" });
+      return res.status(404).json({ error: "Specialist not found" });
     }
 
     if (!Specialist.stripeAccountId) {
@@ -133,7 +133,7 @@ router.get("/status/:beauticianId", async (req, res) => {
     } catch (error) {
       // Account doesn't exist (likely test account with live keys)
       console.log(
-        `Invalid Stripe account ID for specialist ${beauticianId}, clearing...`
+        `Invalid Stripe account ID for specialist ${specialistId}, clearing...`
       );
       Specialist.stripeAccountId = null;
       Specialist.stripeStatus = "not_connected";
@@ -182,17 +182,17 @@ router.get("/status/:beauticianId", async (req, res) => {
 });
 
 /**
- * POST /api/connect/dashboard-link/:beauticianId
+ * POST /api/connect/dashboard-link/:specialistId
  * Generate a login link for specialist to access their Stripe Express dashboard
  */
-router.post("/dashboard-link/:beauticianId", async (req, res) => {
+router.post("/dashboard-link/:specialistId", async (req, res) => {
   try {
-    const { beauticianId } = req.params;
+    const { specialistId } = req.params;
 
-    const specialist = await Specialist.findById(beauticianId);
+    const specialist = await Specialist.findById(specialistId);
     if (!specialist || !Specialist.stripeAccountId) {
       return res.status(404).json({
-        error: "Beautician not found or Stripe account not connected",
+        error: "Specialist not found or Stripe account not connected",
       });
     }
 
@@ -215,16 +215,16 @@ router.post("/dashboard-link/:beauticianId", async (req, res) => {
 });
 
 /**
- * DELETE /api/connect/disconnect/:beauticianId
+ * DELETE /api/connect/disconnect/:specialistId
  * Disconnect a specialist's Stripe account (for testing/admin purposes)
  */
-router.delete("/disconnect/:beauticianId", async (req, res) => {
+router.delete("/disconnect/:specialistId", async (req, res) => {
   try {
-    const { beauticianId } = req.params;
+    const { specialistId } = req.params;
 
-    const specialist = await Specialist.findById(beauticianId);
+    const specialist = await Specialist.findById(specialistId);
     if (!specialist) {
-      return res.status(404).json({ error: "Beautician not found" });
+      return res.status(404).json({ error: "Specialist not found" });
     }
 
     if (Specialist.stripeAccountId) {

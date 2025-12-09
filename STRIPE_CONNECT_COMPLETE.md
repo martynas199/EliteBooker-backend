@@ -12,7 +12,7 @@ All Stripe Connect features have been implemented for both backend and frontend.
 
 #### 1. Database Models ✅
 
-- **Beautician Model**: Added Stripe Connect fields
+- **Specialist Model**: Added Stripe Connect fields
 
   - `stripeAccountId` - Express account ID
   - `stripeStatus` - Account status (not_connected, pending, connected, rejected)
@@ -31,16 +31,16 @@ All Stripe Connect features have been implemented for both backend and frontend.
   - `refundStatus`, `refundedAt`, `refundReason` - Refund tracking
 
 - **Product Model**: Owner tracking
-  - `beauticianId` - Product owner reference
+  - `specialistId` - Product owner reference
 
 #### 2. API Routes ✅
 
 **Connect Routes** (`/api/connect`):
 
 - ✅ `POST /onboard` - Create Express account & return onboarding URL
-- ✅ `GET /status/:beauticianId` - Check account verification status
-- ✅ `POST /dashboard-link/:beauticianId` - Generate Stripe dashboard URL
-- ✅ `DELETE /disconnect/:beauticianId` - Disconnect account
+- ✅ `GET /status/:specialistId` - Check account verification status
+- ✅ `POST /dashboard-link/:specialistId` - Generate Stripe dashboard URL
+- ✅ `DELETE /disconnect/:specialistId` - Disconnect account
 
 **Reports Routes** (`/api/reports`):
 
@@ -48,7 +48,7 @@ All Stripe Connect features have been implemented for both backend and frontend.
   - Total revenue, platform fees, specialist earnings
   - Bookings vs products breakdown
   - Per-specialist aggregation
-- ✅ `GET /specialist-earnings/:beauticianId` - Individual earnings
+- ✅ `GET /specialist-earnings/:specialistId` - Individual earnings
   - Booking revenue with platform fees
   - Product sales (100% to specialist)
   - Recent transactions
@@ -88,11 +88,11 @@ All Stripe Connect features have been implemented for both backend and frontend.
 
 Functions:
 
-- ✅ `createOnboardingLink(beauticianId, email)` - Get onboarding URL
-- ✅ `getAccountStatus(beauticianId)` - Check verification status
-- ✅ `getDashboardLink(beauticianId)` - Get Stripe dashboard URL
-- ✅ `disconnectAccount(beauticianId)` - Remove connection
-- ✅ `getEarnings(beauticianId, startDate, endDate)` - Fetch earnings
+- ✅ `createOnboardingLink(specialistId, email)` - Get onboarding URL
+- ✅ `getAccountStatus(specialistId)` - Check verification status
+- ✅ `getDashboardLink(specialistId)` - Get Stripe dashboard URL
+- ✅ `disconnectAccount(specialistId)` - Remove connection
+- ✅ `getEarnings(specialistId, startDate, endDate)` - Fetch earnings
 - ✅ `getPlatformRevenue(startDate, endDate)` - Platform-wide stats
 
 #### 2. Stripe Connect Settings Component ✅
@@ -119,7 +119,7 @@ Features:
 **Integration**:
 
 - ✅ Added to `src/admin/pages/Settings.jsx`
-- ✅ Conditional rendering based on `admin.beauticianId` and `admin.email`
+- ✅ Conditional rendering based on `admin.specialistId` and `admin.email`
 
 #### 3. Admin Revenue Dashboard ✅
 
@@ -129,7 +129,7 @@ New Features:
 
 - ✅ **Platform Revenue Card (Stripe Connect)**:
   - Platform Fees (£0.50 per booking)
-  - Beautician Earnings (direct transfers)
+  - Specialist Earnings (direct transfers)
   - Bookings Revenue
   - Products Revenue
   - Total Revenue
@@ -144,7 +144,7 @@ New Features:
 Added:
 
 - ✅ `getPlatformRevenue(startDate, endDate)` - Platform Connect data
-- ✅ `getBeauticianEarnings(beauticianId, startDate, endDate)` - Individual earnings
+- ✅ `getBeauticianEarnings(specialistId, startDate, endDate)` - Individual earnings
 
 ---
 
@@ -178,7 +178,7 @@ VITE_API_URL=http://localhost:4000
    - `application_fee_amount: 50` (£0.50 platform fee)
    - `transfer_data: { destination: beauticianStripeAccount }`
 3. On payment success:
-   - Beautician receives: `price - £0.50` → Direct to their bank
+   - Specialist receives: `price - £0.50` → Direct to their bank
    - Platform receives: `£0.50` → Platform Stripe account
 4. Webhook confirms payment, updates `specialist.totalEarnings`
 

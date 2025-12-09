@@ -24,7 +24,7 @@ import Tenant from "../../src/models/Tenant.js";
 import Admin from "../../src/models/Admin.js";
 import Appointment from "../../src/models/Appointment.js";
 import Service from "../../src/models/Service.js";
-import Beautician from "../../src/models/Beautician.js";
+import Specialist from "../../src/models/Specialist.js";
 
 let mongoServer;
 let tenant1, tenant2;
@@ -110,7 +110,7 @@ beforeEach(async () => {
   // Clear relevant collections before each test
   await Appointment.deleteMany({});
   await Service.deleteMany({});
-  await Beautician.deleteMany({});
+  await Specialist.deleteMany({});
 });
 
 describe("Cross-Tenant Access Prevention - API Endpoints", () => {
@@ -133,16 +133,16 @@ describe("Cross-Tenant Access Prevention - API Endpoints", () => {
         active: true,
       });
 
-      const beautician1 = await Beautician.create({
+      const beautician1 = await Specialist.create({
         tenantId: tenant1._id,
-        name: "Beautician One",
+        name: "Specialist One",
         email: "beautician1@salon-one.com",
         active: true,
       });
 
-      const beautician2 = await Beautician.create({
+      const beautician2 = await Specialist.create({
         tenantId: tenant2._id,
-        name: "Beautician Two",
+        name: "Specialist Two",
         email: "beautician2@salon-two.com",
         active: true,
       });
@@ -150,7 +150,7 @@ describe("Cross-Tenant Access Prevention - API Endpoints", () => {
       await Appointment.create({
         tenantId: tenant1._id,
         serviceId: service1._id,
-        beauticianId: beautician1._id,
+        specialistId: beautician1._id,
         start: new Date("2025-12-01T10:00:00"),
         end: new Date("2025-12-01T11:00:00"),
         price: 5000,
@@ -171,7 +171,7 @@ describe("Cross-Tenant Access Prevention - API Endpoints", () => {
       await Appointment.create({
         tenantId: tenant2._id,
         serviceId: service2._id,
-        beauticianId: beautician2._id,
+        specialistId: beautician2._id,
         start: new Date("2025-12-01T11:00:00"),
         end: new Date("2025-12-01T12:00:00"),
         price: 3000,
@@ -222,9 +222,9 @@ describe("Cross-Tenant Access Prevention - API Endpoints", () => {
         active: true,
       });
 
-      const specialist = await Beautician.create({
+      const specialist = await Specialist.create({
         tenantId: tenant1._id,
-        name: "Beautician One",
+        name: "Specialist One",
         email: "specialist@salon-one.com",
         active: true,
       });
@@ -232,7 +232,7 @@ describe("Cross-Tenant Access Prevention - API Endpoints", () => {
       const appointment = await Appointment.create({
         tenantId: tenant1._id,
         serviceId: service._id,
-        beauticianId: specialist._id,
+        specialistId: specialist._id,
         start: new Date("2025-12-01T10:00:00"),
         end: new Date("2025-12-01T11:00:00"),
         price: 5000,
@@ -275,9 +275,9 @@ describe("Cross-Tenant Access Prevention - API Endpoints", () => {
         active: true,
       });
 
-      const specialist = await Beautician.create({
+      const specialist = await Specialist.create({
         tenantId: tenant1._id,
-        name: "Beautician One",
+        name: "Specialist One",
         email: "specialist@salon-one.com",
         active: true,
       });
@@ -285,7 +285,7 @@ describe("Cross-Tenant Access Prevention - API Endpoints", () => {
       const appointment = await Appointment.create({
         tenantId: tenant1._id,
         serviceId: service._id,
-        beauticianId: specialist._id,
+        specialistId: specialist._id,
         start: new Date("2025-12-01T10:00:00"),
         end: new Date("2025-12-01T11:00:00"),
         price: 5000,
@@ -327,9 +327,9 @@ describe("Cross-Tenant Access Prevention - API Endpoints", () => {
         active: true,
       });
 
-      const specialist = await Beautician.create({
+      const specialist = await Specialist.create({
         tenantId: tenant1._id,
-        name: "Beautician One",
+        name: "Specialist One",
         email: "specialist@salon-one.com",
         active: true,
       });
@@ -337,7 +337,7 @@ describe("Cross-Tenant Access Prevention - API Endpoints", () => {
       const appointment = await Appointment.create({
         tenantId: tenant1._id,
         serviceId: service._id,
-        beauticianId: specialist._id,
+        specialistId: specialist._id,
         start: new Date("2025-12-01T10:00:00"),
         end: new Date("2025-12-01T11:00:00"),
         price: 5000,
@@ -417,9 +417,9 @@ describe("Cross-Tenant Access Prevention - API Endpoints", () => {
         active: true,
       });
 
-      const specialist = await Beautician.create({
+      const specialist = await Specialist.create({
         tenantId: tenant1._id,
-        name: "Beautician One",
+        name: "Specialist One",
         email: "specialist@salon-one.com",
         active: true,
       });
@@ -427,7 +427,7 @@ describe("Cross-Tenant Access Prevention - API Endpoints", () => {
       await Appointment.create({
         tenantId: tenant1._id,
         serviceId: service._id,
-        beauticianId: specialist._id,
+        specialistId: specialist._id,
         start: new Date("2025-12-01T10:00:00"),
         end: new Date("2025-12-01T11:00:00"),
         price: 5000,
@@ -465,9 +465,9 @@ describe("Cross-Tenant Access Prevention - API Endpoints", () => {
         active: true,
       });
 
-      const specialist = await Beautician.create({
+      const specialist = await Specialist.create({
         tenantId: tenant1._id,
-        name: "Beautician One",
+        name: "Specialist One",
         email: "specialist@salon-one.com",
         active: true,
       });
@@ -475,7 +475,7 @@ describe("Cross-Tenant Access Prevention - API Endpoints", () => {
       await Appointment.create({
         tenantId: tenant1._id,
         serviceId: service._id,
-        beauticianId: specialist._id,
+        specialistId: specialist._id,
         start: new Date("2025-12-01T10:00:00"),
         end: new Date("2025-12-01T11:00:00"),
         price: 5000,

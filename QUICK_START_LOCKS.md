@@ -103,7 +103,7 @@ function TimeSlotPage() {
   const handleSlotClick = async (slot) => {
     const result = await acquireLock({
       tenantId: tenant.id,
-      resourceId: slot.beauticianId,
+      resourceId: slot.specialistId,
       date: slot.date,
       startTime: slot.time,
       duration: slot.duration,
@@ -221,7 +221,7 @@ curl -X POST http://localhost:4000/api/bookings/create \
   -d '{
     "lockId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "tenantId": "test-tenant",
-    "beauticianId": "specialist-1",
+    "specialistId": "specialist-1",
     "serviceId": "service-1",
     "date": "2025-03-10",
     "startTime": "14:00",

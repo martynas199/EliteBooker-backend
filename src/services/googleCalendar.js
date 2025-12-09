@@ -31,11 +31,11 @@ const SCOPES = [
 /**
  * Generate Google OAuth URL for specialist to authorize
  */
-export function getAuthUrl(beauticianId) {
+export function getAuthUrl(specialistId) {
   const authUrl = oauth2Client.generateAuthUrl({
     access_type: "offline",
     scope: SCOPES,
-    state: beauticianId, // Pass specialist ID in state parameter
+    state: specialistId, // Pass specialist ID in state parameter
     prompt: "consent", // Force consent screen to get refresh token
   });
   return authUrl;
@@ -52,8 +52,8 @@ export async function getTokensFromCode(code) {
 /**
  * Store Google Calendar tokens for specialist
  */
-export async function saveTokensForBeautician(beauticianId, tokens) {
-  await Specialist.findByIdAndUpdate(beauticianId, {
+export async function saveTokensForBeautician(specialistId, tokens) {
+  await Specialist.findByIdAndUpdate(specialistId, {
     "googleCalendar.accessToken": tokens.access_token,
     "googleCalendar.refreshToken": tokens.refresh_token,
     "googleCalendar.expiryDate": tokens.expiry_date,
@@ -64,8 +64,8 @@ export async function saveTokensForBeautician(beauticianId, tokens) {
 /**
  * Get authenticated calendar client for specialist
  */
-async function getCalendarClient(beauticianId) {
-  const specialist = await Specialist.findById(beauticianId);
+async function getCalendarClient(specialistId) {
+  const specialist = await Specialist.findById(specialistId);
 
   if (
     !specialist?.googleCalendar?.enabled ||
@@ -84,7 +84,7 @@ async function getCalendarClient(beauticianId) {
   // Check if token needs refresh
   if (Date.now() >= Specialist.googleCalendar.expiryDate) {
     const { credentials } = await oauth2Client.refreshAccessToken();
-    await saveTokensForBeautician(beauticianId, credentials);
+    await saveTokensForBeautician(specialistId, credentials);
     oauth2Client.setCredentials(credentials);
   }
 
@@ -94,9 +94,9 @@ async function getCalendarClient(beauticianId) {
 /**
  * Create calendar event for appointment
  */
-export async function createCalendarEvent(beauticianId, appointment) {
+export async function createCalendarEvent(specialistId, appointment) {
   try {
-    const calendar = await getCalendarClient(beauticianId);
+    const calendar = await getCalendarClient(specialistId);
 
     // Format appointment data for Google Calendar
     const event = {
@@ -151,9 +151,9 @@ Booking Reference: ${appointment._id}
 /**
  * Update calendar event
  */
-export async function updateCalendarEvent(beauticianId, eventId, appointment) {
+export async function updateCalendarEvent(specialistId, eventId, appointment) {
   try {
-    const calendar = await getCalendarClient(beauticianId);
+    const calendar = await getCalendarClient(specialistId);
 
     const event = {
       summary: `${appointment.service?.name || "Appointment"} - ${
@@ -197,9 +197,9 @@ Booking Reference: ${appointment._id}
 /**
  * Delete calendar event
  */
-export async function deleteCalendarEvent(beauticianId, eventId) {
+export async function deleteCalendarEvent(specialistId, eventId) {
   try {
-    const calendar = await getCalendarClient(beauticianId);
+    const calendar = await getCalendarClient(specialistId);
 
     await calendar.events.delete({
       calendarId: "primary",
@@ -216,8 +216,8 @@ export async function deleteCalendarEvent(beauticianId, eventId) {
 /**
  * Disconnect Google Calendar for specialist
  */
-export async function disconnectCalendar(beauticianId) {
-  await Specialist.findByIdAndUpdate(beauticianId, {
+export async function disconnectCalendar(specialistId) {
+  await Specialist.findByIdAndUpdate(specialistId, {
     "googleCalendar.enabled": false,
     "googleCalendar.accessToken": null,
     "googleCalendar.refreshToken": null,

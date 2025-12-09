@@ -30,7 +30,7 @@ const ServiceSchema = new mongoose.Schema(
       { type: mongoose.Schema.Types.ObjectId, ref: "Specialist" },
     ],
     // Preferred single-specialist assignment (legacy)
-    beauticianId: { type: mongoose.Schema.Types.ObjectId, ref: "Specialist" },
+    specialistId: { type: mongoose.Schema.Types.ObjectId, ref: "Specialist" },
     // Backwards-compatibility for older data
     beauticianIds: [
       { type: mongoose.Schema.Types.ObjectId, ref: "Specialist" },

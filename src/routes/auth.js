@@ -95,7 +95,7 @@ const sendTokenResponse = async (admin, statusCode, res, req) => {
         role: admin.role,
         active: admin.active,
         lastLogin: admin.lastLogin,
-        beauticianId: admin.beauticianId,
+        specialistId: admin.specialistId,
         tenantId: admin.tenantId,
       },
     });
@@ -152,7 +152,8 @@ r.post("/register", async (req, res) => {
  */
 r.post("/login", async (req, res) => {
   try {
-    console.log("[Login] Request body:", req.body);
+    // Security: Don't log passwords in production
+    // console.log("[Login] Request body:", req.body);
 
     // Validate request body
     const validation = loginSchema.safeParse(req.body);
@@ -466,7 +467,7 @@ r.get("/me", async (req, res) => {
         role: admin.role,
         active: admin.active,
         lastLogin: admin.lastLogin,
-        beauticianId: admin.beauticianId, // Added for Stripe Connect
+        specialistId: admin.specialistId, // Added for Stripe Connect
         tenantId: admin.tenantId, // Required for tenant-specific operations
       },
     });
@@ -566,7 +567,7 @@ r.patch("/me", async (req, res) => {
         role: admin.role,
         active: admin.active,
         lastLogin: admin.lastLogin,
-        beauticianId: admin.beauticianId, // Added for Stripe Connect
+        specialistId: admin.specialistId, // Added for Stripe Connect
       },
     });
   } catch (error) {

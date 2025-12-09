@@ -53,7 +53,7 @@ r.get("/confirm", async (req, res, next) => {
     console.log("[CHECKOUT CONFIRM] Found appointment:", appt._id);
 
     // Get specialist to determine which Stripe account has the session
-    const specialist = await Specialist.findById(appt.beauticianId).lean();
+    const specialist = await Specialist.findById(appt.specialistId).lean();
 
     // Retrieve session from the correct account
     let stripe;
@@ -163,7 +163,7 @@ r.get("/confirm", async (req, res, next) => {
 
       // Update specialist's total earnings (amount minus platform fee, converted to pounds)
       const earningsInPounds = (amountTotal - platformFee) / 100;
-      await Specialist.findByIdAndUpdate(appt.beauticianId, {
+      await Specialist.findByIdAndUpdate(appt.specialistId, {
         $inc: { totalEarnings: earningsInPounds },
       });
     }
@@ -198,7 +198,7 @@ r.get("/confirm", async (req, res, next) => {
       );
       const confirmedAppt = await Appointment.findById(appt._id)
         .populate("serviceId")
-        .populate("beauticianId");
+        .populate("specialistId");
       console.log(
         "[CHECKOUT CONFIRM] Loaded appointment:",
         confirmedAppt._id,
@@ -209,7 +209,7 @@ r.get("/confirm", async (req, res, next) => {
       await sendConfirmationEmail({
         appointment: confirmedAppt,
         service: confirmedAppt.serviceId,
-        specialist: confirmedAppt.beauticianId,
+        specialist: confirmedAppt.specialistId,
       });
       console.log(
         "[CHECKOUT CONFIRM] Confirmation email sent to:",
@@ -249,7 +249,7 @@ r.post("/create-session", async (req, res, next) => {
     } else {
       // Create a reserved-unpaid appointment first (same logic as /api/appointments)
       const {
-        beauticianId,
+        specialistId,
         any,
         serviceId,
         variantName,
@@ -270,7 +270,7 @@ r.post("/create-session", async (req, res, next) => {
           active: true,
         }).lean();
       } else {
-        specialist = await Specialist.findById(beauticianId).lean();
+        specialist = await Specialist.findById(specialistId).lean();
       }
       if (!specialist)
         return res.status(400).json({ error: "No specialist available" });
@@ -283,7 +283,7 @@ r.post("/create-session", async (req, res, next) => {
             60000
       );
       const conflict = await Appointment.findOne({
-        beauticianId: Specialist._id,
+        specialistId: Specialist._id,
         start: { $lt: end },
         end: { $gt: start },
       }).lean();
@@ -291,7 +291,7 @@ r.post("/create-session", async (req, res, next) => {
         return res.status(409).json({ error: "Slot no longer available" });
       appt = await Appointment.create({
         client,
-        beauticianId: Specialist._id,
+        specialistId: Specialist._id,
         serviceId,
         variantName,
         start,
@@ -323,7 +323,17 @@ r.post("/create-session", async (req, res, next) => {
       });
     }
     // Get specialist to check payment settings and Stripe Connect status
-    const specialist = await Specialist.findById(appt.beauticianId).lean();
+    const specialist = await Specialist.findById(appt.specialistId).lean();
+
+    // Check if specialist has active no-fee subscription
+    const hasNoFeeSubscription =
+      specialist?.subscription?.noFeeBookings?.enabled === true &&
+      specialist?.subscription?.noFeeBookings?.status === "active";
+
+    console.log(
+      "[CHECKOUT] Specialist has no-fee subscription:",
+      hasNoFeeSubscription
+    );
 
     // Get tenant for platform fee, currency settings, and URLs
     const tenant = req.tenant;
@@ -332,9 +342,12 @@ r.post("/create-session", async (req, res, next) => {
 
     console.log("[CHECKOUT] Tenant slug:", tenantSlug);
     console.log("[CHECKOUT] Tenant path:", tenantPath);
-    const platformFee =
-      tenant?.paymentSettings?.platformFeePerBooking ||
-      Number(process.env.STRIPE_PLATFORM_FEE || 50); // £0.50 in pence
+
+    // Apply booking fee only if specialist doesn't have subscription
+    const platformFee = hasNoFeeSubscription
+      ? 0
+      : tenant?.paymentSettings?.platformFeePerBooking ||
+        Number(process.env.STRIPE_PLATFORM_FEE || 50); // £0.50 in pence
 
     const baseAmount = Number(appt.price || 0);
 
@@ -418,7 +431,7 @@ r.post("/create-session", async (req, res, next) => {
       cancel_url: `${frontend}${tenantPath}/cancel?appointmentId=${appt._id}`,
       metadata: {
         appointmentId: String(appt._id),
-        beauticianId: String(appt.beauticianId),
+        specialistId: String(appt.specialistId),
         type: isDeposit ? "deposit" : "full",
       },
       line_items: [
@@ -476,7 +489,7 @@ r.post("/create-session", async (req, res, next) => {
         },
         metadata: {
           appointmentId: String(appt._id),
-          beauticianId: String(appt.beauticianId),
+          specialistId: String(appt.specialistId),
           tenantId: tenant?._id?.toString() || "default",
           type: isDeposit ? "deposit" : "full",
         },

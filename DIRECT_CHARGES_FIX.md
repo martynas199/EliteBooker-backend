@@ -1,4 +1,4 @@
-# ✅ FIXED: Beautician Now Pays Stripe Fees (Direct Charges)
+# ✅ FIXED: Specialist Now Pays Stripe Fees (Direct Charges)
 
 ## 🔧 What We Changed
 
@@ -40,7 +40,7 @@ const session = await stripe.checkout.sessions.create({
 **After (Direct Charges):**
 
 ```javascript
-// Beautician creates session directly on their account
+// Specialist creates session directly on their account
 const stripe = getStripe(specialist.stripeAccountId); // Connected account!
 const session = await stripe.checkout.sessions.create({
   payment_intent_data: {
@@ -64,7 +64,7 @@ Per £50 booking:
   Net:       £0.50  ✅
 ```
 
-### **Beautician Account** (After Fix):
+### **Specialist Account** (After Fix):
 
 ```
 Per £50 booking:
@@ -88,7 +88,7 @@ Per £50 booking:
      - Stripe processing fees: £0.00
      - Net amount: £0.50
 
-4. **Check Beautician Account**:
+4. **Check Specialist Account**:
    - Go to Connect → Accounts → Click specialist
    - View their payments
    - **Payment breakdown** should show:
@@ -111,9 +111,9 @@ Per £50 booking:
 
 ### **Direct Charges** (New - Works):
 
-- Beautician account creates PaymentIntent
+- Specialist account creates PaymentIntent
 - Funds collected directly on specialist account
-- **Beautician pays Stripe fees** (~£1.83)
+- **Specialist pays Stripe fees** (~£1.83)
 - Platform automatically receives application fee (£0.50)
 - **Result**: Platform gains £0.50 per booking, specialist pays their own fees
 
@@ -125,7 +125,7 @@ Per £50 booking:
 
 2. **Application fee goes to platform automatically**: No manual transfer needed - Stripe handles it
 
-3. **Beautician sees full £50 charge**: Stripe fees are deducted from their Stripe balance, not shown in individual payment
+3. **Specialist sees full £50 charge**: Stripe fees are deducted from their Stripe balance, not shown in individual payment
 
 4. **Platform only sees £0.50**: Your dashboard will only show the application fee amount
 
@@ -143,9 +143,9 @@ Per £50 booking:
 ### **After Fix:**
 
 - Platform receives: £0.50 (app fee only)
-- Beautician receives: £50.00 (gross)
-- Beautician pays: £1.83 (Stripe fees)
-- Beautician keeps: £47.67
+- Specialist receives: £50.00 (gross)
+- Specialist pays: £1.83 (Stripe fees)
+- Specialist keeps: £47.67
 - **Platform net**: +£0.50 profit per booking ✅
 
 ---

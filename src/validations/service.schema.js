@@ -73,7 +73,7 @@ export const updateServiceSchema = baseServiceSchema.partial();
 export const listServicesQuerySchema = z.object({
   active: z.enum(["true", "false", "all"]).optional(),
   category: z.string().optional(),
-  beauticianId: z
+  specialistId: z
     .string()
     .regex(/^[0-9a-fA-F]{24}$/)
     .optional(),

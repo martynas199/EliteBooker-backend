@@ -66,7 +66,7 @@ app.use("/api/calendar", calendarRoutes);
 npm run dev
 ```
 
-## How Beauticians Connect Their Calendar
+## How Specialists Connect Their Calendar
 
 1. **Log in** to the admin dashboard
 2. Go to **Settings** page
@@ -104,7 +104,7 @@ Each calendar event includes:
 
 ## Disconnect Calendar
 
-Beauticians can disconnect their Google Calendar at any time from the Settings page. This will:
+Specialists can disconnect their Google Calendar at any time from the Settings page. This will:
 
 - Stop syncing new appointments
 - Remove stored tokens
@@ -127,7 +127,7 @@ Beauticians can disconnect their Google Calendar at any time from the Settings p
 
 - Check backend logs for errors
 - Verify specialist has `googleCalendar.enabled = true` in database
-- Check that appointment has `beauticianId` set
+- Check that appointment has `specialistId` set
 
 ## API Endpoints
 

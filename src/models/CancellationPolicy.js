@@ -17,7 +17,7 @@ const PolicySchema = new mongoose.Schema(
       default: "salon",
       index: true,
     },
-    beauticianId: {
+    specialistId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Specialist",
       index: true,

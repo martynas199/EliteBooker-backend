@@ -6,7 +6,7 @@
 const express = require("express");
 const { getLockService } = require("../services/lockService");
 const Appointment = require("../models/Appointment");
-const Beautician = require("../models/Beautician");
+const Specialist = require("../models/Specialist");
 const Service = require("../models/Service");
 const { requireAuth } = require("../middleware/auth");
 
@@ -33,7 +33,7 @@ router.post("/create", async (req, res) => {
 
       // Booking details
       tenantId,
-      beauticianId,
+      specialistId,
       serviceId,
       date,
       startTime,
@@ -57,7 +57,7 @@ router.post("/create", async (req, res) => {
     if (
       !lockId ||
       !tenantId ||
-      !beauticianId ||
+      !specialistId ||
       !serviceId ||
       !date ||
       !startTime ||
@@ -69,7 +69,7 @@ router.post("/create", async (req, res) => {
         required: [
           "lockId",
           "tenantId",
-          "beauticianId",
+          "specialistId",
           "serviceId",
           "date",
           "startTime",
@@ -90,7 +90,7 @@ router.post("/create", async (req, res) => {
     console.log("[Bookings] Verifying lock...");
     const lockVerification = await lockService.verifyLock({
       tenantId,
-      resourceId: beauticianId,
+      resourceId: specialistId,
       date,
       startTime,
       lockId,
@@ -114,7 +114,7 @@ router.post("/create", async (req, res) => {
     // Step 2: Validate booking data
     // Check if specialist exists and is active
     const specialist = await Specialist.findOne({
-      _id: beauticianId,
+      _id: specialistId,
       tenantId,
       active: true,
     });
@@ -123,7 +123,7 @@ router.post("/create", async (req, res) => {
       // Release lock before returning error
       await lockService.releaseLock({
         tenantId,
-        resourceId: beauticianId,
+        resourceId: specialistId,
         date,
         startTime,
         lockId,
@@ -131,7 +131,7 @@ router.post("/create", async (req, res) => {
 
       return res.status(404).json({
         success: false,
-        error: "Beautician not found or inactive",
+        error: "Specialist not found or inactive",
       });
     }
 
@@ -146,7 +146,7 @@ router.post("/create", async (req, res) => {
       // Release lock before returning error
       await lockService.releaseLock({
         tenantId,
-        resourceId: beauticianId,
+        resourceId: specialistId,
         date,
         startTime,
         lockId,
@@ -161,7 +161,7 @@ router.post("/create", async (req, res) => {
     // Step 3: Double-check for existing booking (database-level safety)
     const existingBooking = await Appointment.findOne({
       tenantId,
-      beauticianId,
+      specialistId,
       date,
       startTime,
       status: { $nin: ["cancelled", "no-show"] },
@@ -173,7 +173,7 @@ router.post("/create", async (req, res) => {
       // Release lock
       await lockService.releaseLock({
         tenantId,
-        resourceId: beauticianId,
+        resourceId: specialistId,
         date,
         startTime,
         lockId,
@@ -191,7 +191,7 @@ router.post("/create", async (req, res) => {
 
     const appointment = new Appointment({
       tenantId,
-      beauticianId,
+      specialistId,
       serviceId,
       serviceName: service.name,
       variantName: variantName || null,
@@ -227,7 +227,7 @@ router.post("/create", async (req, res) => {
     console.log("[Bookings] Releasing lock...");
     const releaseResult = await lockService.releaseLock({
       tenantId,
-      resourceId: beauticianId,
+      resourceId: specialistId,
       date,
       startTime,
       lockId,
@@ -271,14 +271,14 @@ router.post("/create", async (req, res) => {
     if (
       req.body.lockId &&
       req.body.tenantId &&
-      req.body.beauticianId &&
+      req.body.specialistId &&
       req.body.date &&
       req.body.startTime
     ) {
       try {
         await lockService.releaseLock({
           tenantId: req.body.tenantId,
-          resourceId: req.body.beauticianId,
+          resourceId: req.body.specialistId,
           date: req.body.date,
           startTime: req.body.startTime,
           lockId: req.body.lockId,
@@ -309,7 +309,7 @@ router.get("/:id", async (req, res) => {
     const { id } = req.params;
 
     const appointment = await Appointment.findById(id)
-      .populate("beauticianId", "name email phone")
+      .populate("specialistId", "name email phone")
       .populate("serviceId", "name category");
 
     if (!appointment) {
@@ -392,7 +392,7 @@ router.patch("/:id/cancel", async (req, res) => {
 router.get("/tenant/:tenantId", requireAuth, async (req, res) => {
   try {
     const { tenantId } = req.params;
-    const { date, status, beauticianId, page = 1, limit = 50 } = req.query;
+    const { date, status, specialistId, page = 1, limit = 50 } = req.query;
 
     // Verify admin has access to this tenant
     if (
@@ -415,15 +415,15 @@ router.get("/tenant/:tenantId", requireAuth, async (req, res) => {
       query.status = status;
     }
 
-    if (beauticianId) {
-      query.beauticianId = beauticianId;
+    if (specialistId) {
+      query.specialistId = specialistId;
     }
 
     const skip = (page - 1) * limit;
 
     const [appointments, total] = await Promise.all([
       Appointment.find(query)
-        .populate("beauticianId", "name email")
+        .populate("specialistId", "name email")
         .populate("serviceId", "name category")
         .sort({ date: -1, startTime: -1 })
         .skip(skip)

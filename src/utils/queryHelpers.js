@@ -153,7 +153,7 @@ export async function executePaginatedQuery(
  */
 export const commonFields = {
   appointment:
-    "_id userId client beauticianId serviceId variantName start end price status createdAt",
+    "_id userId client specialistId serviceId variantName start end price status createdAt",
   service:
     "_id name description category image variants active primaryBeauticianId",
   specialist: "_id name email phone bio specialty image active",

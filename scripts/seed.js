@@ -2,12 +2,12 @@
 dotenv.config();
 import mongoose from "mongoose";
 import Service from "../src/models/Service.js";
-import Beautician from "../src/models/Beautician.js";
+import Specialist from "../src/models/Specialist.js";
 const MONGO_URI = process.env.MONGO_URI;
 await mongoose.connect(MONGO_URI);
 await Service.deleteMany({});
-await Beautician.deleteMany({});
-const b1 = await Beautician.create({
+await Specialist.deleteMany({});
+const b1 = await Specialist.create({
   name: "Anna Brow",
   specialties: ["Brows", "Lashes"],
   active: true,
@@ -41,7 +41,7 @@ const b1 = await Beautician.create({
     sun: {},
   },
 });
-const b2 = await Beautician.create({
+const b2 = await Specialist.create({
   name: "Mia Lashes",
   specialties: ["Lashes"],
   active: true,
@@ -89,7 +89,7 @@ const s1 = await Service.create({
       bufferAfterMin: 10,
     },
   ],
-  beauticianId: b1._id,
+  specialistId: b1._id,
 });
 const s2 = await Service.create({
   name: "Classic Lashes",
@@ -105,7 +105,7 @@ const s2 = await Service.create({
       bufferAfterMin: 15,
     },
   ],
-  beauticianId: b1._id,
+  specialistId: b1._id,
 });
 console.log("Seeded specialists:", b1.name, b2.name);
 console.log("Seeded services:", s1.name, s2.name);

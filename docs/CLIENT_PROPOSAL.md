@@ -149,7 +149,7 @@ A complete, turnkey booking platform that includes:
 ### Customer Journey
 
 1. **Browse Services** → Professional catalog with images and pricing
-2. **Select Beautician** → Choose your preferred staff member
+2. **Select Specialist** → Choose your preferred staff member
 3. **Select Time** → Visual calendar showing available time slots
 4. **Enter Details** → Simple form with validation
 5. **Choose Payment** → Flexible payment options

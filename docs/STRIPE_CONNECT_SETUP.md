@@ -14,7 +14,7 @@ The platform uses **Stripe Connect** to enable:
 ## Architecture
 
 ```
-Customer Payment → Platform Stripe Account → Transfer to Beautician Account
+Customer Payment → Platform Stripe Account → Transfer to Specialist Account
                    ↓
               Platform Fee (£0.50) retained
 ```
@@ -119,7 +119,7 @@ stripe listen --forward-to localhost:4000/api/webhooks/stripe
 # Copy the webhook signing secret shown and add to .env
 ```
 
-## Step 3: Beautician Onboarding Flow
+## Step 3: Specialist Onboarding Flow
 
 ### 3.1 Create Stripe Connect Account
 
@@ -137,7 +137,7 @@ const account = await stripe.accounts.create({
   },
   business_type: "individual",
   metadata: {
-    beauticianId: specialist._id.toString(),
+    specialistId: specialist._id.toString(),
     tenantId: specialist.tenantId.toString(),
   },
 });
@@ -160,9 +160,9 @@ const accountLink = await stripe.accountLinks.create({
 
 ```jsx
 // In your Admin panel
-const handleStripeConnect = async (beauticianId) => {
+const handleStripeConnect = async (specialistId) => {
   const response = await api.post(
-    `/api/specialists/${beauticianId}/stripe/onboard`
+    `/api/specialists/${specialistId}/stripe/onboard`
   );
 
   // Redirect to Stripe onboarding
@@ -230,7 +230,7 @@ const session = await stripe.checkout.sessions.create({
 
 - Service Price: £50.00 (5000 pence)
 - Platform Fee: £0.50 (50 pence)
-- Beautician Receives: £49.50 (4950 pence)
+- Specialist Receives: £49.50 (4950 pence)
 
 ### 4.2 Product Checkout
 
@@ -265,7 +265,7 @@ const session = await stripe.checkout.sessions.create({
 // Webhook: account.updated
 case 'account.updated': {
   const account = event.data.object;
-  const specialist = await Beautician.findOne({
+  const specialist = await Specialist.findOne({
     stripeAccountId: account.id,
   });
 
@@ -311,7 +311,7 @@ case 'payment_intent.succeeded': {
 ```javascript
 // Webhook: account.application.deauthorized
 case 'account.application.deauthorized': {
-  const specialist = await Beautician.findOne({
+  const specialist = await Specialist.findOne({
     stripeAccountId: event.account,
   });
 
@@ -387,7 +387,7 @@ NODE_ENV=production
 
 ### Issue: "No such destination"
 
-**Cause**: Beautician's Stripe account not connected
+**Cause**: Specialist's Stripe account not connected
 **Solution**: Ensure specialist completes onboarding before accepting payments
 
 ### Issue: "Invalid application fee"

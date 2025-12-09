@@ -235,14 +235,14 @@ router.post(
   requireTenant,
   requireAdmin,
   async (req, res) => {
-    const specialist = await Beautician.findById(req.params.id);
+    const specialist = await Specialist.findById(req.params.id);
 
     // Create Connect account
     const account = await stripe.accounts.create({
       type: "express",
       email: specialist.email,
       metadata: {
-        beauticianId: specialist._id.toString(),
+        specialistId: specialist._id.toString(),
         tenantId: req.tenant._id.toString(),
       },
     });
@@ -265,8 +265,8 @@ router.post(
 );
 
 // Frontend: Redirect to Stripe
-const handleStripeConnect = async (beauticianId) => {
-  const { url } = await api.post(`/specialists/${beauticianId}/stripe/onboard`);
+const handleStripeConnect = async (specialistId) => {
+  const { url } = await api.post(`/specialists/${specialistId}/stripe/onboard`);
   window.location.href = url; // Redirects to Stripe onboarding
 };
 ```
@@ -278,7 +278,7 @@ const handleStripeConnect = async (beauticianId) => {
 router.post("/", requireTenant, async (req, res) => {
   const { appointmentId } = req.body;
   const appointment = await Appointment.findById(appointmentId);
-  const specialist = await Beautician.findById(appointment.specialist);
+  const specialist = await Specialist.findById(appointment.specialist);
 
   // Calculate platform fee
   const platformFee = req.tenant.paymentSettings.platformFeePerBooking || 50; // £0.50

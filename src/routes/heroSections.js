@@ -1,6 +1,7 @@
 import { Router } from "express";
 import HeroSection from "../models/HeroSection.js";
 import { uploadImage, deleteImage } from "../utils/cloudinary.js";
+import { requireAdmin } from "../middleware/requireAdmin.js";
 import multer from "multer";
 import fs from "fs";
 
@@ -16,7 +17,7 @@ const deleteLocalFile = (path) => {
   }
 };
 
-// GET all hero sections
+// GET all hero sections (PUBLIC - for customer display)
 r.get("/", async (req, res) => {
   try {
     // TENANT FILTERING: REQUIRED - Multi-tenant app must always filter by tenant
@@ -27,7 +28,11 @@ r.get("/", async (req, res) => {
       });
     }
 
-    const sections = await HeroSection.find({ tenantId: req.tenantId })
+    // For public display, only return active sections
+    const sections = await HeroSection.find({
+      tenantId: req.tenantId,
+      active: true,
+    })
       .sort({ order: 1 })
       .lean();
     res.json(sections);
@@ -38,7 +43,7 @@ r.get("/", async (req, res) => {
 });
 
 // GET single hero section
-r.get("/:id", async (req, res) => {
+r.get("/:id", requireAdmin, async (req, res) => {
   try {
     // TENANT FILTERING: REQUIRED - Multi-tenant app must always filter by tenant
     if (!req.tenantId) {
@@ -63,7 +68,7 @@ r.get("/:id", async (req, res) => {
 });
 
 // POST create new hero section
-r.post("/", async (req, res) => {
+r.post("/", requireAdmin, async (req, res) => {
   try {
     const section = new HeroSection(req.body);
     await section.save();
@@ -75,7 +80,7 @@ r.post("/", async (req, res) => {
 });
 
 // PATCH update hero section
-r.patch("/:id", async (req, res) => {
+r.patch("/:id", requireAdmin, async (req, res) => {
   try {
     const section = await HeroSection.findByIdAndUpdate(
       req.params.id,
@@ -93,7 +98,7 @@ r.patch("/:id", async (req, res) => {
 });
 
 // DELETE hero section
-r.delete("/:id", async (req, res) => {
+r.delete("/:id", requireAdmin, async (req, res) => {
   try {
     const section = await HeroSection.findById(req.params.id);
     if (!section) {
@@ -125,103 +130,113 @@ r.delete("/:id", async (req, res) => {
 });
 
 // POST upload center image
-r.post("/:id/upload-center-image", upload.single("image"), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ error: "No image file provided" });
-    }
-
-    const section = await HeroSection.findById(req.params.id);
-    if (!section) {
-      return res.status(404).json({ error: "Hero section not found" });
-    }
-
+r.post(
+  "/:id/upload-center-image",
+  requireAdmin,
+  upload.single("image"),
+  async (req, res) => {
     try {
-      // Upload new image to Cloudinary
-      const result = await uploadImage(
-        req.file.path,
-        "beauty-salon/hero-sections"
-      );
-
-      // Delete old image if exists
-      if (section.centerImage?.publicId) {
-        try {
-          await deleteImage(section.centerImage.publicId);
-        } catch (err) {
-          console.error("Failed to delete old image from Cloudinary:", err);
-        }
+      if (!req.file) {
+        return res.status(400).json({ error: "No image file provided" });
       }
 
-      // Update section with new image
-      section.centerImage = {
-        url: result.secure_url,
-        publicId: result.public_id,
-        provider: "cloudinary",
-      };
-      await section.save();
+      const section = await HeroSection.findById(req.params.id);
+      if (!section) {
+        return res.status(404).json({ error: "Hero section not found" });
+      }
 
-      // Clean up local file
-      deleteLocalFile(req.file.path);
+      try {
+        // Upload new image to Cloudinary
+        const result = await uploadImage(
+          req.file.path,
+          "beauty-salon/hero-sections"
+        );
 
-      res.json(section);
-    } catch (err) {
-      deleteLocalFile(req.file.path);
-      throw err;
+        // Delete old image if exists
+        if (section.centerImage?.publicId) {
+          try {
+            await deleteImage(section.centerImage.publicId);
+          } catch (err) {
+            console.error("Failed to delete old image from Cloudinary:", err);
+          }
+        }
+
+        // Update section with new image
+        section.centerImage = {
+          url: result.secure_url,
+          publicId: result.public_id,
+          provider: "cloudinary",
+        };
+        await section.save();
+
+        // Clean up local file
+        deleteLocalFile(req.file.path);
+
+        res.json(section);
+      } catch (err) {
+        deleteLocalFile(req.file.path);
+        throw err;
+      }
+    } catch (error) {
+      console.error("Error uploading center image:", error);
+      res.status(500).json({ error: "Failed to upload image" });
     }
-  } catch (error) {
-    console.error("Error uploading center image:", error);
-    res.status(500).json({ error: "Failed to upload image" });
   }
-});
+);
 
 // POST upload right image (Image 2)
-r.post("/:id/upload-right-image", upload.single("image"), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ error: "No image file provided" });
-    }
-
-    const section = await HeroSection.findById(req.params.id);
-    if (!section) {
-      return res.status(404).json({ error: "Hero section not found" });
-    }
-
+r.post(
+  "/:id/upload-right-image",
+  requireAdmin,
+  upload.single("image"),
+  async (req, res) => {
     try {
-      // Upload new image to Cloudinary
-      const result = await uploadImage(
-        req.file.path,
-        "beauty-salon/hero-sections"
-      );
-
-      // Delete old image if exists
-      if (section.rightImage?.publicId) {
-        try {
-          await deleteImage(section.rightImage.publicId);
-        } catch (err) {
-          console.error("Failed to delete old image from Cloudinary:", err);
-        }
+      if (!req.file) {
+        return res.status(400).json({ error: "No image file provided" });
       }
 
-      // Update section with new image
-      section.rightImage = {
-        url: result.secure_url,
-        publicId: result.public_id,
-        provider: "cloudinary",
-      };
-      await section.save();
+      const section = await HeroSection.findById(req.params.id);
+      if (!section) {
+        return res.status(404).json({ error: "Hero section not found" });
+      }
 
-      // Clean up local file
-      deleteLocalFile(req.file.path);
+      try {
+        // Upload new image to Cloudinary
+        const result = await uploadImage(
+          req.file.path,
+          "beauty-salon/hero-sections"
+        );
 
-      res.json(section);
-    } catch (err) {
-      deleteLocalFile(req.file.path);
-      throw err;
+        // Delete old image if exists
+        if (section.rightImage?.publicId) {
+          try {
+            await deleteImage(section.rightImage.publicId);
+          } catch (err) {
+            console.error("Failed to delete old image from Cloudinary:", err);
+          }
+        }
+
+        // Update section with new image
+        section.rightImage = {
+          url: result.secure_url,
+          publicId: result.public_id,
+          provider: "cloudinary",
+        };
+        await section.save();
+
+        // Clean up local file
+        deleteLocalFile(req.file.path);
+
+        res.json(section);
+      } catch (err) {
+        deleteLocalFile(req.file.path);
+        throw err;
+      }
+    } catch (error) {
+      console.error("Error uploading right image:", error);
+      res.status(500).json({ error: "Failed to upload image" });
     }
-  } catch (error) {
-    console.error("Error uploading right image:", error);
-    res.status(500).json({ error: "Failed to upload image" });
   }
-});
+);
 
 export default r;

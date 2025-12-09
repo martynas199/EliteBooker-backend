@@ -11,11 +11,11 @@ const router = express.Router();
  * Query params:
  *   - startDate: ISO date string
  *   - endDate: ISO date string
- *   - beauticianId: filter by specific specialist
+ *   - specialistId: filter by specific specialist
  */
 router.get("/revenue", async (req, res) => {
   try {
-    const { startDate, endDate, beauticianId } = req.query;
+    const { startDate, endDate, specialistId } = req.query;
 
     // Build date filter
     const dateFilter = {};
@@ -36,15 +36,15 @@ router.get("/revenue", async (req, res) => {
     if (hasDateFilter) {
       bookingMatch.createdAt = dateFilter;
     }
-    if (beauticianId) {
-      bookingMatch.beauticianId = beauticianId;
+    if (specialistId) {
+      bookingMatch.specialistId = specialistId;
     }
 
     const bookingRevenue = await Appointment.aggregate([
       { $match: bookingMatch },
       {
         $group: {
-          _id: "$beauticianId",
+          _id: "$specialistId",
           totalBookings: { $sum: 1 },
           totalRevenue: { $sum: "$price" },
           totalPlatformFees: { $sum: "$payment.stripe.platformFee" },
@@ -61,7 +61,7 @@ router.get("/revenue", async (req, res) => {
       { $unwind: "$specialist" },
       {
         $project: {
-          beauticianId: "$_id",
+          specialistId: "$_id",
           beauticianName: "$Specialist.name",
           beauticianEmail: "$Specialist.email",
           totalBookings: 1,
@@ -86,26 +86,26 @@ router.get("/revenue", async (req, res) => {
     // Get orders and extract specialist revenue
     const orders = await Order.find(orderMatch).populate({
       path: "items.productId",
-      select: "beauticianId",
+      select: "specialistId",
     });
 
     // Group product revenue by specialist
     const productRevenueMap = new Map();
     for (const order of orders) {
       for (const item of order.items) {
-        const beauticianId = item.productId?.beauticianId?.toString();
-        if (beauticianId) {
+        const specialistId = item.productId?.specialistId?.toString();
+        if (specialistId) {
           if (
-            beauticianId &&
-            (!req.query.beauticianId || beauticianId === req.query.beauticianId)
+            specialistId &&
+            (!req.query.specialistId || specialistId === req.query.specialistId)
           ) {
-            const current = productRevenueMap.get(beauticianId) || {
+            const current = productRevenueMap.get(specialistId) || {
               totalOrders: 0,
               totalRevenue: 0,
             };
             current.totalOrders += 1;
             current.totalRevenue += item.price * item.quantity;
-            productRevenueMap.set(beauticianId, current);
+            productRevenueMap.set(specialistId, current);
           }
         }
       }
@@ -115,9 +115,9 @@ router.get("/revenue", async (req, res) => {
     const revenueByBeautician = new Map();
 
     for (const booking of bookingRevenue) {
-      const id = booking.beauticianId.toString();
+      const id = booking.specialistId.toString();
       revenueByBeautician.set(id, {
-        beauticianId: id,
+        specialistId: id,
         beauticianName: booking.beauticianName,
         beauticianEmail: booking.beauticianEmail,
         bookings: {
@@ -135,8 +135,8 @@ router.get("/revenue", async (req, res) => {
     }
 
     // Add product revenue
-    for (const [beauticianId, productData] of productRevenueMap) {
-      const existing = revenueByBeautician.get(beauticianId);
+    for (const [specialistId, productData] of productRevenueMap) {
+      const existing = revenueByBeautician.get(specialistId);
       if (existing) {
         existing.products = {
           count: productData.totalOrders,
@@ -144,11 +144,11 @@ router.get("/revenue", async (req, res) => {
         };
         existing.totalEarnings += productData.totalRevenue;
       } else {
-        // Beautician only has product sales, no bookings
-        const specialist = await Specialist.findById(beauticianId);
+        // Specialist only has product sales, no bookings
+        const specialist = await Specialist.findById(specialistId);
         if (specialist) {
-          revenueByBeautician.set(beauticianId, {
-            beauticianId,
+          revenueByBeautician.set(specialistId, {
+            specialistId,
             beauticianName: Specialist.name,
             beauticianEmail: Specialist.email,
             bookings: {
@@ -209,17 +209,17 @@ router.get("/revenue", async (req, res) => {
 });
 
 /**
- * GET /api/reports/specialist-earnings/:beauticianId
+ * GET /api/reports/specialist-earnings/:specialistId
  * Get detailed earnings for a specific specialist
  */
-router.get("/specialist-earnings/:beauticianId", async (req, res) => {
+router.get("/specialist-earnings/:specialistId", async (req, res) => {
   try {
-    const { beauticianId } = req.params;
+    const { specialistId } = req.params;
     const { startDate, endDate } = req.query;
 
-    const specialist = await Specialist.findById(beauticianId);
+    const specialist = await Specialist.findById(specialistId);
     if (!specialist) {
-      return res.status(404).json({ error: "Beautician not found" });
+      return res.status(404).json({ error: "Specialist not found" });
     }
 
     // Date filter
@@ -230,7 +230,7 @@ router.get("/specialist-earnings/:beauticianId", async (req, res) => {
 
     // Get completed bookings
     const bookingMatch = {
-      beauticianId,
+      specialistId,
       status: { $in: ["confirmed", "completed"] },
       "payment.status": "succeeded",
     };
@@ -260,7 +260,7 @@ router.get("/specialist-earnings/:beauticianId", async (req, res) => {
 
     for (const order of orders) {
       for (const item of order.items) {
-        if (item.productId?.beauticianId?.toString() === beauticianId) {
+        if (item.productId?.specialistId?.toString() === specialistId) {
           const itemTotal = item.price * item.quantity;
           productSales.push({
             orderId: order._id,
@@ -315,7 +315,7 @@ router.get("/specialist-earnings/:beauticianId", async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Beautician earnings error:", error);
+    console.error("Specialist earnings error:", error);
     res.status(500).json({
       error: "Failed to get specialist earnings",
       message: error.message,

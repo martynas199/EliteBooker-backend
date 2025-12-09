@@ -41,7 +41,7 @@ const OrderItemSchema = new Schema(
       default: "",
     },
     // Stripe Connect: Track which specialist owns this product
-    beauticianId: {
+    specialistId: {
       type: Schema.Types.ObjectId,
       ref: "Specialist",
       default: null, // null means platform-owned
@@ -207,7 +207,7 @@ const OrderSchema = new Schema(
     // Stripe Connect payment tracking
     stripeConnectPayments: [
       {
-        beauticianId: Schema.Types.ObjectId,
+        specialistId: Schema.Types.ObjectId,
         beauticianStripeAccount: String,
         amount: Number, // Amount paid to this specialist
         paymentIntentId: String,
@@ -272,7 +272,7 @@ OrderSchema.index({ paymentStatus: 1 }); // Already exists
 OrderSchema.index({ userId: 1, createdAt: -1 }); // User's orders
 OrderSchema.index({ orderStatus: 1, createdAt: -1 }); // Status-filtered orders
 OrderSchema.index({ paymentStatus: 1, orderStatus: 1 }); // Combined status
-OrderSchema.index({ "items.beauticianId": 1, createdAt: -1 }); // Beautician sales
+OrderSchema.index({ "items.specialistId": 1, createdAt: -1 }); // Specialist sales
 
 // Apply multi-tenant plugin
 OrderSchema.plugin(multiTenantPlugin);

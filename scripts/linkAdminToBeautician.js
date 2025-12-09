@@ -1,5 +1,5 @@
 /**
- * Script to link an Admin account to a Beautician for Stripe Connect
+ * Script to link an Admin account to a Specialist for Stripe Connect
  *
  * Usage:
  * node scripts/linkAdminToBeautician.js <adminEmail> <beauticianEmail>
@@ -10,7 +10,7 @@
 
 import mongoose from "mongoose";
 import Admin from "../src/models/Admin.js";
-import Beautician from "../src/models/Beautician.js";
+import Specialist from "../src/models/Specialist.js";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -37,11 +37,11 @@ async function linkAdminToBeautician(adminEmail, beauticianEmail) {
     console.log(`✅ Found admin: ${admin.name} (${admin.email})`);
 
     // Find specialist
-    const specialist = await Beautician.findOne({ email: beauticianEmail });
+    const specialist = await Specialist.findOne({ email: beauticianEmail });
     if (!specialist) {
-      console.error(`❌ Beautician not found with email: ${beauticianEmail}`);
+      console.error(`❌ Specialist not found with email: ${beauticianEmail}`);
       console.log("\n📋 Available specialists:");
-      const allBeauticians = await Beautician.find({});
+      const allBeauticians = await Specialist.find({});
       allBeauticians.forEach((b) => {
         console.log(`   - ${b.name} (${b.email || "no email"})`);
       });
@@ -54,13 +54,13 @@ async function linkAdminToBeautician(adminEmail, beauticianEmail) {
     );
 
     // Link them
-    admin.beauticianId = specialist._id;
+    admin.specialistId = specialist._id;
     await admin.save();
 
     console.log("\n🎉 Successfully linked admin to specialist!");
     console.log(`   Admin: ${admin.name} (${admin.email})`);
-    console.log(`   Beautician: ${specialist.name}`);
-    console.log(`   Beautician ID: ${specialist._id}`);
+    console.log(`   Specialist: ${specialist.name}`);
+    console.log(`   Specialist ID: ${specialist._id}`);
     console.log(
       "\n✅ Now log out and log back in to see Stripe Connect settings!"
     );

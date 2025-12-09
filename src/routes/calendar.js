@@ -15,15 +15,15 @@ const router = Router();
  */
 router.get("/connect", requireAdmin, async (req, res) => {
   try {
-    const beauticianId = req.admin.beauticianId;
+    const specialistId = req.admin.specialistId;
 
-    if (!beauticianId) {
+    if (!specialistId) {
       return res.status(400).json({
         error: "Only specialists can connect Google Calendar",
       });
     }
 
-    const authUrl = calendarService.getAuthUrl(beauticianId);
+    const authUrl = calendarService.getAuthUrl(specialistId);
 
     res.json({ authUrl });
   } catch (error) {
@@ -47,13 +47,13 @@ router.get("/callback", async (req, res) => {
       return res.status(400).send("Authorization code missing");
     }
 
-    const beauticianId = state; // We passed specialist ID in state parameter
+    const specialistId = state; // We passed specialist ID in state parameter
 
     // Exchange code for tokens
     const tokens = await calendarService.getTokensFromCode(code);
 
     // Save tokens to specialist record
-    await calendarService.saveTokensForBeautician(beauticianId, tokens);
+    await calendarService.saveTokensForBeautician(specialistId, tokens);
 
     // Redirect to admin settings page with success message
     res.redirect("/admin/settings?calendar=connected");
@@ -69,15 +69,15 @@ router.get("/callback", async (req, res) => {
  */
 router.post("/disconnect", requireAdmin, async (req, res) => {
   try {
-    const beauticianId = req.admin.beauticianId;
+    const specialistId = req.admin.specialistId;
 
-    if (!beauticianId) {
+    if (!specialistId) {
       return res.status(400).json({
         error: "Only specialists can disconnect Google Calendar",
       });
     }
 
-    await calendarService.disconnectCalendar(beauticianId);
+    await calendarService.disconnectCalendar(specialistId);
 
     res.json({
       success: true,
@@ -98,13 +98,13 @@ router.post("/disconnect", requireAdmin, async (req, res) => {
  */
 router.get("/status", requireAdmin, async (req, res) => {
   try {
-    const beauticianId = req.admin.beauticianId;
+    const specialistId = req.admin.specialistId;
 
-    if (!beauticianId) {
+    if (!specialistId) {
       return res.json({ connected: false });
     }
 
-    const specialist = await Specialist.findById(beauticianId).select(
+    const specialist = await Specialist.findById(specialistId).select(
       "googleCalendar"
     );
 

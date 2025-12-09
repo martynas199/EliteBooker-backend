@@ -158,30 +158,30 @@ r.patch("/me/working-hours", async (req, res, next) => {
       return res.status(401).json({ error: "Invalid token payload" });
     }
 
-    // Find admin user to get their beauticianId
+    // Find admin user to get their specialistId
     const admin = await Admin.findById(userId);
     console.log(
       "[Working Hours] Found admin:",
       admin ? admin._id : "null",
-      "beauticianId:",
-      admin?.beauticianId
+      "specialistId:",
+      admin?.specialistId
     );
 
-    if (!admin || !admin.beauticianId) {
+    if (!admin || !admin.specialistId) {
       return res.status(404).json({
         error: "No specialist profile associated with this admin account",
       });
     }
 
-    // Find specialist by beauticianId
-    const specialist = await Specialist.findById(admin.beauticianId);
+    // Find specialist by specialistId
+    const specialist = await Specialist.findById(admin.specialistId);
     console.log(
       "[Working Hours] Found specialist:",
       specialist ? Specialist._id : "null"
     );
 
     if (!specialist) {
-      return res.status(404).json({ error: "Beautician profile not found" });
+      return res.status(404).json({ error: "Specialist profile not found" });
     }
 
     const { workingHours } = req.body;
@@ -221,7 +221,7 @@ r.get("/:id", async (req, res, next) => {
     const specialist = await Specialist.findById(req.params.id).lean();
 
     if (!specialist) {
-      return res.status(404).json({ error: "Beautician not found" });
+      return res.status(404).json({ error: "Specialist not found" });
     }
 
     // Convert Map to plain object for customSchedule if it exists (only if it's still a Map)
@@ -262,7 +262,7 @@ r.post("/", requireAdmin, async (req, res, next) => {
   } catch (err) {
     if (err.code === 11000) {
       return res.status(409).json({
-        error: "Beautician already exists",
+        error: "Specialist already exists",
         details: "A specialist with this email may already exist",
       });
     }
@@ -302,7 +302,7 @@ r.patch("/:id", requireAdmin, async (req, res, next) => {
     ).lean();
 
     if (!updated) {
-      return res.status(404).json({ error: "Beautician not found" });
+      return res.status(404).json({ error: "Specialist not found" });
     }
 
     res.json(updated);
@@ -346,10 +346,10 @@ r.delete("/:id", requireAdmin, async (req, res, next) => {
     const deleted = await Specialist.findByIdAndDelete(req.params.id);
 
     if (!deleted) {
-      return res.status(404).json({ error: "Beautician not found" });
+      return res.status(404).json({ error: "Specialist not found" });
     }
 
-    res.json({ ok: true, message: "Beautician deleted successfully" });
+    res.json({ ok: true, message: "Specialist deleted successfully" });
   } catch (err) {
     next(err);
   }
@@ -383,7 +383,7 @@ r.post(
       const specialist = await Specialist.findById(req.params.id);
       if (!specialist) {
         deleteLocalFile(req.file.path);
-        return res.status(404).json({ error: "Beautician not found" });
+        return res.status(404).json({ error: "Specialist not found" });
       }
 
       try {
@@ -444,7 +444,7 @@ r.post("/:id/stripe/onboard", requireAdmin, async (req, res, next) => {
     const specialist = await Specialist.findById(id);
 
     if (!specialist) {
-      return res.status(404).json({ error: "Beautician not found" });
+      return res.status(404).json({ error: "Specialist not found" });
     }
 
     // Check if specialist belongs to current tenant
@@ -475,7 +475,7 @@ r.post("/:id/stripe/onboard", requireAdmin, async (req, res, next) => {
         },
         business_type: "individual",
         metadata: {
-          beauticianId: Specialist._id.toString(),
+          specialistId: Specialist._id.toString(),
           tenantId: Specialist.tenantId.toString(),
         },
       });
@@ -526,7 +526,7 @@ r.get("/:id/stripe/status", requireAdmin, async (req, res, next) => {
     const specialist = await Specialist.findById(id);
 
     if (!specialist) {
-      return res.status(404).json({ error: "Beautician not found" });
+      return res.status(404).json({ error: "Specialist not found" });
     }
 
     // Check tenant access
@@ -543,7 +543,7 @@ r.get("/:id/stripe/status", requireAdmin, async (req, res, next) => {
       return res.json({
         connected: false,
         status: "not_connected",
-        message: "Beautician has not started Stripe Connect onboarding",
+        message: "Specialist has not started Stripe Connect onboarding",
       });
     }
 
@@ -590,7 +590,7 @@ r.post("/:id/stripe/disconnect", requireAdmin, async (req, res, next) => {
     const specialist = await Specialist.findById(id);
 
     if (!specialist) {
-      return res.status(404).json({ error: "Beautician not found" });
+      return res.status(404).json({ error: "Specialist not found" });
     }
 
     // Check tenant access
@@ -606,7 +606,7 @@ r.post("/:id/stripe/disconnect", requireAdmin, async (req, res, next) => {
     if (!Specialist.stripeAccountId) {
       return res
         .status(400)
-        .json({ error: "Beautician has no connected Stripe account" });
+        .json({ error: "Specialist has no connected Stripe account" });
     }
 
     // Note: We don't delete the Stripe account (Stripe retains it)

@@ -5,7 +5,7 @@
 Created a new luxury showcase section feature for the services page that matches the provided design image. The section displays:
 
 1. **Left Panel**: Text content with title, subtitle, and CTA link
-2. **Center Panel**: Beautician/staff image
+2. **Center Panel**: Specialist/staff image
 3. **Right Panel**: Product showcase with title and image
 
 ## Backend Implementation

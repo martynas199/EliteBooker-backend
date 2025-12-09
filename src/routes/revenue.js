@@ -39,7 +39,7 @@ router.get("/", async (req, res) => {
       start: { $gte: start, $lte: end },
       status: { $in: ["completed", "confirmed"] },
     })
-      .populate("beauticianId", "name")
+      .populate("specialistId", "name")
       .populate("serviceId", "name")
       .lean();
 
@@ -47,27 +47,27 @@ router.get("/", async (req, res) => {
     const revenueByBeautician = {};
 
     appointments.forEach((apt) => {
-      const beauticianName = apt.beauticianId?.name || "Unknown Beautician";
-      const beauticianId = apt.beauticianId?._id?.toString() || "unknown";
+      const beauticianName = apt.specialistId?.name || "Unknown Specialist";
+      const specialistId = apt.specialistId?._id?.toString() || "unknown";
       const price = parseFloat(apt.price) || 0;
 
-      if (!revenueByBeautician[beauticianId]) {
-        revenueByBeautician[beauticianId] = {
+      if (!revenueByBeautician[specialistId]) {
+        revenueByBeautician[specialistId] = {
           specialist: beauticianName,
-          beauticianId: beauticianId,
+          specialistId: specialistId,
           revenue: 0,
           bookings: 0,
           services: [],
         };
       }
 
-      revenueByBeautician[beauticianId].revenue += price;
-      revenueByBeautician[beauticianId].bookings += 1;
+      revenueByBeautician[specialistId].revenue += price;
+      revenueByBeautician[specialistId].bookings += 1;
 
       // Track unique services
       const serviceName = apt.serviceId?.name || "Unknown Service";
-      if (!revenueByBeautician[beauticianId].services.includes(serviceName)) {
-        revenueByBeautician[beauticianId].services.push(serviceName);
+      if (!revenueByBeautician[specialistId].services.includes(serviceName)) {
+        revenueByBeautician[specialistId].services.push(serviceName);
       }
     });
 
@@ -75,7 +75,7 @@ router.get("/", async (req, res) => {
     const result = Object.values(revenueByBeautician)
       .map((item) => ({
         specialist: item.specialist,
-        beauticianId: item.beauticianId,
+        specialistId: item.specialistId,
         revenue: parseFloat(item.revenue.toFixed(2)),
         bookings: item.bookings,
         serviceCount: item.services.length,

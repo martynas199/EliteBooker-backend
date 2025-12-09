@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
-import Beautician from "../src/models/Beautician.js";
+import Specialist from "../src/models/Specialist.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -24,9 +24,9 @@ async function checkBeauticianStripe() {
     console.log("✓ Connected to MongoDB");
 
     // Get all specialists and their Stripe info
-    const specialists = await Beautician.find({});
+    const specialists = await Specialist.find({});
 
-    console.log("\n=== Beautician Stripe Status ===\n");
+    console.log("\n=== Specialist Stripe Status ===\n");
 
     for (const specialist of specialists) {
       console.log(`Name: ${specialist.name}`);

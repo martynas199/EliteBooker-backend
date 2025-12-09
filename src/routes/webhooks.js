@@ -92,7 +92,7 @@ r.post("/stripe", async (req, res) => {
               { new: true }
             )
               .populate("serviceId")
-              .populate("beauticianId");
+              .populate("specialistId");
 
             console.log(
               "[WEBHOOK] Appointment",
@@ -106,7 +106,7 @@ r.post("/stripe", async (req, res) => {
                 await sendConfirmationEmail({
                   appointment,
                   service: appointment.serviceId,
-                  specialist: appointment.beauticianId,
+                  specialist: appointment.specialistId,
                 });
                 console.log(
                   "[WEBHOOK] Confirmation email sent for appointment",
@@ -172,9 +172,9 @@ r.post("/stripe", async (req, res) => {
               // Send notifications to specialists for their products
               const itemsByBeautician = {};
               for (const item of order.items) {
-                const beauticianId = item.productId?.beauticianId;
-                if (beauticianId) {
-                  const beauticianIdStr = beauticianId.toString();
+                const specialistId = item.productId?.specialistId;
+                if (specialistId) {
+                  const beauticianIdStr = specialistId.toString();
                   if (!itemsByBeautician[beauticianIdStr]) {
                     itemsByBeautician[beauticianIdStr] = [];
                   }
@@ -182,11 +182,11 @@ r.post("/stripe", async (req, res) => {
                 }
               }
 
-              for (const [beauticianId, items] of Object.entries(
+              for (const [specialistId, items] of Object.entries(
                 itemsByBeautician
               )) {
                 try {
-                  const specialist = await Specialist.findById(beauticianId);
+                  const specialist = await Specialist.findById(specialistId);
                   if (specialist?.email) {
                     await sendBeauticianProductOrderNotification({
                       order,
@@ -194,12 +194,12 @@ r.post("/stripe", async (req, res) => {
                       beauticianItems: items,
                     });
                     console.log(
-                      `[WEBHOOK] Beautician notification sent to ${Specialist.email} for ${items.length} product(s) in order ${orderId}`
+                      `[WEBHOOK] Specialist notification sent to ${Specialist.email} for ${items.length} product(s) in order ${orderId}`
                     );
                   }
                 } catch (beauticianEmailErr) {
                   console.error(
-                    `[WEBHOOK] Failed to send specialist notification to ${beauticianId}:`,
+                    `[WEBHOOK] Failed to send specialist notification to ${specialistId}:`,
                     beauticianEmailErr
                   );
                   // Continue with other specialists
@@ -278,7 +278,7 @@ r.post("/stripe", async (req, res) => {
               { new: true }
             )
               .populate("serviceId")
-              .populate("beauticianId");
+              .populate("specialistId");
 
             console.log(
               "[WEBHOOK] Appointment",
@@ -292,7 +292,7 @@ r.post("/stripe", async (req, res) => {
                 await sendConfirmationEmail({
                   appointment,
                   service: appointment.serviceId,
-                  specialist: appointment.beauticianId,
+                  specialist: appointment.specialistId,
                 });
                 console.log(
                   "[WEBHOOK] Confirmation email sent for appointment",
@@ -401,7 +401,7 @@ r.post("/stripe", async (req, res) => {
 
             await Specialist.save();
             console.log(
-              "[WEBHOOK] Beautician",
+              "[WEBHOOK] Specialist",
               Specialist._id,
               "status updated to",
               Specialist.stripeStatus,
@@ -416,7 +416,7 @@ r.post("/stripe", async (req, res) => {
       }
 
       case "account.application.authorized": {
-        // Beautician authorized the platform to access their Connect account
+        // Specialist authorized the platform to access their Connect account
         const application = event.data.object;
         console.log(
           "[WEBHOOK] account.application.authorized - account:",
@@ -432,7 +432,7 @@ r.post("/stripe", async (req, res) => {
             Specialist.stripeOnboardingCompleted = true;
             await Specialist.save();
             console.log(
-              "[WEBHOOK] Beautician",
+              "[WEBHOOK] Specialist",
               Specialist._id,
               "authorized platform access"
             );
@@ -444,7 +444,7 @@ r.post("/stripe", async (req, res) => {
       }
 
       case "account.application.deauthorized": {
-        // Beautician revoked platform access to their Connect account
+        // Specialist revoked platform access to their Connect account
         const application = event.data.object;
         console.log(
           "[WEBHOOK] account.application.deauthorized - account:",
@@ -461,7 +461,7 @@ r.post("/stripe", async (req, res) => {
             Specialist.stripeAccountId = null;
             await Specialist.save();
             console.log(
-              "[WEBHOOK] Beautician",
+              "[WEBHOOK] Specialist",
               Specialist._id,
               "deauthorized - Stripe account disconnected"
             );
@@ -491,7 +491,7 @@ r.post("/stripe", async (req, res) => {
             Specialist.lastPayoutDate = new Date(payout.arrival_date * 1000);
             await Specialist.save();
             console.log(
-              "[WEBHOOK] Beautician",
+              "[WEBHOOK] Specialist",
               Specialist._id,
               "payout recorded"
             );
@@ -571,6 +571,209 @@ r.post("/stripe", async (req, res) => {
           } catch (e) {
             console.error("[WEBHOOK] order payment failed update err", e);
           }
+        }
+        break;
+      }
+
+      case "customer.subscription.created": {
+        // Handle subscription creation (triggered after checkout)
+        const subscription = event.data.object;
+        console.log(
+          "[WEBHOOK] customer.subscription.created - subscription:",
+          subscription.id,
+          "customer:",
+          subscription.customer,
+          "status:",
+          subscription.status
+        );
+
+        // Check if this is a no_fee_bookings subscription
+        if (subscription.metadata?.feature === "no_fee_bookings") {
+          const specialistId = subscription.metadata.specialistId;
+
+          try {
+            const specialist = await Specialist.findById(specialistId);
+            if (!specialist) {
+              console.error("[WEBHOOK] Specialist not found:", specialistId);
+              break;
+            }
+
+            // RACE CONDITION FIX: Check if we already have this subscription with a better status
+            const existingStatus =
+              specialist.subscription?.noFeeBookings?.status;
+            const existingSubId =
+              specialist.subscription?.noFeeBookings?.stripeSubscriptionId;
+
+            if (
+              existingSubId === subscription.id &&
+              existingStatus === "active" &&
+              subscription.status === "incomplete"
+            ) {
+              console.log(
+                "[WEBHOOK] Skipping subscription.created - already has active status (race condition avoided)"
+              );
+              break;
+            }
+
+            // Update specialist subscription
+            specialist.subscription = specialist.subscription || {};
+            specialist.subscription.noFeeBookings = {
+              enabled:
+                subscription.status === "active" ||
+                subscription.status === "trialing",
+              stripeSubscriptionId: subscription.id,
+              stripePriceId: subscription.items.data[0].price.id,
+              status: subscription.status,
+              currentPeriodStart: new Date(
+                subscription.current_period_start * 1000
+              ),
+              currentPeriodEnd: new Date(
+                subscription.current_period_end * 1000
+              ),
+            };
+
+            await specialist.save();
+            console.log(
+              "[WEBHOOK] Subscription saved for specialist:",
+              specialistId,
+              "status:",
+              subscription.status,
+              "enabled:",
+              specialist.subscription.noFeeBookings.enabled
+            );
+          } catch (err) {
+            console.error("[WEBHOOK] subscription creation error:", err);
+          }
+        }
+        break;
+      }
+
+      case "customer.subscription.updated": {
+        // Handle subscription updates (renewals, cancellations, etc.)
+        const subscription = event.data.object;
+        console.log(
+          "[WEBHOOK] customer.subscription.updated - subscription:",
+          subscription.id,
+          "status:",
+          subscription.status
+        );
+
+        try {
+          // Find specialist by subscription ID first
+          let specialist = await Specialist.findOne({
+            "subscription.noFeeBookings.stripeSubscriptionId": subscription.id,
+          });
+
+          // FALLBACK: If not found by subscription ID, try by customer ID (for race conditions)
+          if (!specialist && subscription.customer) {
+            console.log(
+              "[WEBHOOK] Subscription ID lookup failed, trying customer ID:",
+              subscription.customer
+            );
+            specialist = await Specialist.findOne({
+              stripeCustomerId: subscription.customer,
+            });
+          }
+
+          // FALLBACK 2: Try by metadata specialistId
+          if (!specialist && subscription.metadata?.specialistId) {
+            console.log(
+              "[WEBHOOK] Customer ID lookup failed, trying metadata specialistId:",
+              subscription.metadata.specialistId
+            );
+            specialist = await Specialist.findById(
+              subscription.metadata.specialistId
+            );
+          }
+
+          if (!specialist) {
+            console.error(
+              "[WEBHOOK] Specialist not found for subscription:",
+              subscription.id
+            );
+            break;
+          }
+
+          // Update subscription status
+          specialist.subscription.noFeeBookings.status = subscription.status;
+          specialist.subscription.noFeeBookings.enabled =
+            subscription.status === "active" ||
+            subscription.status === "trialing";
+          specialist.subscription.noFeeBookings.stripeSubscriptionId =
+            subscription.id;
+          specialist.subscription.noFeeBookings.stripePriceId =
+            subscription.items.data[0].price.id;
+          specialist.subscription.noFeeBookings.currentPeriodStart = new Date(
+            subscription.current_period_start * 1000
+          );
+          specialist.subscription.noFeeBookings.currentPeriodEnd = new Date(
+            subscription.current_period_end * 1000
+          );
+
+          // If subscription is being canceled at period end
+          if (subscription.cancel_at_period_end) {
+            specialist.subscription.noFeeBookings.enabled = false;
+          }
+
+          await specialist.save();
+          console.log(
+            "[WEBHOOK] Subscription updated for specialist:",
+            specialist._id,
+            "status:",
+            subscription.status,
+            "enabled:",
+            specialist.subscription.noFeeBookings.enabled
+          );
+        } catch (err) {
+          console.error("[WEBHOOK] subscription update error:", err);
+        }
+        break;
+      }
+
+      case "customer.subscription.deleted": {
+        // Handle subscription deletion (when it actually ends)
+        const subscription = event.data.object;
+        console.log(
+          "[WEBHOOK] customer.subscription.deleted - subscription:",
+          subscription.id
+        );
+
+        try {
+          // Find specialist by subscription ID first
+          let specialist = await Specialist.findOne({
+            "subscription.noFeeBookings.stripeSubscriptionId": subscription.id,
+          });
+
+          // FALLBACK: Try by customer ID
+          if (!specialist && subscription.customer) {
+            console.log(
+              "[WEBHOOK] Subscription ID lookup failed for deletion, trying customer ID:",
+              subscription.customer
+            );
+            specialist = await Specialist.findOne({
+              stripeCustomerId: subscription.customer,
+            });
+          }
+
+          if (!specialist) {
+            console.error(
+              "[WEBHOOK] Specialist not found for subscription:",
+              subscription.id
+            );
+            break;
+          }
+
+          // Disable feature
+          specialist.subscription.noFeeBookings.enabled = false;
+          specialist.subscription.noFeeBookings.status = "canceled";
+
+          await specialist.save();
+          console.log(
+            "[WEBHOOK] Subscription ended for specialist:",
+            specialist._id
+          );
+        } catch (err) {
+          console.error("[WEBHOOK] subscription deletion error:", err);
         }
         break;
       }

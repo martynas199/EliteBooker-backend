@@ -1,4 +1,4 @@
-# Beautician Image Upload API
+# Specialist Image Upload API
 
 ## Endpoint
 
@@ -16,7 +16,7 @@ Upload a profile image for a specialist to Cloudinary.
 
 #### Parameters
 
-- `id` (path): Beautician MongoDB ObjectId
+- `id` (path): Specialist MongoDB ObjectId
 
 #### Request Body
 
@@ -31,7 +31,7 @@ Upload a profile image for a specialist to Cloudinary.
     "provider": "cloudinary",
     "id": "specialists/abc123...",
     "url": "https://res.cloudinary.com/your-cloud/image/upload/v123/specialists/abc.jpg",
-    "alt": "Beautician Name",
+    "alt": "Specialist Name",
     "width": 1200,
     "height": 1200
   }
@@ -41,7 +41,7 @@ Upload a profile image for a specialist to Cloudinary.
 #### Error Responses
 
 - **400 Bad Request**: Invalid ID or no file provided
-- **404 Not Found**: Beautician not found
+- **404 Not Found**: Specialist not found
 - **401 Unauthorized**: Admin authentication required
 
 ## Example Usage
@@ -60,7 +60,7 @@ curl -X POST http://localhost:4000/api/specialists/507f1f77bcf86cd799439011/uplo
 const formData = new FormData();
 formData.append("image", fileInput.files[0]);
 
-const response = await fetch(`/api/specialists/${beauticianId}/upload-image`, {
+const response = await fetch(`/api/specialists/${specialistId}/upload-image`, {
   method: "POST",
   headers: {
     Authorization: "Bearer YOUR_ADMIN_TOKEN",
@@ -74,7 +74,7 @@ console.log("Uploaded:", result.image.url);
 
 ## Database Schema
 
-The `Beautician` model stores images in the following format:
+The `Specialist` model stores images in the following format:
 
 ```javascript
 {
@@ -82,7 +82,7 @@ The `Beautician` model stores images in the following format:
     provider: "cloudinary",        // Always "cloudinary" for uploaded images
     id: "specialists/abc123...",   // Cloudinary public_id (for deletion)
     url: "https://res.cloudinary.com/...", // Full image URL
-    alt: "Beautician Name",        // Alt text (defaults to specialist name)
+    alt: "Specialist Name",        // Alt text (defaults to specialist name)
     width: 1200,                   // Image width in pixels
     height: 1200                   // Image height in pixels
   }
@@ -100,7 +100,7 @@ The `Beautician` model stores images in the following format:
 
 The frontend uses a two-step process:
 
-1. **Save Beautician**: Create/update specialist without image
+1. **Save Specialist**: Create/update specialist without image
 2. **Upload Image**: If a new image was selected, upload it separately
 
 This ensures the specialist is saved even if image upload fails.

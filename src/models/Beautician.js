@@ -100,6 +100,25 @@ const BeauticianSchema = new mongoose.Schema(
     // Payment preferences
     inSalonPayment: { type: Boolean, default: false }, // If true, accept payment in salon (no Stripe deposit, only booking fee)
 
+    // Stripe customer ID for subscriptions
+    stripeCustomerId: { type: String, index: true },
+
+    // Premium features subscription
+    subscription: {
+      noFeeBookings: {
+        enabled: { type: Boolean, default: false },
+        stripeSubscriptionId: String,
+        stripePriceId: String,
+        status: {
+          type: String,
+          enum: ["inactive", "active", "past_due", "canceled"],
+          default: "inactive",
+        },
+        currentPeriodStart: Date,
+        currentPeriodEnd: Date,
+      },
+    },
+
     // Google Calendar Integration
     googleCalendar: {
       enabled: { type: Boolean, default: false },
@@ -122,4 +141,4 @@ BeauticianSchema.index({ stripeAccountId: 1 }); // Already has index
 // Apply multi-tenant plugin
 BeauticianSchema.plugin(multiTenantPlugin);
 
-export default mongoose.model("Beautician", BeauticianSchema);
+export default mongoose.model("Specialist", BeauticianSchema);

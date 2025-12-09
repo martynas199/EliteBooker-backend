@@ -232,7 +232,7 @@ POST /api/bookings/create
 {
   "lockId": "uuid-from-lock-acquire",
   "tenantId": "tenant123",
-  "beauticianId": "beautician42",
+  "specialistId": "beautician42",
   "serviceId": "service789",
   "date": "2025-03-10",
   "startTime": "14:00",
@@ -341,7 +341,7 @@ function BookingComponent() {
   const handleSlotSelect = async (slot) => {
     const result = await acquireLock({
       tenantId: tenant.id,
-      resourceId: slot.beauticianId,
+      resourceId: slot.specialistId,
       date: slot.date,
       startTime: slot.time,
       duration: slot.duration,
@@ -385,7 +385,7 @@ function BookingFlow() {
   const handleSlotSelect = async (slot) => {
     const result = await acquireLock({
       tenantId: tenant.id,
-      resourceId: slot.beauticianId,
+      resourceId: slot.specialistId,
       date: slot.date,
       startTime: slot.time,
       duration: slot.duration,
@@ -412,7 +412,7 @@ function BookingFlow() {
       const response = await api.post("/bookings/create", {
         lockId: lockData.lockId, // Include lockId from lock manager
         tenantId: tenant.id,
-        beauticianId: selectedSlot.beauticianId,
+        specialistId: selectedSlot.specialistId,
         serviceId: selectedSlot.serviceId,
         date: selectedSlot.date,
         startTime: selectedSlot.time,

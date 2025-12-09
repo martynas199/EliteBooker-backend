@@ -8,7 +8,7 @@ All backend functionality for Stripe Connect has been successfully implemented a
 
 #### 1. Database Models ✅
 
-- **Beautician**: Added Stripe Connect fields (account ID, status, earnings tracking)
+- **Specialist**: Added Stripe Connect fields (account ID, status, earnings tracking)
 - **Appointment**: Extended payment tracking with platform fees and Connect data
 - **Product**: Added specialist ownership field
 - **Order**: Added multi-specialist payment tracking and refund status
@@ -18,14 +18,14 @@ All backend functionality for Stripe Connect has been successfully implemented a
 **Stripe Connect Management** (`/api/connect/`)
 
 - `POST /onboard` - Create Express account & generate onboarding link
-- `GET /status/:beauticianId` - Check account verification status
-- `POST /dashboard-link/:beauticianId` - Generate Stripe Express dashboard access
-- `DELETE /disconnect/:beauticianId` - Disconnect account (admin/testing)
+- `GET /status/:specialistId` - Check account verification status
+- `POST /dashboard-link/:specialistId` - Generate Stripe Express dashboard access
+- `DELETE /disconnect/:specialistId` - Disconnect account (admin/testing)
 
 **Revenue Reporting** (`/api/reports/`)
 
 - `GET /revenue` - Platform-wide revenue with date filtering
-- `GET /specialist-earnings/:beauticianId` - Individual earnings breakdown
+- `GET /specialist-earnings/:specialistId` - Individual earnings breakdown
 
 **Product Checkout** (`/api/orders/`)
 
@@ -94,7 +94,7 @@ Backend server successfully started with all routes registered:
 
 ## 🚧 Remaining Tasks: Frontend Only
 
-### Priority 1: Beautician UI
+### Priority 1: Specialist UI
 
 **File**: `src/admin/pages/Settings.jsx` or new `BeauticianSettings.jsx`
 
@@ -109,22 +109,22 @@ Need to add:
 Example component structure:
 
 ```jsx
-function StripeConnectSection({ beauticianId }) {
+function StripeConnectSection({ specialistId }) {
   const [status, setStatus] = useState(null);
 
   useEffect(() => {
     // Fetch connection status
-    fetch(`/api/connect/status/${beauticianId}`)
+    fetch(`/api/connect/status/${specialistId}`)
       .then((res) => res.json())
       .then(setStatus);
-  }, [beauticianId]);
+  }, [specialistId]);
 
   const handleConnect = async () => {
     const res = await fetch("/api/connect/onboard", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        beauticianId,
+        specialistId,
         email: user.email,
       }),
     });
@@ -148,7 +148,7 @@ function StripeConnectSection({ beauticianId }) {
 }
 ```
 
-### Priority 2: Beautician Earnings Dashboard
+### Priority 2: Specialist Earnings Dashboard
 
 **File**: `src/admin/pages/Earnings.jsx` or modal in Settings
 
@@ -162,7 +162,7 @@ Display:
 - [ ] Payout history
 - [ ] Date range filter
 
-API call: `GET /api/reports/specialist-earnings/:beauticianId`
+API call: `GET /api/reports/specialist-earnings/:specialistId`
 
 ### Priority 3: Admin Revenue Dashboard
 
@@ -230,7 +230,7 @@ Configure webhook in Stripe Dashboard:
 ## 🎯 Key Features
 
 ✅ **Automatic Platform Fee**: £0.50 per booking
-✅ **Direct Payouts**: Beauticians receive funds directly from Stripe
+✅ **Direct Payouts**: Specialists receive funds directly from Stripe
 ✅ **No Platform Fee on Products**: 100% goes to product owner
 ✅ **Automatic Refunds**: Reverses transfers and platform fees
 ✅ **Real-time Status**: Webhooks sync account and payout status
@@ -243,7 +243,7 @@ Configure webhook in Stripe Dashboard:
 
 1. **Implement Frontend UI** (estimated 2-4 hours)
 
-   - Beautician Connect button and status
+   - Specialist Connect button and status
    - Earnings dashboard
    - Admin revenue view
 

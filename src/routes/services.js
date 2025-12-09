@@ -31,7 +31,7 @@ const deleteLocalFile = (path) => {
 /**
  * GET /api/services
  * List services with optional filters
- * Query params: active, category, beauticianId, page, limit
+ * Query params: active, category, specialistId, page, limit
  *
  * ROLE-BASED ACCESS:
  * - Public/Guest: Returns all active services
@@ -61,7 +61,7 @@ r.get("/", optionalAuth, attachTenantToModels, async (req, res, next) => {
     const {
       active,
       category,
-      beauticianId,
+      specialistId,
       limit = 20,
       skip = 0,
     } = queryValidation.data;
@@ -100,31 +100,31 @@ r.get("/", optionalAuth, attachTenantToModels, async (req, res, next) => {
     if (category) {
       query.category = category;
     }
-    if (beauticianId) {
-      console.log(`[SERVICES] Filtering by beauticianId: ${beauticianId}`);
+    if (specialistId) {
+      console.log(`[SERVICES] Filtering by specialistId: ${specialistId}`);
       // Check all possible specialist fields (including legacy fields)
       query.$or = [
-        { primaryBeauticianId: beauticianId },
-        { additionalBeauticianIds: beauticianId },
-        { beauticianId: beauticianId }, // Legacy single specialist field
-        { beauticianIds: beauticianId }, // Legacy specialists array
+        { primaryBeauticianId: specialistId },
+        { additionalBeauticianIds: specialistId },
+        { specialistId: specialistId }, // Legacy single specialist field
+        { beauticianIds: specialistId }, // Legacy specialists array
       ];
     }
 
     // ROLE-BASED FILTERING: Apply access control if authenticated
     // req.admin is set by optionalAuth middleware if token is valid
     if (req.admin) {
-      // BEAUTICIAN role: Only see services assigned to their beauticianId
-      if (req.admin.role === "admin" && req.admin.beauticianId) {
+      // BEAUTICIAN role: Only see services assigned to their specialistId
+      if (req.admin.role === "admin" && req.admin.specialistId) {
         console.log(
-          `[SERVICES] Filtering for BEAUTICIAN admin: ${req.admin.beauticianId}`
+          `[SERVICES] Filtering for BEAUTICIAN admin: ${req.admin.specialistId}`
         );
         // Override any existing $or filter to enforce role-based access
         query.$or = [
-          { primaryBeauticianId: req.admin.beauticianId },
-          { additionalBeauticianIds: req.admin.beauticianId },
-          { beauticianId: req.admin.beauticianId }, // Legacy field
-          { beauticianIds: req.admin.beauticianId }, // Legacy field
+          { primaryBeauticianId: req.admin.specialistId },
+          { additionalBeauticianIds: req.admin.specialistId },
+          { specialistId: req.admin.specialistId }, // Legacy field
+          { beauticianIds: req.admin.specialistId }, // Legacy field
         ];
       }
       // SUPER_ADMIN: See all services (no additional filter needed)
@@ -208,7 +208,7 @@ r.post("/", requireAdmin, async (req, res, next) => {
     console.log("[SERVICE CREATE] Request received");
     console.log("[SERVICE CREATE] Admin:", {
       role: req.admin?.role,
-      beauticianId: req.admin?.beauticianId,
+      specialistId: req.admin?.specialistId,
     });
     console.log(
       "[SERVICE CREATE] Request body:",
@@ -232,12 +232,12 @@ r.post("/", requireAdmin, async (req, res, next) => {
     );
 
     // BEAUTICIAN role: Can only create services for themselves
-    if (req.admin.role === "admin" && req.admin.beauticianId) {
+    if (req.admin.role === "admin" && req.admin.specialistId) {
       console.log("[SERVICE CREATE] Checking specialist permissions...");
       // Ensure the specialist is creating a service for themselves
       if (
         validation.data.primaryBeauticianId !==
-        req.admin.beauticianId.toString()
+        req.admin.specialistId.toString()
       ) {
         console.log("[SERVICE CREATE] Permission denied: specialist mismatch");
         return res.status(403).json({
@@ -245,7 +245,7 @@ r.post("/", requireAdmin, async (req, res, next) => {
           message: "You can only create services for yourself.",
         });
       }
-      console.log("[SERVICE CREATE] Beautician permissions OK");
+      console.log("[SERVICE CREATE] Specialist permissions OK");
     }
 
     // Add tenantId from authenticated admin

@@ -201,7 +201,7 @@ const services = [
   },
   {
     name: "SkinTags, Milium Removal ",
-    category: "Beautician",
+    category: "Specialist",
   },
   {
     name: "Dr. Cyj Hair Filler",

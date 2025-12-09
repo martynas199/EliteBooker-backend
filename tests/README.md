@@ -92,7 +92,7 @@ Tests the complete multi-tenant workflow:
 
 1. **Tenant Signup**: Creates new tenant via `/api/tenants/create`
 2. **Admin Authentication**: Verifies admin JWT token and dashboard access
-3. **Beautician Creation**: Creates specialist within tenant context
+3. **Specialist Creation**: Creates specialist within tenant context
 4. **Stripe Connect**: Initiates specialist Stripe Connect onboarding
 5. **Service Creation**: Creates bookable service
 6. **Slot Availability**: Checks available time slots
@@ -127,7 +127,7 @@ Tests the complete multi-tenant workflow:
 - `Admin.js`
 - `Appointment.js`
 - `Service.js`
-- `Beautician.js`
+- `Specialist.js`
 
 ### Backend Middleware
 
@@ -198,7 +198,7 @@ After running automated tests, manually verify:
 
 - [ ] Tenant signup flow in browser
 - [ ] Admin dashboard loads with correct tenant data
-- [ ] Beautician Stripe Connect onboarding opens Stripe page
+- [ ] Specialist Stripe Connect onboarding opens Stripe page
 - [ ] Customer can book appointment
 - [ ] Payment includes correct platform fee
 - [ ] Cross-tenant navigation is blocked
@@ -210,7 +210,7 @@ Tests create the following test data:
 
 - **Tenants**: 2+ (My Beauty Salon, Another Salon)
 - **Admins**: 2+ (one per tenant)
-- **Beauticians**: 1+ per tenant
+- **Specialists**: 1+ per tenant
 - **Services**: 1+ per tenant
 - **Appointments**: 1+ per tenant
 

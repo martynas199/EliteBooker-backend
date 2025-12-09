@@ -284,7 +284,7 @@ Update an existing service (requires admin auth).
 
 Delete a service (requires admin auth).
 
-### Beauticians API
+### Specialists API
 
 #### GET /api/specialists
 
@@ -529,7 +529,7 @@ try {
 }
 ```
 
-### Beautician Validation
+### Specialist Validation
 
 ```javascript
 import {
@@ -560,7 +560,7 @@ Expected output:
 
 ```
 ✓ Service validation tests (12 tests passed)
-✓ Beautician validation tests (15 tests passed)
+✓ Specialist validation tests (15 tests passed)
 ```
 
 ## 🚀 Deployment Checklist
@@ -683,7 +683,7 @@ import "dotenv/config"; // Must be first
 import express from "express";
 ```
 
-### "Beautician cannot be deleted (assigned to services)"
+### "Specialist cannot be deleted (assigned to services)"
 
 The backend prevents deletion of specialists assigned to services. Reassign services first:
 

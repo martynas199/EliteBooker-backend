@@ -34,7 +34,7 @@ const adminSchema = new mongoose.Schema(
       enum: ["admin", "super_admin", "salon-admin", "specialist"],
       default: "admin",
     },
-    beauticianId: {
+    specialistId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Specialist",
       default: null,

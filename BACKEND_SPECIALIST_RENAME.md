@@ -1,4 +1,4 @@
-# Backend API Rename: Beautician → Specialist
+# Backend API Rename: Specialist → Specialist
 
 ## Overview
 
@@ -10,7 +10,7 @@ Successfully renamed all specialist terminology to specialist throughout the bac
 
 - **Created**: `src/models/Specialist.js`
   - Uses existing `specialists` collection (no DB migration needed)
-  - Identical schema to old Beautician model
+  - Identical schema to old Specialist model
   - Export: `mongoose.model("Specialist", SpecialistSchema, "specialists")`
 
 ### 2. New Validation Schemas
@@ -36,7 +36,7 @@ Successfully renamed all specialist terminology to specialist throughout the bac
 
 ### 5. Updated Model Imports (14 files)
 
-All files now import `Specialist` instead of `Beautician`:
+All files now import `Specialist` instead of `Specialist`:
 
 - `src/routes/slots.js`
 - `src/routes/reports.js`
@@ -54,14 +54,14 @@ All files now import `Specialist` instead of `Beautician`:
 
 ### 6. Updated Model Usage
 
-All code references changed from `Beautician.find()` to `Specialist.find()`, etc.
+All code references changed from `Specialist.find()` to `Specialist.find()`, etc.
 
 ## Backward Compatibility
 
 ### ✅ Database
 
 - **Collection name**: Remains `specialists` (no migration needed)
-- **Field names**: All database fields unchanged (`beauticianId`, `primaryBeauticianId`, etc.)
+- **Field names**: All database fields unchanged (`specialistId`, `primaryBeauticianId`, etc.)
 - **Indexes**: All existing indexes preserved
 - **Data**: Zero impact on existing data
 
@@ -97,7 +97,7 @@ GET    /api/specialists/:id/stripe/status      - Check Stripe status
 POST   /api/specialists/:id/stripe/disconnect  - Disconnect Stripe
 ```
 
-### Legacy Beautician Endpoints (Still Active)
+### Legacy Specialist Endpoints (Still Active)
 
 ```
 GET    /api/specialists                 - List specialists
@@ -149,9 +149,9 @@ POST   /api/specialists/:id/stripe/disconnect  - Disconnect Stripe
 
 ### Related Collections (Field Names Unchanged)
 
-- **appointments**: `beauticianId` field
+- **appointments**: `specialistId` field
 - **services**: `primaryBeauticianId`, `additionalBeauticianIds` fields
-- **admins**: `beauticianId` field (for admin-specialist linking)
+- **admins**: `specialistId` field (for admin-specialist linking)
 
 ## Testing Recommendations
 
@@ -213,8 +213,8 @@ db.specialists.renameCollection("specialists");
 ```javascript
 // appointments collection
 db.appointments.updateMany(
-  { beauticianId: { $exists: true } },
-  { $rename: { beauticianId: "specialistId" } }
+  { specialistId: { $exists: true } },
+  { $rename: { specialistId: "specialistId" } }
 );
 
 // services collection
@@ -230,8 +230,8 @@ db.services.updateMany(
 
 // admins collection
 db.admins.updateMany(
-  { beauticianId: { $exists: true } },
-  { $rename: { beauticianId: "specialistId" } }
+  { specialistId: { $exists: true } },
+  { $rename: { specialistId: "specialistId" } }
 );
 ```
 
@@ -258,7 +258,7 @@ feat: rename specialist to specialist in backend API
 - Created new Specialist model (uses existing 'specialists' collection for DB compatibility)
 - Created specialist.schema.js validation schemas
 - Created specialists.js routes (new /api/specialists endpoint)
-- Updated all imports to use Specialist model instead of Beautician
+- Updated all imports to use Specialist model instead of Specialist
 - Maintained backward compatibility with /api/specialists endpoint
 - Updated all route handlers to use Specialist model
 - Updated server.js to register both endpoints

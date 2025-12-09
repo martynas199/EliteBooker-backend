@@ -4,7 +4,7 @@
 
 **Before:** Platform was paying all Stripe processing fees (~2.9% + 20p per transaction)
 
-**After:** Beauticians pay Stripe fees on their earnings (platform only gets application fee)
+**After:** Specialists pay Stripe fees on their earnings (platform only gets application fee)
 
 ---
 
@@ -14,7 +14,7 @@
 
 - **File**: `src/routes/checkout.js`
 - **Change**: Added `on_behalf_of` parameter to payment intent
-- **Result**: Beautician pays Stripe fees on all bookings
+- **Result**: Specialist pays Stripe fees on all bookings
 
 ### **2. Products** ✅
 
@@ -34,25 +34,25 @@
 £50 Service
 ├─ Stripe Fee: £1.65 (paid by specialist)
 ├─ Platform Fee: £0.50 (goes to platform)
-└─ Beautician Gets: £47.85
+└─ Specialist Gets: £47.85
 ```
 
-### **Products (Single Beautician)**
+### **Products (Single Specialist)**
 
 ```
 £100 Products
 ├─ Stripe Fee: £3.10 (paid by specialist)
 ├─ Platform Fee: £0.00
-└─ Beautician Gets: £96.90
+└─ Specialist Gets: £96.90
 ```
 
-### **Products (Multiple Beauticians)** - Rare
+### **Products (Multiple Specialists)** - Rare
 
 ```
 £100 Products
 ├─ Stripe Fee: £3.10 (paid by platform)
-├─ Beautician A Gets: £60.00
-└─ Beautician B Gets: £40.00
+├─ Specialist A Gets: £60.00
+└─ Specialist B Gets: £40.00
 ```
 
 ---

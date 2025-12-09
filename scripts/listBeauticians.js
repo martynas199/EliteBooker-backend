@@ -6,7 +6,7 @@
  */
 
 import mongoose from "mongoose";
-import Beautician from "../src/models/Beautician.js";
+import Specialist from "../src/models/Specialist.js";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -25,7 +25,7 @@ async function listBeauticians() {
     console.log("✅ Connected to MongoDB\n");
 
     // Find all specialists
-    const specialists = await Beautician.find({}).lean();
+    const specialists = await Specialist.find({}).lean();
 
     if (specialists.length === 0) {
       console.log("⚠️  No specialists found in the database.");
@@ -33,13 +33,13 @@ async function listBeauticians() {
         "\nYou need to create a specialist first through the admin dashboard:"
       );
       console.log("1. Go to /admin/specialists");
-      console.log("2. Click 'Add Beautician'");
+      console.log("2. Click 'Add Specialist'");
       console.log("3. Fill in the details and save");
       console.log(
         "4. Then run this script again to get the specialist's email"
       );
     } else {
-      console.log("📋 Available Beauticians:\n");
+      console.log("📋 Available Specialists:\n");
       specialists.forEach((b, index) => {
         console.log(`${index + 1}. ${b.name}`);
         console.log(`   Email: ${b.email || "(no email)"}`);

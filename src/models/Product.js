@@ -86,7 +86,7 @@ const ProductSchema = new Schema(
       required: true,
     },
     // Stripe Connect: Product belongs to a specialist
-    beauticianId: {
+    specialistId: {
       type: Schema.Types.ObjectId,
       ref: "Specialist",
       index: true,
@@ -187,7 +187,7 @@ const ProductSchema = new Schema(
 ProductSchema.index({ featured: 1, order: 1 }); // Already exists
 ProductSchema.index({ category: 1, active: 1 }); // Already exists
 ProductSchema.index({ active: 1, createdAt: -1 }); // Active products
-ProductSchema.index({ beauticianId: 1, active: 1 }); // Beautician's products
+ProductSchema.index({ specialistId: 1, active: 1 }); // Specialist's products
 ProductSchema.index({ title: "text", description: "text" }); // Text search
 ProductSchema.index({ "variants.stock": 1 }); // Stock availability
 

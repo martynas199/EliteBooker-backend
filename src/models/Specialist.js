@@ -100,6 +100,34 @@ const SpecialistSchema = new mongoose.Schema(
     // Payment preferences
     inSalonPayment: { type: Boolean, default: false }, // If true, accept payment in salon (no Stripe deposit, only booking fee)
 
+    // Stripe customer ID for subscriptions
+    stripeCustomerId: { type: String, index: true },
+
+    // Premium features subscription
+    subscription: {
+      noFeeBookings: {
+        enabled: { type: Boolean, default: false },
+        stripeSubscriptionId: String,
+        stripePriceId: String,
+        status: {
+          type: String,
+          enum: [
+            "inactive",
+            "active",
+            "past_due",
+            "canceled",
+            "incomplete",
+            "incomplete_expired",
+            "trialing",
+            "unpaid",
+          ],
+          default: "inactive",
+        },
+        currentPeriodStart: Date,
+        currentPeriodEnd: Date,
+      },
+    },
+
     // Google Calendar Integration
     googleCalendar: {
       enabled: { type: Boolean, default: false },

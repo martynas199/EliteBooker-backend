@@ -62,7 +62,7 @@ We use the **"Tenant ID per Document"** approach:
 ### 5. **Multi-Tenant Stripe Connect**
 
 - Platform fee: £0.50 per booking/product
-- Beautician-specific Stripe accounts
+- Specialist-specific Stripe accounts
 - Automatic payment routing
 - Separate revenue tracking
 
@@ -251,7 +251,7 @@ super-admin (Platform Owner)
 
 ### Permissions Matrix
 
-| Feature            | Super Admin | Salon Admin    | Beautician | Customer  |
+| Feature            | Super Admin | Salon Admin    | Specialist | Customer  |
 | ------------------ | ----------- | -------------- | ---------- | --------- |
 | View all tenants   | ✅          | ❌             | ❌         | ❌        |
 | Manage own salon   | ✅          | ✅             | ❌         | ❌        |
@@ -272,7 +272,7 @@ Customer Payment
     ↓
 Platform (£0.50 fee)
     ↓
-Beautician (remaining amount)
+Specialist (remaining amount)
 ```
 
 ### Payment Flow
@@ -280,7 +280,7 @@ Beautician (remaining amount)
 1. **Customer books service** → £50.00
 2. **Platform fee** → £0.50
 3. **Stripe fee** → ~£1.45 (2.9% + 20p)
-4. **Beautician receives** → £48.05
+4. **Specialist receives** → £48.05
 
 ### Configuration
 
@@ -305,7 +305,7 @@ const paymentIntent = await stripe.paymentIntents.create({
   currency: "gbp",
   application_fee_amount: 50, // £0.50 per product/order
   transfer_data: {
-    destination: product.beauticianId.stripeAccountId,
+    destination: product.specialistId.stripeAccountId,
   },
 });
 ```
@@ -356,7 +356,7 @@ document.documentElement.style.setProperty(
 ```javascript
 // Automatically respects tenant boundaries
 const slots = await getAvailableSlots({
-  beauticianId,
+  specialistId,
   serviceId,
   date,
   // tenantId automatically from req.tenantId

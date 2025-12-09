@@ -1,25 +1,25 @@
 # Product Payment Tests
 
-## Test Scenarios for Direct Beautician Payments (Zero Platform Fees)
+## Test Scenarios for Direct Specialist Payments (Zero Platform Fees)
 
 ### 1. Single Product Checkout - Success
 
 **Setup:**
 
-- Product A belongs to Beautician 1
-- Beautician 1 has connected Stripe account
+- Product A belongs to Specialist 1
+- Specialist 1 has connected Stripe account
 - Product price: £50
 - Customer: test@example.com
 
 **Expected:**
 
 - ✅ Checkout session created with destination charge
-- ✅ Payment goes directly to Beautician 1's Stripe account
-- ✅ Beautician 1 pays Stripe processing fee (~1.5% + 20p)
+- ✅ Payment goes directly to Specialist 1's Stripe account
+- ✅ Specialist 1 pays Stripe processing fee (~1.5% + 20p)
 - ✅ Platform account charged £0
 - ✅ No application_fee_amount in payment_intent_data
 - ✅ Order status: paid
-- ✅ Beautician earnings increased by £50
+- ✅ Specialist earnings increased by £50
 
 **Test Command:**
 
@@ -50,38 +50,38 @@ curl -X POST http://localhost:5000/api/orders/checkout \
 
 **Verify:**
 
-1. Check Stripe Dashboard → Beautician 1 account
+1. Check Stripe Dashboard → Specialist 1 account
 2. Confirm direct charge (not transfer)
-3. Verify fee is deducted from Beautician 1's payout
+3. Verify fee is deducted from Specialist 1's payout
 4. Platform account should show £0 for this transaction
 
 ---
 
-### 2. Multiple Products, Same Beautician - Success
+### 2. Multiple Products, Same Specialist - Success
 
 **Setup:**
 
-- Product A and Product B both belong to Beautician 1
-- Beautician 1 has connected Stripe account
+- Product A and Product B both belong to Specialist 1
+- Specialist 1 has connected Stripe account
 - Product A: £30, Product B: £40
 - Total: £70
 
 **Expected:**
 
 - ✅ Single checkout session created
-- ✅ Single destination charge to Beautician 1
-- ✅ Beautician 1 pays fees on £70 + shipping
+- ✅ Single destination charge to Specialist 1
+- ✅ Specialist 1 pays fees on £70 + shipping
 - ✅ Platform pays £0
-- ✅ Beautician earnings increased by £70
+- ✅ Specialist earnings increased by £70
 
 ---
 
-### 3. Multiple Products, Different Beauticians - Rejected
+### 3. Multiple Products, Different Specialists - Rejected
 
 **Setup:**
 
-- Product A belongs to Beautician 1
-- Product B belongs to Beautician 2
+- Product A belongs to Specialist 1
+- Product B belongs to Specialist 2
 - Both specialists connected
 
 **Expected:**
@@ -106,12 +106,12 @@ curl -X POST http://localhost:5000/api/orders/checkout \
 
 ---
 
-### 4. Beautician Not Connected to Stripe - Rejected
+### 4. Specialist Not Connected to Stripe - Rejected
 
 **Setup:**
 
-- Product A belongs to Beautician 1
-- Beautician 1 has NOT connected Stripe account
+- Product A belongs to Specialist 1
+- Specialist 1 has NOT connected Stripe account
 
 **Expected:**
 
@@ -181,7 +181,7 @@ curl -X POST http://localhost:5000/api/orders/checkout \
 
 - ✅ Order status updated to "paid"
 - ✅ stripeConnectPayments[0].status = "succeeded"
-- ✅ Beautician totalEarnings incremented correctly
+- ✅ Specialist totalEarnings incremented correctly
 - ✅ Stock reduced for products
 - ✅ Customer email sent
 - ✅ Admin notification sent
@@ -198,9 +198,9 @@ curl -X POST http://localhost:5000/api/orders/checkout \
 **Expected:**
 
 - ✅ Stripe refund created with reverse_transfer: true
-- ✅ Money returned from Beautician 1 to customer
+- ✅ Money returned from Specialist 1 to customer
 - ✅ Stripe fees NOT refunded to specialist
-- ✅ Beautician totalEarnings decremented
+- ✅ Specialist totalEarnings decremented
 - ✅ Product stock restored
 - ✅ Order status: "refunded"
 
@@ -224,14 +224,14 @@ curl -X POST http://localhost:5000/api/orders/ORDER_ID/refund \
 
 - ✅ Uses application_fee_amount: 50 (50p platform fee)
 - ✅ Uses transfer_data.destination
-- ✅ Beautician receives: payment - Stripe fees - 50p platform fee
+- ✅ Specialist receives: payment - Stripe fees - 50p platform fee
 - ✅ Platform receives: 50p per booking
 
 **Product Checkout (NEW behavior):**
 
 - ✅ NO application_fee_amount
 - ✅ Uses transfer_data.destination
-- ✅ Beautician receives: payment - Stripe fees
+- ✅ Specialist receives: payment - Stripe fees
 - ✅ Platform receives: £0
 
 ---
@@ -256,7 +256,7 @@ If not supported:
 ### Security ✓
 
 - [x] Always use database prices, never client-provided
-- [x] Validate beauticianId belongs to product
+- [x] Validate specialistId belongs to product
 - [x] Validate stripeAccountId is registered and connected
 - [x] Validate quantity is positive integer
 - [x] Validate price is valid number >= 0
@@ -268,7 +268,7 @@ If not supported:
 - [x] No application_fee_amount for products
 - [x] No transfers (direct destination charges only)
 - [x] Platform charged £0 Stripe fees
-- [x] Beautician pays ALL Stripe fees
+- [x] Specialist pays ALL Stripe fees
 
 ### Stripe Connect ✓
 
@@ -285,7 +285,7 @@ If not supported:
 
 ### Data Integrity ✓
 
-- [x] Beautician earnings tracked correctly
+- [x] Specialist earnings tracked correctly
 - [x] Stock managed correctly
 - [x] Order status transitions correct
 - [x] Payment status tracking accurate
@@ -297,12 +297,12 @@ If not supported:
 1. **Setup Test Environment:**
 
    - Create 2 test specialists
-   - Connect Beautician 1 to Stripe (use Stripe test mode)
-   - Leave Beautician 2 unconnected
+   - Connect Specialist 1 to Stripe (use Stripe test mode)
+   - Leave Specialist 2 unconnected
    - Create 3 test products:
-     - Product A (Beautician 1) - £30
-     - Product B (Beautician 1) - £40
-     - Product C (Beautician 2) - £50
+     - Product A (Specialist 1) - £30
+     - Product B (Specialist 1) - £40
+     - Product C (Specialist 2) - £50
 
 2. **Run Test Suite:**
 
@@ -317,7 +317,7 @@ If not supported:
 
 3. **Verify in Stripe Dashboard:**
 
-   - Check Beautician 1's Stripe account
+   - Check Specialist 1's Stripe account
    - Confirm charges show as direct charges (not transfers)
    - Verify fees are shown on specialist's side
    - Confirm platform account has £0 from product sales
@@ -333,17 +333,17 @@ If not supported:
 
 | Scenario                  | Platform Fee | Stripe Fees Paid By | Payment Method        |
 | ------------------------- | ------------ | ------------------- | --------------------- |
-| Service Booking           | 50p          | Beautician          | Destination + App Fee |
-| Single Product            | £0           | Beautician          | Destination Charge    |
-| Multi-Product (Same)      | £0           | Beautician          | Destination Charge    |
+| Service Booking           | 50p          | Specialist          | Destination + App Fee |
+| Single Product            | £0           | Specialist          | Destination Charge    |
+| Multi-Product (Same)      | £0           | Specialist          | Destination Charge    |
 | Multi-Product (Different) | N/A          | N/A                 | ❌ Rejected           |
 
 ---
 
 ## Notes for Developers
 
-- Products MUST have a beauticianId assigned
-- Beauticians MUST complete Stripe Connect onboarding before products can be sold
+- Products MUST have a specialistId assigned
+- Specialists MUST complete Stripe Connect onboarding before products can be sold
 - Frontend should prevent multi-specialist cart checkout (UI validation)
 - Backend enforces single-specialist rule (API validation)
 - No changes needed to service booking flow

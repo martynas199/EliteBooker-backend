@@ -8,7 +8,7 @@ This guide covers:
 
 1. **Tenant Signup Flow** - New salon registration
 2. **Admin Dashboard** - Tenant management
-3. **Beautician Onboarding** - Stripe Connect setup
+3. **Specialist Onboarding** - Stripe Connect setup
 4. **Customer Booking** - Appointment creation
 5. **Payment Processing** - Platform fee collection
 6. **Cross-Tenant Isolation** - Security verification
@@ -162,7 +162,7 @@ Password: SecurePass456!
 4. **Staff** - `/admin/staff`
 
    - ✅ Can add specialists
-   - ✅ Beauticians tagged with tenantId
+   - ✅ Specialists tagged with tenantId
 
 5. **Settings** - `/admin/tenant-settings`
 
@@ -268,14 +268,14 @@ db.tenants.findOne({ slug: "elegant-beauty-salon" }).businessInfo.phone;
 
 ---
 
-## Test 5: Beautician Management
+## Test 5: Specialist Management
 
-### 5.1 Create Beautician
+### 5.1 Create Specialist
 
 **Steps:**
 
 1. Navigate to `/admin/staff`
-2. Click "Add Beautician"
+2. Click "Add Specialist"
 3. Fill in details:
    ```
    Name: Jessica Smith
@@ -289,7 +289,7 @@ db.tenants.findOne({ slug: "elegant-beauty-salon" }).businessInfo.phone;
 
 **Expected Results:**
 
-✅ Beautician created  
+✅ Specialist created  
 ✅ Listed in staff table  
 ✅ tenantId automatically set
 
@@ -369,7 +369,7 @@ console.log(specialist.stripeOnboardingCompleted); // Should be true
    Duration: 60 minutes
    Price: £50.00 (5000 pence)
    Category: Hair
-   Primary Beautician: Jessica Smith
+   Primary Specialist: Jessica Smith
    Active: Yes
    ```
 4. Click "Save"
@@ -401,7 +401,7 @@ console.log(specialist.stripeOnboardingCompleted); // Should be true
 ✅ Only Elegant Beauty specialists shown  
 ✅ No data from Modern Spa visible
 
-### 7.2 Select Service and Beautician
+### 7.2 Select Service and Specialist
 
 **Steps:**
 
@@ -689,7 +689,7 @@ db.admins.insertOne({
    Name: Premium Shampoo
    Price: £25.00
    Stock: 50
-   Beautician: Jessica Smith
+   Specialist: Jessica Smith
    Active: Yes
    ```
 5. Save product
@@ -748,7 +748,7 @@ stripe listen --forward-to localhost:4000/api/webhooks/stripe
 **Expected Events:**
 
 ✅ `account.updated` webhook received  
-✅ Beautician record updated in database  
+✅ Specialist record updated in database  
 ✅ `stripePayoutsEnabled` reflects changes
 
 ---
@@ -764,7 +764,7 @@ stripe listen --forward-to localhost:4000/api/webhooks/stripe
 - [ ] Settings management works
 - [ ] Branding customization works
 - [ ] Service creation works
-- [ ] Beautician Stripe Connect works
+- [ ] Specialist Stripe Connect works
 - [ ] Customer booking works
 - [ ] Payment processing works
 - [ ] Platform fees collected correctly
@@ -839,7 +839,7 @@ Environment: Local / Staging / Production
 
 Tenant Signup: PASS / FAIL
 Admin Dashboard: PASS / FAIL
-Beautician Onboarding: PASS / FAIL
+Specialist Onboarding: PASS / FAIL
 Customer Booking: PASS / FAIL
 Payment Processing: PASS / FAIL
 Platform Fees: PASS / FAIL

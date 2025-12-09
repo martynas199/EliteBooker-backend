@@ -73,7 +73,7 @@ const AppointmentSchema = new mongoose.Schema(
       default: null,
     },
     client: { name: String, email: String, phone: String, notes: String },
-    beauticianId: {
+    specialistId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Specialist",
       index: true,
@@ -111,7 +111,7 @@ const AppointmentSchema = new mongoose.Schema(
 );
 
 // Performance indexes for common queries
-AppointmentSchema.index({ beauticianId: 1, start: 1 }); // Already exists
+AppointmentSchema.index({ specialistId: 1, start: 1 }); // Already exists
 AppointmentSchema.index({ start: 1, end: 1 }); // Date range queries
 AppointmentSchema.index({ status: 1, start: 1 }); // Status-based filtering
 AppointmentSchema.index({ userId: 1, start: -1 }); // User's appointments sorted by date

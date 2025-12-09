@@ -76,7 +76,7 @@ export async function optionalAuth(req, res, next) {
       name: adminDoc.name,
       email: adminDoc.email,
       role: adminDoc.role,
-      beauticianId: adminDoc.beauticianId,
+      specialistId: adminDoc.specialistId,
       active: adminDoc.active,
       passwordChangedAt: adminDoc.passwordChangedAt,
       tenantId: adminDoc.tenantId

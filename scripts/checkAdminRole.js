@@ -45,9 +45,9 @@ async function checkAndUpdateAdmin(adminEmail, shouldUpgrade = false) {
     console.log(`   Name: ${admin.name}`);
     console.log(`   Email: ${admin.email}`);
     console.log(`   Current Role: ${admin.role}`);
-    console.log(`   Beautician Linked: ${admin.beauticianId ? "Yes" : "No"}`);
-    if (admin.beauticianId) {
-      console.log(`   Beautician ID: ${admin.beauticianId}`);
+    console.log(`   Specialist Linked: ${admin.specialistId ? "Yes" : "No"}`);
+    if (admin.specialistId) {
+      console.log(`   Specialist ID: ${admin.specialistId}`);
     }
 
     if (shouldUpgrade) {

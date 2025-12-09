@@ -7,7 +7,7 @@
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import Service from "../src/models/Service.js";
-import Beautician from "../src/models/Beautician.js";
+import Specialist from "../src/models/Specialist.js";
 
 dotenv.config();
 
@@ -230,11 +230,11 @@ async function seedProductionData() {
 
     // Check existing data
     const existingServices = await Service.countDocuments({ tenantId });
-    const existingBeauticians = await Beautician.countDocuments({ tenantId });
+    const existingBeauticians = await Specialist.countDocuments({ tenantId });
 
     console.log(`\n📊 Current data:`);
     console.log(`   Services: ${existingServices}`);
-    console.log(`   Beauticians: ${existingBeauticians}`);
+    console.log(`   Specialists: ${existingBeauticians}`);
 
     if (existingServices > 0 || existingBeauticians > 0) {
       console.log("\n⚠️  Warning: This tenant already has data.");
@@ -266,7 +266,7 @@ async function seedProductionData() {
     const beauticiansData = getBeauticiansData(tenant.name);
     const createdBeauticians = [];
     for (const beauticianData of beauticiansData) {
-      const specialist = await Beautician.create({
+      const specialist = await Specialist.create({
         ...beauticianData,
         tenantId,
       });

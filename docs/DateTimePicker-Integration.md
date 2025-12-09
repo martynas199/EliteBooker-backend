@@ -52,14 +52,14 @@ function BookingPage() {
 
   const handleSlotSelect = (slot) => {
     console.log("Selected slot:", slot);
-    // slot = { startISO, endISO, beauticianId }
+    // slot = { startISO, endISO, specialistId }
     setSelectedSlot(slot);
     // Proceed to confirmation/payment
   };
 
   return (
     <DateTimePicker
-      beauticianId="507f1f77bcf86cd799439011"
+      specialistId="507f1f77bcf86cd799439011"
       serviceId="507f1f77bcf86cd799439012"
       variantName="Standard"
       salonTz="Europe/London"
@@ -83,7 +83,7 @@ Returns dates that are fully booked (no available slots) for a specialist in a s
 
 **Query Parameters:**
 
-- `beauticianId` (string, required) - MongoDB ObjectId of specialist
+- `specialistId` (string, required) - MongoDB ObjectId of specialist
 - `year` (number, required) - e.g., 2025
 - `month` (number, required) - 1-12
 
@@ -104,7 +104,7 @@ Returns dates that are fully booked (no available slots) for a specialist in a s
 
 ```javascript
 const response = await fetch(
-  "/api/slots/fully-booked?beauticianId=507f1f77bcf86cd799439011&year=2025&month=10"
+  "/api/slots/fully-booked?specialistId=507f1f77bcf86cd799439011&year=2025&month=10"
 );
 const { fullyBooked } = await response.json();
 ```
@@ -115,7 +115,7 @@ Returns available time slots for a specific date/specialist/service combination.
 
 **Query Parameters:**
 
-- `beauticianId` (string, required) - MongoDB ObjectId
+- `specialistId` (string, required) - MongoDB ObjectId
 - `serviceId` (string, required) - MongoDB ObjectId
 - `variantName` (string, optional) - Service variant name
 - `date` (string, required) - Format: YYYY-MM-DD
@@ -128,7 +128,7 @@ Returns available time slots for a specific date/specialist/service combination.
     {
       "startISO": "2025-10-14T09:00:00.000Z",
       "endISO": "2025-10-14T10:10:00.000Z",
-      "beauticianId": "507f1f77bcf86cd799439011"
+      "specialistId": "507f1f77bcf86cd799439011"
     }
   ]
 }
@@ -138,7 +138,7 @@ Returns available time slots for a specific date/specialist/service combination.
 
 ```javascript
 const response = await fetch(
-  "/api/slots?beauticianId=507f...&serviceId=507f...&variantName=Standard&date=2025-10-14"
+  "/api/slots?specialistId=507f...&serviceId=507f...&variantName=Standard&date=2025-10-14"
 );
 const { slots } = await response.json();
 ```
@@ -291,7 +291,7 @@ const CACHE_TTL = 60000; // 60 seconds
 **Client-side (60s TTL + key-based):**
 
 ```javascript
-const cacheKey = `${beauticianId}:${year}-${month}`;
+const cacheKey = `${specialistId}:${year}-${month}`;
 cache.set(cacheKey, { data, timestamp: Date.now() });
 ```
 
@@ -329,7 +329,7 @@ useEffect(() => {
     // Pre-fetch adjacent days
     const tomorrow = dayjs(selectedDate).add(1, "day").format("YYYY-MM-DD");
     api.get("/slots", {
-      params: { beauticianId, serviceId, variantName, date: tomorrow },
+      params: { specialistId, serviceId, variantName, date: tomorrow },
     });
   }
 }, [selectedDate]);
@@ -526,7 +526,7 @@ console.error("Error computing slots for ${dateStr}:", err.message);
 
 User selects service and variant (existing flow).
 
-### Step 2: Beautician Selection
+### Step 2: Specialist Selection
 
 User selects specialist (existing flow).
 
@@ -534,7 +534,7 @@ User selects specialist (existing flow).
 
 ```jsx
 <DateTimePicker
-  beauticianId={selectedSpecialist._id}
+  specialistId={selectedSpecialist._id}
   serviceId={selectedService._id}
   variantName={selectedVariant.name}
   salonTz="Europe/London"
@@ -546,7 +546,7 @@ User selects specialist (existing flow).
       ...bookingDetails,
       startTime: slot.startISO,
       endTime: slot.endISO,
-      beauticianId: slot.beauticianId,
+      specialistId: slot.specialistId,
     });
     // Navigate to confirmation page
     navigate("/booking/confirm");

@@ -14,7 +14,7 @@ import User from "../src/models/User.js";
 import Admin from "../src/models/Admin.js";
 import Tenant from "../src/models/Tenant.js";
 import Service from "../src/models/Service.js";
-import Beautician from "../src/models/Beautician.js";
+import Specialist from "../src/models/Specialist.js";
 import Appointment from "../src/models/Appointment.js";
 
 // Load environment variables
@@ -137,7 +137,7 @@ async function seedDatabase() {
       slug: { $in: TEST_DATA.tenants.map((t) => t.slug) },
     });
     await Service.deleteMany({ tenantId: { $exists: true } });
-    await Beautician.deleteMany({ tenantId: { $exists: true } });
+    await Specialist.deleteMany({ tenantId: { $exists: true } });
     await Appointment.deleteMany({});
     console.log("✅ Cleared existing data");
 
@@ -260,7 +260,7 @@ async function seedDatabase() {
 
     for (const tenant of createdTenants) {
       for (const staffData of staff) {
-        await Beautician.create({
+        await Specialist.create({
           ...staffData,
           tenantId: tenant._id,
           email: staffData.email.replace("@salon1.com", `@${tenant.slug}.com`),

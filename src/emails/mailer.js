@@ -119,12 +119,14 @@ export async function sendCancellationEmails({
     // HTML version
     let htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h2 style="color: #ef4444; border-bottom: 2px solid #ef4444; padding-bottom: 10px;">Appointment Cancelled</h2>
+        <div style="background: linear-gradient(135deg, #7c3aed 0%, #ec4899 50%, #06b6d4 100%); padding: 30px 20px; border-radius: 12px 12px 0 0; margin: -20px -20px 20px -20px;">
+          <h2 style="color: white; margin: 0; font-size: 24px; text-align: center;">Appointment Cancelled</h2>
+        </div>
         <p>Hi ${appointment.client?.name || ""},</p>
         <p>Your appointment has been cancelled.</p>
         
-        <div style="background-color: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ef4444;">
-          <h3 style="margin-top: 0; color: #1f2937;">Appointment Details</h3>
+        <div style="background: linear-gradient(135deg, rgba(124, 58, 237, 0.05) 0%, rgba(236, 72, 153, 0.05) 100%); padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #7c3aed;">
+          <h3 style="margin-top: 0; background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Appointment Details</h3>
           <p style="margin: 8px 0;"><strong>Service:</strong> ${serviceName}</p>
           <p style="margin: 8px 0;"><strong>Date & Time:</strong> ${startDate}</p>
           ${
@@ -153,9 +155,9 @@ export async function sendCancellationEmails({
         <p style="margin-top: 30px;">If you have any questions, please don't hesitate to contact us.</p>
         <p>We hope to see you again soon!</p>
         
-        <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+        <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid rgba(124, 58, 237, 0.2);">
           <p style="margin: 0; color: #6b7280; font-size: 14px;">Best regards,</p>
-          <p style="margin: 5px 0 0 0; color: #9333ea; font-weight: bold;">Elite Booker</p>
+          <p style="margin: 5px 0 0 0; background: linear-gradient(135deg, #7c3aed 0%, #ec4899 50%, #06b6d4 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-weight: bold; font-size: 18px;">Elite Booker</p>
           <p style="margin: 20px 0 0 0; color: #9ca3af; font-size: 11px;">Appointment ID: ${String(
             appointment._id
           )}</p>
@@ -185,13 +187,13 @@ export async function sendCancellationEmails({
   // Optional: Send notification to specialist/salon staff
   const beauticianEmail = process.env.BEAUTICIAN_NOTIFY_EMAIL;
   if (beauticianEmail) {
-    const beauticianName = appointment.beauticianId?.name || "Staff";
+    const beauticianName = appointment.specialistId?.name || "Staff";
 
     await tx.sendMail({
       from,
       to: beauticianEmail,
       subject: `Appointment Cancelled - ${serviceName}`,
-      text: `A slot has been freed up.\n\nAppointment Details:\n- Service: ${serviceName}\n- Date & Time: ${startDate}\n- Beautician: ${beauticianName}\n- Client: ${
+      text: `A slot has been freed up.\n\nAppointment Details:\n- Service: ${serviceName}\n- Date & Time: ${startDate}\n- Specialist: ${beauticianName}\n- Client: ${
         appointment.client?.name || "Unknown"
       }\n- Client Email: ${
         appointment.client?.email || "N/A"
@@ -202,13 +204,15 @@ export async function sendCancellationEmails({
       }\n\nAppointment ID: ${String(appointment._id)}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h2 style="color: #f59e0b; border-bottom: 2px solid #f59e0b; padding-bottom: 10px;">📅 Appointment Cancelled - Slot Freed</h2>
+          <div style="background: linear-gradient(135deg, #7c3aed 0%, #ec4899 50%, #06b6d4 100%); padding: 30px 20px; border-radius: 12px 12px 0 0; margin: -20px -20px 20px -20px;">
+            <h2 style="color: white; margin: 0; font-size: 24px; text-align: center;">📅 Appointment Cancelled - Slot Freed</h2>
+          </div>
           
           <div style="background-color: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0;">
             <h3 style="margin-top: 0; color: #1f2937;">Appointment Details</h3>
             <p style="margin: 8px 0;"><strong>Service:</strong> ${serviceName}</p>
             <p style="margin: 8px 0;"><strong>Date & Time:</strong> ${startDate}</p>
-            <p style="margin: 8px 0;"><strong>Beautician:</strong> ${beauticianName}</p>
+            <p style="margin: 8px 0;"><strong>Specialist:</strong> ${beauticianName}</p>
             ${
               reason && reason.trim()
                 ? `<p style="margin: 8px 0;"><strong>Reason:</strong> ${reason}</p>`
@@ -334,7 +338,7 @@ export async function sendConfirmationEmail({
 
   console.log("[MAILER] Preparing confirmation email...");
   console.log("[MAILER] Service:", serviceName);
-  console.log("[MAILER] Beautician:", beauticianName);
+  console.log("[MAILER] Specialist:", beauticianName);
   console.log("[MAILER] Time:", startTime);
   console.log("[MAILER] Appointment status:", appointment.status);
   console.log(
@@ -387,12 +391,15 @@ Appointment ID: ${appointment._id}
 
 Thank you for choosing us!`,
       html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #9333ea;">Appointment Confirmed ✓</h2>
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #7c3aed 0%, #ec4899 50%, #06b6d4 100%); padding: 30px 20px; border-radius: 12px 12px 0 0; margin: -20px -20px 20px -20px;">
+          <h2 style="color: white; margin: 0; font-size: 24px; text-align: center;">✓ Appointment Confirmed</h2>
+        </div>
         <p>Hi ${appointment.client?.name || ""},</p>
         <p>Your appointment has been confirmed!</p>
         
-        <div style="background-color: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0;">
+        <div style="background: linear-gradient(135deg, rgba(124, 58, 237, 0.05) 0%, rgba(236, 72, 153, 0.05) 100%); padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #7c3aed;">
+          <h3 style="margin-top: 0; margin-bottom: 16px; background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-size: 18px;">Booking Details</h3>
           <p style="margin: 8px 0;"><strong>Service:</strong> ${serviceName}</p>
           <p style="margin: 8px 0;"><strong>With:</strong> ${beauticianName}</p>
           <p style="margin: 8px 0;"><strong>Date & Time:</strong> ${startTime}</p>
@@ -459,7 +466,7 @@ Thank you for choosing us!`,
 
   // Send notification to specialist
   const beauticianEmail = specialist?.email;
-  console.log("[MAILER] Beautician email:", beauticianEmail || "NOT SET");
+  console.log("[MAILER] Specialist email:", beauticianEmail || "NOT SET");
   if (beauticianEmail) {
     console.log("[MAILER] Preparing specialist notification email...");
 
@@ -503,12 +510,14 @@ Please ensure you're prepared for this appointment.`;
 
     const beauticianHtmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h2 style="color: #9333ea; border-bottom: 2px solid #9333ea; padding-bottom: 10px;">📅 New Booking Received</h2>
+        <div style="background: linear-gradient(135deg, #7c3aed 0%, #ec4899 50%, #06b6d4 100%); padding: 30px 20px; border-radius: 12px 12px 0 0; margin: -20px -20px 20px -20px;">
+          <h2 style="color: white; margin: 0; font-size: 24px; text-align: center;">📅 New Booking Received</h2>
+        </div>
         <p>Hi ${beauticianName},</p>
         <p style="font-size: 16px; color: #374151; font-weight: 600;">You have a new booking!</p>
         
-        <div style="background-color: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #9333ea;">
-          <h3 style="margin-top: 0; color: #1f2937;">Appointment Details</h3>
+        <div style="background: linear-gradient(135deg, rgba(124, 58, 237, 0.05) 0%, rgba(236, 72, 153, 0.05) 100%); padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #7c3aed;">
+          <h3 style="margin-top: 0; background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Appointment Details</h3>
           <p style="margin: 8px 0;"><strong>Service:</strong> ${serviceName}</p>
           <p style="margin: 8px 0;"><strong>Client:</strong> ${
             appointment.client?.name || "Unknown"
@@ -587,7 +596,7 @@ Please ensure you're prepared for this appointment.`;
         html: beauticianHtmlContent,
       });
       console.log(
-        "[MAILER] ✓ Beautician notification email sent successfully. MessageId:",
+        "[MAILER] ✓ Specialist notification email sent successfully. MessageId:",
         info.messageId
       );
     } catch (error) {
@@ -706,9 +715,9 @@ Order ID: ${order._id}`;
 
   const htmlContent = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-      <div style="text-align: center; margin-bottom: 30px;">
-        <h1 style="color: #9333ea; margin: 0;">Order Confirmed! 🎉</h1>
-        <p style="color: #6b7280; margin: 10px 0 0 0;">Thank you for your purchase</p>
+      <div style="background: linear-gradient(135deg, #7c3aed 0%, #ec4899 50%, #06b6d4 100%); padding: 40px 20px; border-radius: 12px 12px 0 0; margin: -20px -20px 30px -20px; text-align: center;">
+        <h1 style="color: white; margin: 0; font-size: 28px;">🎉 Order Confirmed!</h1>
+        <p style="color: rgba(255, 255, 255, 0.9); margin: 10px 0 0 0; font-size: 16px;">Thank you for your purchase</p>
       </div>
       
       <div style="background-color: #f9fafb; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
@@ -716,7 +725,7 @@ Order ID: ${order._id}`;
         <p style="margin: 0; color: #374151;">Your order has been confirmed and we're getting it ready for shipment.</p>
       </div>
       
-      <div style="background-color: #eff6ff; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #3b82f6;">
+      <div style="background: linear-gradient(135deg, rgba(124, 58, 237, 0.1) 0%, rgba(236, 72, 153, 0.1) 100%); padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #7c3aed;">
         <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
           <span style="color: #1e40af; font-weight: 600;">Order Number:</span>
           <span style="color: #1f2937; font-weight: 700;">${
@@ -736,7 +745,7 @@ Order ID: ${order._id}`;
         </div>
       </div>
       
-      <h3 style="color: #1f2937; border-bottom: 2px solid #9333ea; padding-bottom: 10px; margin-top: 30px;">Order Items</h3>
+      <h3 style="background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; border-bottom: 2px solid rgba(124, 58, 237, 0.3); padding-bottom: 10px; margin-top: 30px; font-size: 20px;">Order Items</h3>
       <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
         <thead>
           <tr style="background-color: #f9fafb;">
@@ -846,7 +855,7 @@ export async function sendBeauticianProductOrderNotification({
   }
 
   const beauticianEmail = specialist?.email;
-  console.log("[MAILER] Beautician email:", beauticianEmail || "NOT SET");
+  console.log("[MAILER] Specialist email:", beauticianEmail || "NOT SET");
   if (!beauticianEmail) {
     console.warn(
       "[MAILER] No specialist email - skipping specialist product notification"
@@ -994,8 +1003,8 @@ Elite Booker Team`;
     beauticianEmail
   );
   console.log("[MAILER] Order number:", order.orderNumber);
-  console.log("[MAILER] Beautician items count:", beauticianItems.length);
-  console.log("[MAILER] Beautician total:", beauticianTotalFormatted);
+  console.log("[MAILER] Specialist items count:", beauticianItems.length);
+  console.log("[MAILER] Specialist total:", beauticianTotalFormatted);
 
   try {
     const info = await tx.sendMail({
@@ -1006,7 +1015,7 @@ Elite Booker Team`;
       html: htmlContent,
     });
     console.log(
-      "[MAILER] ✓ Beautician product notification sent successfully. MessageId:",
+      "[MAILER] ✓ Specialist product notification sent successfully. MessageId:",
       info.messageId
     );
   } catch (error) {

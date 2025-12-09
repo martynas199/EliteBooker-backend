@@ -28,7 +28,7 @@ export function checkServicePermission(action = "edit") {
 
       // BEAUTICIAN role: Check if service is assigned to them
       if (admin.role === "admin" || admin.role === "specialist") {
-        if (!admin.beauticianId) {
+        if (!admin.specialistId) {
           return res.status(403).json({
             error: "Access denied",
             message: "Your account is not linked to a specialist profile.",
@@ -42,7 +42,7 @@ export function checkServicePermission(action = "edit") {
         }
 
         // Check if specialist is assigned (primary or additional)
-        const beauticianIdStr = String(admin.beauticianId);
+        const beauticianIdStr = String(admin.specialistId);
         const isPrimary =
           service.primaryBeauticianId &&
           String(service.primaryBeauticianId) === beauticianIdStr;

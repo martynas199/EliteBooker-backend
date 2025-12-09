@@ -5,7 +5,7 @@ import {
   validateUpdateBeautician,
 } from "../src/validations/specialist.schema.js";
 
-describe("Beautician Schema Validation", () => {
+describe("Specialist Schema Validation", () => {
   describe("validateCreateBeautician", () => {
     it("should validate a valid specialist", () => {
       const validBeautician = {

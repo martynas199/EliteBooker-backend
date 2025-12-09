@@ -8,7 +8,7 @@ import Product from "../models/Product.js";
  */
 export const getProfitAnalytics = async (req, res) => {
   try {
-    const { startDate, endDate, productId, beauticianId } = req.query;
+    const { startDate, endDate, productId, specialistId } = req.query;
 
     // Build query filters
     const matchFilters = {
@@ -36,9 +36,9 @@ export const getProfitAnalytics = async (req, res) => {
     let orders = await Order.find(matchFilters)
       .populate({
         path: "items.productId",
-        select: "title category beauticianId variants purchasePrice",
+        select: "title category specialistId variants purchasePrice",
         populate: {
-          path: "beauticianId",
+          path: "specialistId",
           select: "name",
         },
       })
@@ -82,18 +82,18 @@ export const getProfitAnalytics = async (req, res) => {
       );
     }
 
-    // Filter by beauticianId if specified
-    if (beauticianId) {
+    // Filter by specialistId if specified
+    if (specialistId) {
       const beforeFilter = orders.length;
       orders = orders.filter((order) =>
         order.items.some(
           (item) =>
-            item.productId?.beauticianId?.toString() === beauticianId ||
-            item.beauticianId?.toString() === beauticianId
+            item.productId?.specialistId?.toString() === specialistId ||
+            item.specialistId?.toString() === specialistId
         )
       );
       console.log(
-        `[ANALYTICS] Filtered by beauticianId ${beauticianId}: ${beforeFilter} -> ${orders.length} orders`
+        `[ANALYTICS] Filtered by specialistId ${specialistId}: ${beforeFilter} -> ${orders.length} orders`
       );
     }
 
@@ -148,7 +148,7 @@ export const getProfitAnalytics = async (req, res) => {
             productId: product._id,
             title: product.title,
             category: product.category,
-            beauticianName: product.beauticianId?.name || "Platform",
+            beauticianName: product.specialistId?.name || "Platform",
             totalRevenue: 0,
             totalCost: 0,
             totalProfit: 0,
@@ -215,14 +215,14 @@ export const getProfitAnalytics = async (req, res) => {
               100
             : 0;
 
-        // Beautician analytics
+        // Specialist analytics
         const beauticianKey =
-          product.beauticianId?._id?.toString() || "platform";
-        const beauticianName = product.beauticianId?.name || "Platform";
+          product.specialistId?._id?.toString() || "platform";
+        const beauticianName = product.specialistId?.name || "Platform";
         if (!beauticianAnalytics[beauticianKey]) {
           beauticianAnalytics[beauticianKey] = {
-            beauticianId:
-              beauticianKey === "platform" ? null : product.beauticianId._id,
+            specialistId:
+              beauticianKey === "platform" ? null : product.specialistId._id,
             beauticianName,
             totalRevenue: 0,
             totalCost: 0,
@@ -319,7 +319,7 @@ export const getProfitAnalytics = async (req, res) => {
         startDate: startDate || null,
         endDate: endDate || null,
         productId: productId || null,
-        beauticianId: beauticianId || null,
+        specialistId: specialistId || null,
       },
     };
 
@@ -353,7 +353,7 @@ export const getTopProducts = async (req, res) => {
       createdAt: { $gte: startDate, $lte: endDate },
     }).populate({
       path: "items.productId",
-      select: "title category beauticianId variants purchasePrice",
+      select: "title category specialistId variants purchasePrice",
     });
 
     const productStats = {};

@@ -38,6 +38,7 @@ import blogPostsRouter from "./routes/blogPosts.js";
 import tenantsRouter from "./routes/tenants.js";
 import calendarRouter from "./routes/calendar.js";
 import locksRouter from "./routes/locks.js";
+import featuresRouter from "./routes/features.js";
 import {
   apiLimiter,
   authLimiter,
@@ -218,6 +219,7 @@ app.use("/api/admin/admins", adminsRouter); // Admin management routes
 app.use("/api/analytics", analyticsRouter); // Profit analytics routes
 app.use("/api/subscriptions", subscriptionsRouter); // E-commerce subscription routes
 app.use("/api/calendar", calendarRouter); // Google Calendar integration routes
+app.use("/api/features", featuresRouter); // Premium features subscription routes
 
 // Error handling
 app.use((err, req, res, next) => {

@@ -49,14 +49,14 @@ describe("Multi-Tenant Plugin - Tenant Isolation", () => {
   const tenant1Id = new mongoose.Types.ObjectId();
   const tenant2Id = new mongoose.Types.ObjectId();
   const serviceId = new mongoose.Types.ObjectId();
-  const beauticianId = new mongoose.Types.ObjectId();
+  const specialistId = new mongoose.Types.ObjectId();
 
   it("should only return documents for the current tenant context", async () => {
     // Create appointments for two different tenants
     await Appointment.create({
       tenantId: tenant1Id,
       serviceId,
-      beauticianId,
+      specialistId,
       start: new Date("2025-12-01T10:00:00"),
       end: new Date("2025-12-01T11:00:00"),
       price: 5000,
@@ -77,7 +77,7 @@ describe("Multi-Tenant Plugin - Tenant Isolation", () => {
     await Appointment.create({
       tenantId: tenant2Id,
       serviceId,
-      beauticianId,
+      specialistId,
       start: new Date("2025-12-01T11:00:00"),
       end: new Date("2025-12-01T12:00:00"),
       price: 6000,
@@ -123,7 +123,7 @@ describe("Multi-Tenant Plugin - Tenant Isolation", () => {
     const appt = await Appointment.create({
       tenantId: tenant1Id,
       serviceId,
-      beauticianId,
+      specialistId,
       date: new Date("2025-12-01"),
       startTime: "10:00",
       endTime: "11:00",
@@ -162,7 +162,7 @@ describe("Multi-Tenant Plugin - Tenant Isolation", () => {
     const appt = await Appointment.create({
       tenantId: tenant1Id,
       serviceId,
-      beauticianId,
+      specialistId,
       date: new Date("2025-12-01"),
       startTime: "10:00",
       endTime: "11:00",
@@ -197,7 +197,7 @@ describe("Multi-Tenant Plugin - Tenant Isolation", () => {
     const appt = await Appointment.create({
       tenantId: tenant1Id,
       serviceId,
-      beauticianId,
+      specialistId,
       date: new Date("2025-12-01"),
       startTime: "10:00",
       endTime: "11:00",
@@ -229,7 +229,7 @@ describe("Multi-Tenant Plugin - Tenant Isolation", () => {
     // Create appointment without explicitly setting tenantId
     const appt = await Appointment.create({
       serviceId,
-      beauticianId,
+      specialistId,
       date: new Date("2025-12-01"),
       startTime: "10:00",
       endTime: "11:00",
@@ -253,7 +253,7 @@ describe("Multi-Tenant Plugin - Tenant Isolation", () => {
     const appt = await Appointment.create({
       tenantId: tenant1Id,
       serviceId,
-      beauticianId,
+      specialistId,
       date: new Date("2025-12-01"),
       startTime: "10:00",
       endTime: "11:00",
@@ -286,7 +286,7 @@ describe("Multi-Tenant Plugin - Tenant Isolation", () => {
     await Appointment.create({
       tenantId: tenant1Id,
       serviceId,
-      beauticianId,
+      specialistId,
       date: new Date("2025-12-01"),
       startTime: "10:00",
       endTime: "11:00",
@@ -300,7 +300,7 @@ describe("Multi-Tenant Plugin - Tenant Isolation", () => {
     await Appointment.create({
       tenantId: tenant1Id,
       serviceId,
-      beauticianId,
+      specialistId,
       date: new Date("2025-12-02"),
       startTime: "10:00",
       endTime: "11:00",
@@ -314,7 +314,7 @@ describe("Multi-Tenant Plugin - Tenant Isolation", () => {
     await Appointment.create({
       tenantId: tenant2Id,
       serviceId,
-      beauticianId,
+      specialistId,
       date: new Date("2025-12-01"),
       startTime: "11:00",
       endTime: "12:00",
@@ -345,7 +345,7 @@ describe("Multi-Tenant Plugin - Tenant Isolation", () => {
     await Appointment.create({
       tenantId: tenant1Id,
       serviceId,
-      beauticianId,
+      specialistId,
       start: new Date("2025-12-01T10:00:00"),
       end: new Date("2025-12-01T11:00:00"),
       price: 5000,

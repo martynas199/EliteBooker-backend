@@ -15,7 +15,7 @@ router.get("/me/bookings", async (req, res) => {
   try {
     const bookings = await Appointment.find({ userId: req.userId })
       .populate("serviceId", "name description")
-      .populate("beauticianId", "name image")
+      .populate("specialistId", "name image")
       .sort({ start: -1 }) // Most recent first
       .lean();
 

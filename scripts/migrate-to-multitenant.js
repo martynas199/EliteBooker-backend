@@ -29,7 +29,7 @@ import Tenant from "../src/models/Tenant.js";
 import Admin from "../src/models/Admin.js";
 import User from "../src/models/User.js";
 import Service from "../src/models/Service.js";
-import Beautician from "../src/models/Beautician.js";
+import Specialist from "../src/models/Specialist.js";
 import Appointment from "../src/models/Appointment.js";
 import Product from "../src/models/Product.js";
 import Order from "../src/models/Order.js";
@@ -227,7 +227,7 @@ async function runMigration() {
     // Step 3: Migrate all collections
     await migrateCollection(User, tenantId, "Users");
     await migrateCollection(Service, tenantId, "Services");
-    await migrateCollection(Beautician, tenantId, "Beauticians");
+    await migrateCollection(Specialist, tenantId, "Specialists");
     await migrateCollection(Appointment, tenantId, "Appointments");
     await migrateCollection(Product, tenantId, "Products");
     await migrateCollection(Order, tenantId, "Orders");
@@ -260,7 +260,7 @@ async function runMigration() {
       admins: await Admin.countDocuments({ tenantId }),
       users: await User.countDocuments({ tenantId }),
       services: await Service.countDocuments({ tenantId }),
-      specialists: await Beautician.countDocuments({ tenantId }),
+      specialists: await Specialist.countDocuments({ tenantId }),
       appointments: await Appointment.countDocuments({ tenantId }),
       products: await Product.countDocuments({ tenantId }),
       orders: await Order.countDocuments({ tenantId }),

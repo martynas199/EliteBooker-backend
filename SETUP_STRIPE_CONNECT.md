@@ -1,4 +1,4 @@
-# 🔧 Setup Guide: Link Admin to Beautician for Stripe Connect
+# 🔧 Setup Guide: Link Admin to Specialist for Stripe Connect
 
 ## Problem
 
@@ -31,7 +31,7 @@ node scripts/listAccounts.js
 1. Admin Name
    Email: admin@salon.com
    Role: admin
-   Beautician ID: (not linked)
+   Specialist ID: (not linked)
    Active: Yes
 
 💇 BEAUTICIAN ACCOUNTS:
@@ -45,7 +45,7 @@ node scripts/listAccounts.js
 
 ---
 
-### **Step 2: Link Admin to Beautician**
+### **Step 2: Link Admin to Specialist**
 
 Use the emails from Step 1 to link them:
 
@@ -68,8 +68,8 @@ node scripts/linkAdminToBeautician.js admin@salon.com sarah@salon.com
 
 🎉 Successfully linked admin to specialist!
    Admin: Admin Name (admin@salon.com)
-   Beautician: Sarah Johnson
-   Beautician ID: 507f1f77bcf86cd799439011
+   Specialist: Sarah Johnson
+   Specialist ID: 507f1f77bcf86cd799439011
 
 ✅ Now log out and log back in to see Stripe Connect settings!
 ```
@@ -96,7 +96,7 @@ You should now see the **"Stripe Connect Settings"** section at the top of Setti
 
 ---
 
-## 🔍 Alternative: If No Beautician Exists
+## 🔍 Alternative: If No Specialist Exists
 
 If you don't have any specialists in the database yet, create one first:
 
@@ -128,7 +128,7 @@ import('mongodb').then(async ({ MongoClient }) => {
     updatedAt: new Date()
   });
 
-  console.log('✅ Beautician created!');
+  console.log('✅ Specialist created!');
   await client.close();
 });
 "
@@ -146,7 +146,7 @@ When you link an admin to a specialist:
 {
   email: "admin@salon.com",
   name: "Admin Name",
-  beauticianId: "507f1f77bcf86cd799439011"  // ← NEW FIELD
+  specialistId: "507f1f77bcf86cd799439011"  // ← NEW FIELD
 }
 ```
 
@@ -157,7 +157,7 @@ When you link an admin to a specialist:
   admin: {
     email: "admin@salon.com",
     name: "Admin Name",
-    beauticianId: "507f1f77bcf86cd799439011"  // ← NOW AVAILABLE
+    specialistId: "507f1f77bcf86cd799439011"  // ← NOW AVAILABLE
   }
 }
 ```
@@ -166,9 +166,9 @@ When you link an admin to a specialist:
 
 ```jsx
 {
-  admin?.beauticianId && admin?.email && (
+  admin?.specialistId && admin?.email && (
     <StripeConnectSettings
-      beauticianId={admin.beauticianId}
+      specialistId={admin.specialistId}
       email={admin.email}
     />
   );
@@ -197,7 +197,7 @@ After linking and re-logging in:
 
 **Solution:** Check the email spelling. Run `listAccounts.js` to see the correct email.
 
-### Issue: "Beautician not found"
+### Issue: "Specialist not found"
 
 **Solution:** Create a specialist first via admin panel or database script.
 
@@ -207,7 +207,7 @@ After linking and re-logging in:
 
 1. Open browser console (F12)
 2. Check `localStorage.getItem('admin')`
-3. Verify `beauticianId` field exists
+3. Verify `specialistId` field exists
 4. If not, try clearing cache and logging in again
 
 ### Issue: "Cannot find module"
@@ -239,7 +239,7 @@ npm run dev
 
 ## 📝 Files Modified
 
-- ✅ `src/models/Admin.js` - Added `beauticianId` field
+- ✅ `src/models/Admin.js` - Added `specialistId` field
 - ✅ `scripts/listAccounts.js` - List all admins and specialists
 - ✅ `scripts/linkAdminToBeautician.js` - Link an admin to a specialist
 

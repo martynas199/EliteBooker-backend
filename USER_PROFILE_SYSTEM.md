@@ -186,7 +186,7 @@ Response:
       "_id": "...",
       "client": { "name": "...", "email": "..." },
       "serviceId": { "name": "Hair Cut", ... },
-      "beauticianId": { "name": "Jane", ... },
+      "specialistId": { "name": "Jane", ... },
       "start": "2025-11-10T10:00:00Z",
       "price": 50,
       "status": "confirmed"

@@ -22,7 +22,7 @@ Both booking and product payments now ensure specialists pay Stripe processing f
 - Customer pays: Full service price (e.g., £50)
 - Stripe fee (~£1.65): Deducted from specialist
 - Platform fee: £0.50
-- Beautician receives: £47.85
+- Specialist receives: £47.85
 
 **In Stripe Dashboard:**
 
@@ -47,7 +47,7 @@ Both booking and product payments now ensure specialists pay Stripe processing f
 - Customer pays: Product total (e.g., £100)
 - Stripe fee (~£3.10): Deducted from specialist
 - Platform fee: £0.00
-- Beautician receives: £96.90
+- Specialist receives: £96.90
 
 **In Stripe Dashboard:**
 
@@ -56,7 +56,7 @@ Both booking and product payments now ensure specialists pay Stripe processing f
 
 ---
 
-### **3. Multi-Beautician Order** ⚠️ LOWER PRIORITY
+### **3. Multi-Specialist Order** ⚠️ LOWER PRIORITY
 
 **Steps:**
 
@@ -125,10 +125,10 @@ Customer Payment:     £50.00
 Stripe Fee (2.9%+20p): -£1.65  ← Charged to specialist
 Platform Fee:          -£0.50  ← Goes to platform
 ─────────────────────────────
-Beautician Receives:   £47.85
+Specialist Receives:   £47.85
 ```
 
-### **Product Example: £100 Single Beautician**
+### **Product Example: £100 Single Specialist**
 
 ```
 Customer Payment:     £100.00
@@ -136,7 +136,7 @@ Customer Payment:     £100.00
 Stripe Fee (2.9%+20p): -£3.10  ← Charged to specialist
 Platform Fee:          £0.00
 ─────────────────────────────
-Beautician Receives:   £96.90
+Specialist Receives:   £96.90
 ```
 
 ---
@@ -155,7 +155,7 @@ Beautician Receives:   £96.90
 **Fix:**
 
 - Re-run specialist Stripe onboarding
-- Ensure `beauticianId` is linked to admin account
+- Ensure `specialistId` is linked to admin account
 - Check environment variables are set
 
 ### **Issue: Payment fails**
@@ -173,7 +173,7 @@ Beautician Receives:   £96.90
 - ✅ Bookings complete successfully
 - ✅ Products complete successfully
 - ✅ Stripe Dashboard shows fees charged to specialist (not platform)
-- ✅ Beautician balance reflects net amount (after fees)
+- ✅ Specialist balance reflects net amount (after fees)
 - ✅ Platform only receives application fee (£0.50 for bookings, £0 for products)
 
 ---
