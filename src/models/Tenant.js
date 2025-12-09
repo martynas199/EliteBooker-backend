@@ -259,7 +259,7 @@ TenantSchema.pre("save", async function (next) {
 
   if (!this.slug && this.name) {
     console.log("[Tenant Pre-Save] No slug found, generating from name...");
-    
+
     // Create slug from name
     let baseSlug = this.name
       .toLowerCase()
@@ -267,9 +267,11 @@ TenantSchema.pre("save", async function (next) {
       .replace(/^-+|-+$/g, "");
 
     console.log("[Tenant Pre-Save] Generated base slug:", baseSlug);
-    
+
     if (!baseSlug || baseSlug.length === 0) {
-      console.error("[Tenant Pre-Save] ERROR: Base slug is empty after transformation!");
+      console.error(
+        "[Tenant Pre-Save] ERROR: Base slug is empty after transformation!"
+      );
       console.error("[Tenant Pre-Save] ERROR: Original name was:", this.name);
       return next(new Error("Unable to generate slug from name"));
     }
@@ -278,7 +280,7 @@ TenantSchema.pre("save", async function (next) {
     let counter = 1;
 
     console.log("[Tenant Pre-Save] Checking slug uniqueness...");
-    
+
     // Check if slug exists and add counter if needed
     // Use lean() to bypass tenant filtering middleware
     while (await mongoose.models.Tenant.findOne({ slug }).lean()) {
@@ -290,9 +292,11 @@ TenantSchema.pre("save", async function (next) {
       );
       slug = `${baseSlug}-${counter}`;
       counter++;
-      
+
       if (counter > 100) {
-        console.error("[Tenant Pre-Save] ERROR: Too many slug collisions (>100)!");
+        console.error(
+          "[Tenant Pre-Save] ERROR: Too many slug collisions (>100)!"
+        );
         return next(new Error("Unable to generate unique slug"));
       }
     }
@@ -303,7 +307,10 @@ TenantSchema.pre("save", async function (next) {
     console.error("[Tenant Pre-Save] ERROR: No slug and no name provided!");
     return next(new Error("Either slug or name must be provided"));
   } else {
-    console.log("[Tenant Pre-Save] Slug already exists, skipping generation:", this.slug);
+    console.log(
+      "[Tenant Pre-Save] Slug already exists, skipping generation:",
+      this.slug
+    );
   }
 
   // Validate slug is set

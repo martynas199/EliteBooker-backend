@@ -20,7 +20,12 @@ const SettingsSchema = new mongoose.Schema(
     // Salon Information
     salonName: String,
     salonDescription: String,
-    salonAddress: String,
+    salonAddress: {
+      street: String,
+      city: String,
+      postalCode: String,
+      country: String,
+    },
     salonPhone: String,
     salonEmail: String,
 

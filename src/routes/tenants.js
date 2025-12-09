@@ -152,7 +152,12 @@ router.post("/create", async (req, res) => {
       tenantId: tenant._id,
       salonName: tenant.name,
       salonDescription: `Welcome to ${tenant.businessName}`,
-      salonAddress: validatedData.address?.street || "",
+      salonAddress: validatedData.address || {
+        street: "",
+        city: "",
+        postalCode: "",
+        country: "United Kingdom",
+      },
       salonPhone: tenant.phone || "",
       salonEmail: tenant.email,
     });
