@@ -22,6 +22,10 @@ const HeroSectionSchema = new mongoose.Schema(
       default:
         "Where heritage meets artistry, our hair extensions, beauty products and services embodies the essence of timeless elegance.",
     },
+    showCta: {
+      type: Boolean,
+      default: true,
+    },
     ctaText: {
       type: String,
       default: "Shop all",
@@ -44,13 +48,19 @@ const HeroSectionSchema = new mongoose.Schema(
     },
 
     // Display settings
-    active: {
-      type: Boolean,
-      default: true,
-    },
     order: {
       type: Number,
       default: 0,
+    },
+    overlayOpacity: {
+      type: Number,
+      default: 0.3,
+      min: 0,
+      max: 1,
+    },
+    overlayColor: {
+      type: String,
+      default: "#000000",
     },
   },
   { timestamps: true }
