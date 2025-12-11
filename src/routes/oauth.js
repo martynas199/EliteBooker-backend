@@ -99,11 +99,12 @@ router.get("/google/callback", (req, res, next) => {
         res.cookie("clientToken", token, cookieOptions);
 
         console.log("[OAUTH] Cookie set - redirecting to landing page");
+        console.log("[OAUTH] Cookie options:", JSON.stringify(cookieOptions));
 
-        // Redirect to frontend landing page with token and cache busting
+        // Redirect to frontend landing page with cache busting
         const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
         const timestamp = Date.now();
-        res.redirect(`${frontendUrl}/?auth=success&token=${token}&t=${timestamp}`);
+        const redirectUrl = `${frontendUrl}/?auth=success&t=${timestamp}`;
         console.log("[OAUTH] Redirecting to:", redirectUrl);
         res.redirect(redirectUrl);
       } catch (error) {
@@ -202,10 +203,15 @@ router.post("/apple/callback", (req, res, next) => {
 
         res.cookie("clientToken", token, cookieOptions);
 
-        // Redirect to frontend landing page with token and cache busting
+        console.log("[OAUTH] Cookie set - redirecting to landing page");
+        console.log("[OAUTH] Cookie options:", JSON.stringify(cookieOptions));
+
+        // Redirect to frontend landing page with cache busting
         const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
         const timestamp = Date.now();
-        res.redirect(`${frontendUrl}/?auth=success&token=${token}&t=${timestamp}`);
+        const redirectUrl = `${frontendUrl}/?auth=success&t=${timestamp}`;
+        console.log("[OAUTH] Redirecting to:", redirectUrl);
+        res.redirect(redirectUrl);
       } catch (error) {
         console.error("[OAUTH] Token generation error:", error);
         res.redirect(
