@@ -4,18 +4,18 @@ import "./env.js";
 import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import AppleStrategy from "passport-apple";
-import User from "../models/User.js";
+import Client from "../models/Client.js";
 
-// Serialize user for session
-passport.serializeUser((user, done) => {
-  done(null, user._id);
+// Serialize client for session
+passport.serializeUser((client, done) => {
+  done(null, client._id);
 });
 
-// Deserialize user from session
+// Deserialize client from session
 passport.deserializeUser(async (id, done) => {
   try {
-    const user = await User.findById(id);
-    done(null, user);
+    const client = await Client.findById(id);
+    done(null, client);
   } catch (err) {
     done(err, null);
   }
@@ -44,36 +44,42 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
             return done(new Error("No email from Google profile"), null);
           }
 
-          // Check if user exists with this Google ID
-          let user = await User.findOne({ googleId: profile.id });
+          // Check if client exists with this Google ID
+          let client = await Client.findOne({ googleId: profile.id });
 
-          if (!user) {
-            // Check if user exists with this email (from email/password signup)
-            user = await User.findOne({ email: email.toLowerCase() });
+          if (!client) {
+            // Check if client exists with this email
+            client = await Client.findOne({ email: email.toLowerCase() });
 
-            if (user) {
-              // Link Google account to existing user
-              user.googleId = profile.id;
-              if (!user.authProvider || user.authProvider === "local") {
-                user.authProvider = "google";
+            if (client) {
+              // Link Google account to existing client
+              client.googleId = profile.id;
+              if (!client.authProvider || client.authProvider === "email") {
+                client.authProvider = "google";
               }
-              await user.save();
+              client.lastActivity = new Date();
+              await client.save();
             } else {
-              // Create new user
-              user = await User.create({
+              // Create new client (global platform-wide identity)
+              client = await Client.create({
                 name: profile.displayName || "Google User",
                 email: email.toLowerCase(),
                 googleId: profile.id,
                 authProvider: "google",
-                // No password needed for OAuth users
+                isEmailVerified: true, // Google emails are verified
+                totalBookings: 0,
+                memberSince: new Date(),
+                lastActivity: new Date(),
+                isActive: true,
               });
             }
+          } else {
+            // Update last activity
+            client.lastActivity = new Date();
+            await client.save();
           }
 
-          user.lastLogin = new Date();
-          await user.save();
-
-          return done(null, user);
+          return done(null, client);
         } catch (err) {
           console.error("[OAUTH] Google strategy error:", err);
           return done(err, null);
@@ -115,42 +121,48 @@ if (
             return done(new Error("No email from Apple profile"), null);
           }
 
-          // Check if user exists with this Apple ID
-          let user = await User.findOne({ appleId: profile.id });
+          // Check if client exists with this Apple ID
+          let client = await Client.findOne({ appleId: profile.id });
 
-          if (!user) {
-            // Check if user exists with this email
-            user = await User.findOne({ email: email.toLowerCase() });
+          if (!client) {
+            // Check if client exists with this email
+            client = await Client.findOne({ email: email.toLowerCase() });
 
-            if (user) {
-              // Link Apple account to existing user
-              user.appleId = profile.id;
-              if (!user.authProvider || user.authProvider === "local") {
-                user.authProvider = "apple";
+            if (client) {
+              // Link Apple account to existing client
+              client.appleId = profile.id;
+              if (!client.authProvider || client.authProvider === "email") {
+                client.authProvider = "apple";
               }
-              await user.save();
+              client.lastActivity = new Date();
+              await client.save();
             } else {
-              // Create new user
+              // Create new client (global platform-wide identity)
               const name = profile.name
                 ? `${profile.name.firstName || ""} ${
                     profile.name.lastName || ""
                   }`.trim()
                 : "Apple User";
 
-              user = await User.create({
+              client = await Client.create({
                 name: name || "Apple User",
                 email: email.toLowerCase(),
                 appleId: profile.id,
                 authProvider: "apple",
-                // No password needed for OAuth users
+                isEmailVerified: true, // Apple emails are verified
+                totalBookings: 0,
+                memberSince: new Date(),
+                lastActivity: new Date(),
+                isActive: true,
               });
             }
+          } else {
+            // Update last activity
+            client.lastActivity = new Date();
+            await client.save();
           }
 
-          user.lastLogin = new Date();
-          await user.save();
-
-          return done(null, user);
+          return done(null, client);
         } catch (err) {
           console.error("[OAUTH] Apple strategy error:", err);
           return done(err, null);

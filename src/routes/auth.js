@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import { z } from "zod";
 import crypto from "crypto";
 import mongoose from "mongoose";
+import bcrypt from "bcryptjs";
 import Admin from "../models/Admin.js";
 import RefreshToken from "../models/RefreshToken.js";
 import nodemailer from "nodemailer";
@@ -175,15 +176,29 @@ r.post("/login", async (req, res) => {
       email: email.toLowerCase(),
     });
 
-    // If found, hydrate it into a Mongoose document
-    let admin = null;
-    if (adminDoc) {
-      admin = new Admin(adminDoc);
-      // Manually select password field since we bypassed the model
-      admin.password = adminDoc.password;
+    if (!adminDoc) {
+      console.log("[Login] No admin found with email:", email);
+      return res.status(401).json({
+        error: "Invalid email or password",
+      });
     }
 
-    if (!admin || !admin.active) {
+    console.log("[Login] Found admin:", {
+      id: adminDoc._id,
+      email: adminDoc.email,
+      active: adminDoc.active,
+      hasPassword: !!adminDoc.password,
+      passwordHash: adminDoc.password?.substring(0, 20) + "...", // Show first 20 chars of hash
+    });
+
+    // Hydrate into a Mongoose document with proper initialization
+    // Important: We need to bypass the schema's select: false for password
+    const admin = new Admin(adminDoc, null, { init: true });
+    admin.isNew = false;
+    // Explicitly set password since it's excluded by select: false in schema
+    admin.set("password", adminDoc.password, { strict: false });
+
+    if (!admin.active) {
       return res.status(401).json({
         error: "Invalid email or password",
       });
@@ -209,8 +224,10 @@ r.post("/login", async (req, res) => {
       });
     }
 
-    // Check password
-    const isPasswordCorrect = await admin.comparePassword(password);
+    // Check password using bcrypt directly since we have the raw document
+    const isPasswordCorrect = await bcrypt.compare(password, adminDoc.password);
+
+    console.log("[Login] Password check result:", isPasswordCorrect);
 
     if (!isPasswordCorrect) {
       // Increment login attempts

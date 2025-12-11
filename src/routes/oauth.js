@@ -4,10 +4,10 @@ import jwt from "jsonwebtoken";
 
 const router = Router();
 
-// Helper function to generate JWT token
-const generateToken = (userId) => {
+// Helper function to generate JWT token for clients
+const generateToken = (clientId) => {
   return jwt.sign(
-    { id: userId, type: "customer" },
+    { id: clientId, type: "client" },
     process.env.JWT_SECRET || "your-secret-key",
     { expiresIn: "7d" }
   );
@@ -52,7 +52,7 @@ router.get("/google/callback", (req, res, next) => {
         process.env.FRONTEND_URL || "http://localhost:5173"
       }/login?error=google_auth_failed`,
     },
-    (err, user, info) => {
+    (err, client, info) => {
       if (err) {
         console.error("[OAUTH] Google callback error:", err);
         return res.redirect(
@@ -62,8 +62,8 @@ router.get("/google/callback", (req, res, next) => {
         );
       }
 
-      if (!user) {
-        console.log("[OAUTH] No user returned from Google auth");
+      if (!client) {
+        console.log("[OAUTH] No client returned from Google auth");
         return res.redirect(
           `${
             process.env.FRONTEND_URL || "http://localhost:5173"
@@ -72,14 +72,25 @@ router.get("/google/callback", (req, res, next) => {
       }
 
       try {
-        // Generate JWT token
-        const token = generateToken(user._id);
-        console.log("[OAUTH] ✓ Google auth successful for user:", user.email);
-        console.log("[OAUTH] Token generated, length:", token.length);
+        // Generate JWT token for client
+        const token = generateToken(client._id);
+        console.log(
+          "[OAUTH] ✓ Google auth successful for client:",
+          client.email
+        );
+        console.log("[OAUTH] Token generated, setting cookie");
 
-        // Redirect to frontend with token
+        // Set httpOnly cookie with token
+        res.cookie("clientToken", token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+          maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        });
+
+        // Redirect to frontend client profile (no token in URL)
         const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
-        const redirectUrl = `${frontendUrl}/auth/success?token=${token}`;
+        const redirectUrl = `${frontendUrl}/client/profile`;
         console.log("[OAUTH] Redirecting to:", redirectUrl);
         res.redirect(redirectUrl);
       } catch (error) {
@@ -135,7 +146,7 @@ router.post("/apple/callback", (req, res, next) => {
         process.env.FRONTEND_URL || "http://localhost:5173"
       }/login?error=apple_auth_failed`,
     },
-    (err, user, info) => {
+    (err, client, info) => {
       if (err) {
         console.error("[OAUTH] Apple callback error:", err);
         return res.redirect(
@@ -145,7 +156,7 @@ router.post("/apple/callback", (req, res, next) => {
         );
       }
 
-      if (!user) {
+      if (!client) {
         return res.redirect(
           `${
             process.env.FRONTEND_URL || "http://localhost:5173"
@@ -154,12 +165,24 @@ router.post("/apple/callback", (req, res, next) => {
       }
 
       try {
-        // Generate JWT token
-        const token = generateToken(user._id);
+        // Generate JWT token for client
+        const token = generateToken(client._id);
+        console.log(
+          "[OAUTH] ✓ Apple auth successful for client:",
+          client.email
+        );
 
-        // Redirect to frontend with token
+        // Set httpOnly cookie with token
+        res.cookie("clientToken", token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+          maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        });
+
+        // Redirect to frontend client profile (no token in URL)
         const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
-        res.redirect(`${frontendUrl}/auth/success?token=${token}`);
+        res.redirect(`${frontendUrl}/client/profile`);
       } catch (error) {
         console.error("[OAUTH] Token generation error:", error);
         res.redirect(

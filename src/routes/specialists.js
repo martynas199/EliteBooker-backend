@@ -2,6 +2,7 @@ import { Router } from "express";
 import Specialist from "../models/Specialist.js";
 import Service from "../models/Service.js";
 import Admin from "../models/Admin.js";
+import Location from "../models/Location.js";
 import jwt from "jsonwebtoken";
 import {
   validateCreateSpecialist,
@@ -258,6 +259,64 @@ r.post("/", requireAdmin, async (req, res, next) => {
     };
 
     const created = await Specialist.create(SpecialistData);
+
+    // Auto-assign to primary location if no locations specified
+    if (!created.locationIds || created.locationIds.length === 0) {
+      const primaryLocation = await Location.findOne({
+        tenantId: created.tenantId,
+        isPrimary: true,
+      });
+
+      if (primaryLocation) {
+        created.locationIds = [primaryLocation._id];
+        created.primaryLocationId = primaryLocation._id;
+        await created.save();
+        console.log(
+          "[Specialist Create] Auto-assigned to primary location:",
+          primaryLocation._id
+        );
+      }
+    }
+
+    // Auto-create admin account for the specialist if email is provided
+    if (created.email) {
+      // Check if admin account already exists for this email
+      const existingAdmin = await Admin.findOne({
+        email: created.email,
+        tenantId: created.tenantId,
+      });
+
+      if (!existingAdmin) {
+        // Generate a temporary password (specialist should change it)
+        const tempPassword = Math.random().toString(36).slice(-12) + "@Temp1";
+
+        const specialistAdmin = new Admin({
+          name: created.name,
+          email: created.email,
+          password: tempPassword, // Will be hashed by pre-save hook
+          role: "specialist", // Limited admin role for specialists
+          tenantId: created.tenantId,
+          active: true,
+        });
+
+        await specialistAdmin.save();
+
+        // Link the admin account to the specialist
+        created.adminId = specialistAdmin._id;
+        await created.save();
+
+        console.log(
+          "[Specialist Create] Auto-created admin account for specialist:",
+          {
+            specialistId: created._id,
+            adminId: specialistAdmin._id,
+            email: created.email,
+            tempPassword, // Log for initial setup (remove in production)
+          }
+        );
+      }
+    }
+
     res.status(201).json(created);
   } catch (err) {
     if (err.code === 11000) {

@@ -30,6 +30,7 @@ import connectRouter from "./routes/connect.js";
 import reportsRouter from "./routes/reports.js";
 import adminsRouter from "./routes/admins.js";
 import aboutUsRouter from "./routes/aboutUs.js";
+import locationsRouter from "./routes/locations.js";
 import analyticsRouter from "./routes/analytics.js";
 import shippingRouter from "./routes/shipping.js";
 import subscriptionsRouter from "./routes/subscriptions.js";
@@ -39,6 +40,8 @@ import tenantsRouter from "./routes/tenants.js";
 import calendarRouter from "./routes/calendar.js";
 import locksRouter from "./routes/locks.js";
 import featuresRouter from "./routes/features.js";
+import adminClientsRouter from "./routes/admin/clients.js";
+import clientRouter from "./routes/client.js";
 import {
   apiLimiter,
   authLimiter,
@@ -189,6 +192,7 @@ app.use("/api/hero-sections", readLimiter, heroSectionsRouter);
 app.use("/api/products", readLimiter, productsRouter);
 app.use("/api/about-us", aboutUsRouter);
 app.use("/api/blog-posts", readLimiter, blogPostsRouter);
+app.use("/api/locations", readLimiter, locationsRouter);
 
 // Customer profile routes (protected)
 app.use("/api/users", usersRouter);
@@ -216,10 +220,14 @@ app.use("/api/timeoff", timeoffRouter);
 app.use("/api/connect", connectRouter); // Stripe Connect routes
 app.use("/api/reports", reportsRouter); // Revenue and earnings reports
 app.use("/api/admin/admins", adminsRouter); // Admin management routes
+app.use("/api/admin/clients", adminClientsRouter); // Client management routes
 app.use("/api/analytics", analyticsRouter); // Profit analytics routes
 app.use("/api/subscriptions", subscriptionsRouter); // E-commerce subscription routes
 app.use("/api/calendar", calendarRouter); // Google Calendar integration routes
 app.use("/api/features", featuresRouter); // Premium features subscription routes
+
+// Client-facing routes (authentication required for most)
+app.use("/api/client", clientRouter); // Client profile, bookings, GDPR
 
 // Error handling
 app.use((err, req, res, next) => {

@@ -137,6 +137,22 @@ const SpecialistSchema = new mongoose.Schema(
       email: String, // Google account email
       calendarId: { type: String, default: "primary" },
     },
+
+    // Multi-Location Support
+    locationIds: {
+      type: [{ type: mongoose.Schema.Types.ObjectId, ref: "Location" }],
+      default: [],
+    },
+    primaryLocationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Location",
+    },
+
+    // Admin account link
+    adminId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Admin",
+    },
   },
   { timestamps: true }
 );

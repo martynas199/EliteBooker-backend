@@ -47,6 +47,15 @@ const SettingsSchema = new mongoose.Schema(
       position: { type: String, default: "center" }, // top, center, bottom
       zoom: { type: Number, default: 100 }, // 80, 100, 120, 150
     },
+
+    // Feature Flags
+    features: {
+      multiLocation: {
+        type: Boolean,
+        default: false,
+        description: "Enable multi-location support for this tenant",
+      },
+    },
   },
   { timestamps: true }
 );

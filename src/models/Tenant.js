@@ -224,6 +224,7 @@ const TenantSchema = new mongoose.Schema(
       smsReminders: { type: Boolean, default: false },
       onlinePayments: { type: Boolean, default: true },
       emailNotifications: { type: Boolean, default: true },
+      multiLocation: { type: Boolean, default: false },
     },
     // Trial and demo flags
     isTrial: {

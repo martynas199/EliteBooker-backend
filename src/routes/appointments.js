@@ -109,6 +109,7 @@ r.post("/", async (req, res) => {
     client,
     mode,
     userId,
+    locationId, // NEW: Accept locationId
   } = req.body;
   const service = await Service.findById(serviceId).lean();
   if (!service) return res.status(404).json({ error: "Service not found" });
@@ -133,10 +134,23 @@ r.post("/", async (req, res) => {
         (variant.bufferAfterMin || 0)) *
         60000
   );
+  // Check for conflicts, excluding:
+  // - Cancelled appointments
+  // - reserved_unpaid appointments older than 3 minutes (expired)
+  const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
   const conflict = await Appointment.findOne({
     specialistId: Specialist._id,
     start: { $lt: end },
     end: { $gt: start },
+    $and: [
+      { status: { $not: /^cancelled/ } },
+      {
+        $or: [
+          { status: { $ne: "reserved_unpaid" } },
+          { createdAt: { $gte: threeMinutesAgo } },
+        ],
+      },
+    ],
   }).lean();
   if (conflict)
     return res.status(409).json({ error: "Slot no longer available" });
@@ -162,6 +176,7 @@ r.post("/", async (req, res) => {
     tenantId: req.tenantId, // Add tenantId from request context
     ...(userId ? { userId } : {}), // Add userId if provided (logged-in users)
     ...(payment ? { payment } : {}),
+    ...(locationId ? { locationId } : {}), // Add locationId if provided
   });
 
   // Send confirmation email to customer

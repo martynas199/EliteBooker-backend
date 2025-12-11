@@ -4,6 +4,9 @@ import Service from "../models/Service.js";
 import Specialist from "../models/Specialist.js";
 import Appointment from "../models/Appointment.js";
 import { sendConfirmationEmail } from "../emails/mailer.js";
+import ClientService from "../services/clientService.js";
+import jwt from "jsonwebtoken";
+import Client from "../models/Client.js";
 
 const r = Router();
 let stripeInstance = null;
@@ -190,6 +193,23 @@ r.get("/confirm", async (req, res, next) => {
     });
     console.log("[CHECKOUT CONFIRM] Appointment updated to confirmed.");
 
+    // Update client metrics after successful booking
+    if (appt.clientId) {
+      try {
+        await ClientService.updateTenantClientMetrics(
+          appt.tenantId,
+          appt.clientId
+        );
+        console.log("[CHECKOUT CONFIRM] Client metrics updated");
+      } catch (error) {
+        console.error(
+          "[CHECKOUT CONFIRM] Failed to update client metrics:",
+          error.message
+        );
+        // Don't fail the request if metrics update fails
+      }
+    }
+
     // Send confirmation email
     console.log("[CHECKOUT CONFIRM] About to send confirmation email...");
     try {
@@ -256,6 +276,7 @@ r.post("/create-session", async (req, res, next) => {
         startISO,
         client,
         userId,
+        locationId, // NEW: Accept locationId
       } = req.body || {};
       service = await Service.findById(serviceId).lean();
       if (!service) return res.status(404).json({ error: "Service not found" });
@@ -282,15 +303,67 @@ r.post("/create-session", async (req, res, next) => {
             (variant.bufferAfterMin || 0)) *
             60000
       );
+      // Check for conflicts, excluding:
+      // - Cancelled appointments
+      // - reserved_unpaid appointments older than 3 minutes (expired)
+      const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
       const conflict = await Appointment.findOne({
         specialistId: Specialist._id,
         start: { $lt: end },
         end: { $gt: start },
+        $and: [
+          { status: { $not: /^cancelled/ } },
+          {
+            $or: [
+              { status: { $ne: "reserved_unpaid" } },
+              { createdAt: { $gte: threeMinutesAgo } },
+            ],
+          },
+        ],
       }).lean();
       if (conflict)
         return res.status(409).json({ error: "Slot no longer available" });
+
+      // Check if client is logged in via clientToken cookie
+      let globalClient = null;
+      const clientToken = req.cookies?.clientToken;
+
+      if (clientToken) {
+        try {
+          const decoded = jwt.verify(clientToken, process.env.JWT_SECRET);
+          if (decoded.type === "client" && decoded.clientId) {
+            globalClient = await Client.findById(decoded.clientId);
+            console.log(
+              `[Checkout] Using logged-in client: ${globalClient._id} (${globalClient.email})`
+            );
+          }
+        } catch (err) {
+          console.log("[Checkout] Invalid clientToken, creating new client");
+        }
+      }
+
+      // If not logged in, create or find client by email (soft signup)
+      if (!globalClient) {
+        globalClient = await ClientService.findOrCreateClient({
+          email: client.email,
+          name: client.name,
+          phone: client.phone,
+        });
+        console.log(
+          `[Checkout] Created/found client by email: ${globalClient._id} (${globalClient.email})`
+        );
+      }
+
+      // Create or find tenant-client relationship
+      await ClientService.findOrCreateTenantClient(
+        req.tenantId,
+        globalClient._id,
+        { name: globalClient.name }
+      );
+
       appt = await Appointment.create({
         client,
+        clientId: globalClient._id, // Link to global client
         specialistId: Specialist._id,
         serviceId,
         variantName,
@@ -300,7 +373,13 @@ r.post("/create-session", async (req, res, next) => {
         status: "reserved_unpaid",
         tenantId: req.tenantId, // Add tenantId from middleware
         ...(userId ? { userId } : {}), // Add userId if provided (logged-in users)
+        ...(locationId ? { locationId } : {}), // Add locationId if provided
       });
+
+      console.log(
+        `[Checkout] Created appointment with clientId: ${globalClient._id}, appointmentId: ${appt._id}`
+      );
+
       appt = appt.toObject();
     }
 

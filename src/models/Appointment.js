@@ -72,6 +72,13 @@ const AppointmentSchema = new mongoose.Schema(
       index: true,
       default: null,
     },
+    // Link to global client (new unified system)
+    clientId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Client",
+      index: true,
+      sparse: true,
+    },
     client: { name: String, email: String, phone: String, notes: String },
     specialistId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -106,6 +113,13 @@ const AppointmentSchema = new mongoose.Schema(
 
     // Google Calendar integration
     googleCalendarEventId: String, // Store event ID for updates/deletions
+
+    // Multi-Location Support
+    locationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Location",
+      index: true,
+    },
   },
   { timestamps: true }
 );

@@ -9,6 +9,7 @@ import { z } from "zod";
 import Tenant from "../models/Tenant.js";
 import Admin from "../models/Admin.js";
 import Settings from "../models/Settings.js";
+import Specialist from "../models/Specialist.js";
 import { requireAdmin, requireSuperAdmin } from "../middleware/requireAdmin.js";
 import { clearTenantCache } from "../middleware/resolveTenant.js";
 import jwt from "jsonwebtoken";
@@ -163,6 +164,51 @@ router.post("/create", async (req, res) => {
     });
 
     await settings.save();
+
+    // Create default location for the tenant
+    const defaultLocation = new Location({
+      name: `${tenant.businessName} - Main Location`,
+      slug: "main",
+      address: validatedData.address || {
+        street: "",
+        city: "",
+        postalCode: "",
+        country: "United Kingdom",
+      },
+      phone: tenant.phone || "",
+      email: tenant.email,
+      workingHours: tenant.defaultWorkingHours || [],
+      isPrimary: true,
+      isActive: true,
+      displayOrder: 0,
+      tenantId: tenant._id,
+    });
+
+    await defaultLocation.save();
+
+    console.log(
+      "[Tenant Create] Default location created:",
+      defaultLocation._id
+    );
+
+    // Create default specialist for the business owner
+    const defaultSpecialist = new Specialist({
+      name: validatedData.adminName,
+      email: validatedData.adminEmail,
+      bio: `Professional beauty specialist at ${tenant.businessName}`,
+      specialties: ["Beauty Services"],
+      tenantId: tenant._id,
+      adminId: admin._id, // Link to admin account
+      locationIds: [defaultLocation._id], // Assign to default location
+      primaryLocationId: defaultLocation._id,
+    });
+
+    await defaultSpecialist.save();
+
+    console.log(
+      "[Tenant Create] Default specialist created:",
+      defaultSpecialist._id
+    );
 
     // Generate JWT token for the new admin
     const token = jwt.sign(
@@ -529,7 +575,7 @@ router.get("/slug/:slug", async (req, res) => {
     const { slug } = req.params;
 
     const tenant = await Tenant.findOne({ slug, active: true }).select(
-      "name businessName slug branding email phone address seo"
+      "name businessName slug branding email phone address seo features"
     );
 
     if (!tenant) {

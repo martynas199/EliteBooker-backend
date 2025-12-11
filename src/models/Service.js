@@ -59,6 +59,12 @@ const ServiceSchema = new mongoose.Schema(
         height: Number,
       },
     ],
+
+    // Multi-Location Support
+    availableAt: {
+      type: [{ type: mongoose.Schema.Types.ObjectId, ref: "Location" }],
+      default: [],
+    },
   },
   { timestamps: true }
 );
