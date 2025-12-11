@@ -82,20 +82,28 @@ router.get("/google/callback", (req, res, next) => {
         console.log("[OAUTH] Token generated, setting cookie");
 
         // Set httpOnly cookie with token
-        res.cookie("clientToken", token, {
+        const isProduction = process.env.NODE_ENV === "production";
+        const cookieOptions = {
           httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+          secure: isProduction,
+          sameSite: isProduction ? "none" : "lax",
           maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
           path: "/",
-        });
+        };
+
+        // Add domain for production to work across subdomains
+        if (isProduction && process.env.COOKIE_DOMAIN) {
+          cookieOptions.domain = process.env.COOKIE_DOMAIN;
+        }
+
+        res.cookie("clientToken", token, cookieOptions);
 
         console.log("[OAUTH] Cookie set - redirecting to landing page");
 
-        // Redirect to frontend landing page with cache busting
+        // Redirect to frontend landing page with token and cache busting
         const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
         const timestamp = Date.now();
-        const redirectUrl = `${frontendUrl}/?auth=success&t=${timestamp}`;
+        res.redirect(`${frontendUrl}/?auth=success&token=${token}&t=${timestamp}`);
         console.log("[OAUTH] Redirecting to:", redirectUrl);
         res.redirect(redirectUrl);
       } catch (error) {
@@ -178,18 +186,26 @@ router.post("/apple/callback", (req, res, next) => {
         );
 
         // Set httpOnly cookie with token
-        res.cookie("clientToken", token, {
+        const isProduction = process.env.NODE_ENV === "production";
+        const cookieOptions = {
           httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+          secure: isProduction,
+          sameSite: isProduction ? "none" : "lax",
           maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
           path: "/",
-        });
+        };
 
-        // Redirect to frontend landing page with cache busting
+        // Add domain for production to work across subdomains
+        if (isProduction && process.env.COOKIE_DOMAIN) {
+          cookieOptions.domain = process.env.COOKIE_DOMAIN;
+        }
+
+        res.cookie("clientToken", token, cookieOptions);
+
+        // Redirect to frontend landing page with token and cache busting
         const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
         const timestamp = Date.now();
-        res.redirect(`${frontendUrl}/?auth=success&t=${timestamp}`);
+        res.redirect(`${frontendUrl}/?auth=success&token=${token}&t=${timestamp}`);
       } catch (error) {
         console.error("[OAUTH] Token generation error:", error);
         res.redirect(
