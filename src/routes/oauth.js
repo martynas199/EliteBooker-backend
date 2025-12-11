@@ -90,11 +90,11 @@ router.get("/google/callback", (req, res, next) => {
           path: "/",
         });
 
-        console.log("[OAUTH] Cookie set - redirecting to profile");
+        console.log("[OAUTH] Cookie set - redirecting to landing page");
 
-        // Redirect to frontend client profile
+        // Redirect to frontend landing page
         const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
-        const redirectUrl = `${frontendUrl}/client/profile`;
+        const redirectUrl = `${frontendUrl}/`;
         console.log("[OAUTH] Redirecting to:", redirectUrl);
         res.redirect(redirectUrl);
       } catch (error) {
