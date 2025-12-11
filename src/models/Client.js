@@ -48,6 +48,7 @@ const clientSchema = new mongoose.Schema(
     },
     googleId: String,
     facebookId: String,
+    avatar: String, // Profile picture URL
 
     // Global Preferences
     preferredLanguage: {

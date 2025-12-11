@@ -1,6 +1,7 @@
 import express from "express";
 import ClientService from "../services/clientService.js";
 import Client from "../models/Client.js";
+import Appointment from "../models/Appointment.js";
 import jwt from "jsonwebtoken";
 
 const router = express.Router();
@@ -14,11 +15,21 @@ const JWT_SECRET =
 const authenticateClient = async (req, res, next) => {
   try {
     // Get token from cookie or Authorization header
-    const token =
-      req.cookies?.clientToken ||
-      req.headers.authorization?.replace("Bearer ", "");
+    const cookieToken = req.cookies?.clientToken;
+    const headerToken = req.headers.authorization?.replace("Bearer ", "");
+    const token = cookieToken || headerToken;
+
+    console.log(
+      "[Client Auth] Cookie token:",
+      cookieToken ? "present" : "missing"
+    );
+    console.log(
+      "[Client Auth] Header token:",
+      headerToken ? "present" : "missing"
+    );
 
     if (!token) {
+      console.log("[Client Auth] No token found - returning 401");
       return res.status(401).json({
         success: false,
         error: "Authentication required",
@@ -181,13 +192,29 @@ router.post("/login", async (req, res) => {
 /**
  * POST /api/client/logout
  * Logout client (clear cookie)
+ * IMPORTANT: clearCookie options must EXACTLY match the cookie() options used when setting it
  */
 router.post("/logout", (req, res) => {
-  res.clearCookie("clientToken", {
+  console.log("[Client Logout] Clearing all auth cookies");
+
+  // Must use EXACT same options as when cookie was set (see oauth.js)
+  const cookieOptions = {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    path: "/",
+  };
+
+  // Clear both clientToken and refreshToken
+  res.clearCookie("clientToken", cookieOptions);
+  res.clearCookie("refreshToken", cookieOptions);
+
+  console.log("[Client Logout] Cookies cleared:", {
+    clientToken: "cleared",
+    refreshToken: "cleared",
+    options: cookieOptions,
   });
+
   res.json({
     success: true,
     message: "Logged out successfully",
@@ -226,8 +253,6 @@ router.get("/bookings", authenticateClient, async (req, res) => {
     const clientId = req.client._id;
     const { status, tenantId, limit = 50, skip = 0 } = req.query;
 
-    const Appointment = require("../models/Appointment");
-
     const filter = { clientId };
     if (status) filter.status = status;
     if (tenantId) filter.tenantId = tenantId;
@@ -265,8 +290,6 @@ router.patch("/profile", authenticateClient, async (req, res) => {
   try {
     const clientId = req.client._id;
     const { name, phone, preferredLanguage, preferredCurrency } = req.body;
-
-    const Client = require("../models/Client");
 
     const updates = {};
     if (name) updates.name = name;
@@ -367,6 +390,7 @@ router.get("/me", authenticateClient, async (req, res) => {
         email: req.client.email,
         name: req.client.name,
         phone: req.client.phone,
+        avatar: req.client.avatar,
         isEmailVerified: req.client.isEmailVerified,
         memberSince: req.client.memberSince,
         totalBookings: req.client.totalBookings,

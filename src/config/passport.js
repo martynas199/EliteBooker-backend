@@ -44,6 +44,12 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
             return done(new Error("No email from Google profile"), null);
           }
 
+          // Get profile picture from Google
+          const avatar =
+            profile.photos && profile.photos[0]
+              ? profile.photos[0].value
+              : null;
+
           // Check if client exists with this Google ID
           let client = await Client.findOne({ googleId: profile.id });
 
@@ -57,6 +63,9 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
               if (!client.authProvider || client.authProvider === "email") {
                 client.authProvider = "google";
               }
+              if (avatar) {
+                client.avatar = avatar;
+              }
               client.lastActivity = new Date();
               await client.save();
             } else {
@@ -66,6 +75,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
                 email: email.toLowerCase(),
                 googleId: profile.id,
                 authProvider: "google",
+                avatar: avatar,
                 isEmailVerified: true, // Google emails are verified
                 totalBookings: 0,
                 memberSince: new Date(),
@@ -74,8 +84,11 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
               });
             }
           } else {
-            // Update last activity
+            // Update last activity and avatar
             client.lastActivity = new Date();
+            if (avatar) {
+              client.avatar = avatar;
+            }
             await client.save();
           }
 

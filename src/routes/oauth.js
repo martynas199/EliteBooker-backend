@@ -31,6 +31,7 @@ router.get("/google", (req, res, next) => {
   passport.authenticate("google", {
     scope: ["profile", "email"],
     session: false,
+    prompt: "select_account", // Force account selection every time
   })(req, res, next);
 });
 
@@ -86,9 +87,12 @@ router.get("/google/callback", (req, res, next) => {
           secure: process.env.NODE_ENV === "production",
           sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
           maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+          path: "/",
         });
 
-        // Redirect to frontend client profile (no token in URL)
+        console.log("[OAUTH] Cookie set - redirecting to profile");
+
+        // Redirect to frontend client profile
         const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
         const redirectUrl = `${frontendUrl}/client/profile`;
         console.log("[OAUTH] Redirecting to:", redirectUrl);
@@ -178,9 +182,10 @@ router.post("/apple/callback", (req, res, next) => {
           secure: process.env.NODE_ENV === "production",
           sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
           maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+          path: "/",
         });
 
-        // Redirect to frontend client profile (no token in URL)
+        // Redirect to frontend client profile
         const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
         res.redirect(`${frontendUrl}/client/profile`);
       } catch (error) {
