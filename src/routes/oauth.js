@@ -185,9 +185,9 @@ router.post("/apple/callback", (req, res, next) => {
           path: "/",
         });
 
-        // Redirect to frontend client profile
+        // Redirect to frontend landing page
         const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
-        res.redirect(`${frontendUrl}/client/profile`);
+        res.redirect(`${frontendUrl}/`);
       } catch (error) {
         console.error("[OAUTH] Token generation error:", error);
         res.redirect(
