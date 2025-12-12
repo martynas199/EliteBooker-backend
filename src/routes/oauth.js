@@ -103,41 +103,85 @@ router.get("/google/callback", (req, res, next) => {
 
         res.cookie("clientToken", token, cookieOptions);
 
-        console.log("[OAUTH] Cookie set - redirecting to landing page");
+        console.log("[OAUTH] Cookie set - sending callback page");
         console.log("[OAUTH] Cookie options:", JSON.stringify(cookieOptions));
         console.log("[OAUTH] Is Production:", isProduction);
 
-        // For production, use HTML redirect to ensure cookie is set properly
+        // Instead of redirecting, send an HTML page that:
+        // 1. Makes a same-origin API call to set the cookie properly
+        // 2. Then redirects to the frontend
         const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+        const backendUrl = process.env.BACKEND_URL || "http://localhost:4000";
         const timestamp = Date.now();
-        const redirectUrl = `${frontendUrl}/?auth=success&t=${timestamp}`;
-        console.log("[OAUTH] Redirecting to:", redirectUrl);
 
-        if (isProduction) {
-          // Use HTML redirect with JavaScript to ensure cookie is properly set
-          res.send(`
-            <!DOCTYPE html>
-            <html>
-            <head>
-              <title>Redirecting...</title>
-            </head>
-            <body>
-              <script>
-                // Store token in sessionStorage as backup
-                sessionStorage.setItem('authToken', '${token}');
-                // Redirect after a short delay to ensure cookie is set
-                setTimeout(function() {
-                  window.location.href = '${redirectUrl}';
-                }, 100);
-              </script>
-              <p>Redirecting...</p>
-            </body>
-            </html>
-          `);
-        } else {
-          // Development: simple redirect
-          res.redirect(redirectUrl);
-        }
+        res.send(`
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>Completing Sign In...</title>
+            <style>
+              body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                min-height: 100vh;
+                margin: 0;
+                background: #f9fafb;
+              }
+              .container {
+                text-align: center;
+                padding: 2rem;
+              }
+              .spinner {
+                border: 3px solid #f3f4f6;
+                border-top: 3px solid #3b82f6;
+                border-radius: 50%;
+                width: 40px;
+                height: 40px;
+                animation: spin 1s linear infinite;
+                margin: 0 auto 1rem;
+              }
+              @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+              }
+              .message {
+                color: #374151;
+                font-size: 16px;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="spinner"></div>
+              <p class="message">Completing sign in...</p>
+            </div>
+            <script>
+              (async function() {
+                try {
+                  // Make a same-origin request to verify the cookie was set
+                  const response = await fetch('${backendUrl}/api/client/me', {
+                    credentials: 'include'
+                  });
+                  
+                  if (response.ok) {
+                    // Cookie is working, redirect to frontend with success
+                    window.location.href = '${frontendUrl}/?auth=success&t=${timestamp}';
+                  } else {
+                    // Cookie not working, redirect with token in URL (fallback)
+                    window.location.href = '${frontendUrl}/?auth=success&token=${token}&t=${timestamp}';
+                  }
+                } catch (error) {
+                  console.error('Auth verification failed:', error);
+                  // Fallback: redirect with token in URL
+                  window.location.href = '${frontendUrl}/?auth=success&token=${token}&t=${timestamp}';
+                }
+              })();
+            </script>
+          </body>
+          </html>
+        `);
       } catch (error) {
         console.error("[OAUTH] Token generation error:", error);
         res.redirect(
