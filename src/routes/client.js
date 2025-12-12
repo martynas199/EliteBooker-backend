@@ -106,7 +106,7 @@ router.post("/register", async (req, res) => {
       { expiresIn: "30d" }
     );
 
-    // Set httpOnly cookie
+    // Keep cookie for backward compatibility, but also return token
     res.cookie("clientToken", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -117,6 +117,7 @@ router.post("/register", async (req, res) => {
     res.json({
       success: true,
       message: "Registration successful. Please verify your email.",
+      token, // Return token for localStorage
       client: {
         id: result.client._id,
         email: result.client.email,
@@ -162,7 +163,7 @@ router.post("/login", async (req, res) => {
       { expiresIn: "30d" }
     );
 
-    // Set httpOnly cookie
+    // Keep cookie for backward compatibility, but also return token
     res.cookie("clientToken", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -172,6 +173,7 @@ router.post("/login", async (req, res) => {
 
     res.json({
       success: true,
+      token, // Return token for localStorage
       client: {
         id: client._id,
         email: client.email,
