@@ -82,9 +82,10 @@ router.get("/google/callback", (req, res, next) => {
         console.log("[OAUTH] Token generated, setting cookie");
 
         // Determine if we're in production
-        const isProduction = process.env.NODE_ENV === "production" || 
-                            process.env.FRONTEND_URL?.includes("https://");
-        
+        const isProduction =
+          process.env.NODE_ENV === "production" ||
+          process.env.FRONTEND_URL?.includes("https://");
+
         const cookieOptions = {
           httpOnly: true,
           secure: isProduction, // Always true in production
@@ -106,12 +107,37 @@ router.get("/google/callback", (req, res, next) => {
         console.log("[OAUTH] Cookie options:", JSON.stringify(cookieOptions));
         console.log("[OAUTH] Is Production:", isProduction);
 
-        // Redirect to frontend landing page with cache busting
+        // For production, use HTML redirect to ensure cookie is set properly
         const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
         const timestamp = Date.now();
         const redirectUrl = `${frontendUrl}/?auth=success&t=${timestamp}`;
         console.log("[OAUTH] Redirecting to:", redirectUrl);
-        res.redirect(redirectUrl);
+
+        if (isProduction) {
+          // Use HTML redirect with JavaScript to ensure cookie is properly set
+          res.send(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <title>Redirecting...</title>
+            </head>
+            <body>
+              <script>
+                // Store token in sessionStorage as backup
+                sessionStorage.setItem('authToken', '${token}');
+                // Redirect after a short delay to ensure cookie is set
+                setTimeout(function() {
+                  window.location.href = '${redirectUrl}';
+                }, 100);
+              </script>
+              <p>Redirecting...</p>
+            </body>
+            </html>
+          `);
+        } else {
+          // Development: simple redirect
+          res.redirect(redirectUrl);
+        }
       } catch (error) {
         console.error("[OAUTH] Token generation error:", error);
         res.redirect(
