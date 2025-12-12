@@ -81,25 +81,30 @@ router.get("/google/callback", (req, res, next) => {
         );
         console.log("[OAUTH] Token generated, setting cookie");
 
-        // Set httpOnly cookie with token
-        const isProduction = process.env.NODE_ENV === "production";
+        // Determine if we're in production
+        const isProduction = process.env.NODE_ENV === "production" || 
+                            process.env.FRONTEND_URL?.includes("https://");
+        
         const cookieOptions = {
           httpOnly: true,
-          secure: isProduction,
-          sameSite: isProduction ? "none" : "lax",
+          secure: isProduction, // Always true in production
+          sameSite: isProduction ? "none" : "lax", // "none" required for cross-domain in production
           maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
           path: "/",
         };
 
         // Add domain for production to work across subdomains
+        // Domain should be .elitebooker.co.uk (with leading dot for all subdomains)
         if (isProduction && process.env.COOKIE_DOMAIN) {
           cookieOptions.domain = process.env.COOKIE_DOMAIN;
+          console.log("[OAUTH] Setting cookie domain:", cookieOptions.domain);
         }
 
         res.cookie("clientToken", token, cookieOptions);
 
         console.log("[OAUTH] Cookie set - redirecting to landing page");
         console.log("[OAUTH] Cookie options:", JSON.stringify(cookieOptions));
+        console.log("[OAUTH] Is Production:", isProduction);
 
         // Redirect to frontend landing page with cache busting
         const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";

@@ -110,6 +110,18 @@ const TenantSchema = new mongoose.Schema(
         default: "United Kingdom",
       },
     },
+    // GeoJSON location for map display
+    location: {
+      type: {
+        type: String,
+        enum: ["Point"],
+        default: "Point",
+      },
+      coordinates: {
+        type: [Number], // [longitude, latitude]
+        index: "2dsphere",
+      },
+    },
     // Timezone and locale
     timezone: {
       type: String,

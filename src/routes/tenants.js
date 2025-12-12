@@ -10,6 +10,7 @@ import Tenant from "../models/Tenant.js";
 import Admin from "../models/Admin.js";
 import Settings from "../models/Settings.js";
 import Specialist from "../models/Specialist.js";
+import Location from "../models/Location.js";
 import { requireAdmin, requireSuperAdmin } from "../middleware/requireAdmin.js";
 import { clearTenantCache } from "../middleware/resolveTenant.js";
 import jwt from "jsonwebtoken";
@@ -39,6 +40,11 @@ const createTenantSchema = z.object({
       country: z.string().optional(),
     })
     .optional(),
+  location: z
+    .object({
+      coordinates: z.array(z.number()).length(2).optional(), // [longitude, latitude]
+    })
+    .optional(),
 });
 
 const updateTenantSchema = z.object({
@@ -47,6 +53,11 @@ const updateTenantSchema = z.object({
   email: z.string().email().optional(),
   phone: z.string().optional(),
   address: z.object({}).passthrough().optional(),
+  location: z
+    .object({
+      coordinates: z.array(z.number()).length(2).optional(), // [longitude, latitude]
+    })
+    .optional(),
   timezone: z.string().optional(),
   locale: z.string().optional(),
   currency: z.enum(["GBP", "EUR", "USD"]).optional(),
@@ -102,6 +113,12 @@ router.post("/create", async (req, res) => {
       email: validatedData.email,
       phone: validatedData.phone,
       address: validatedData.address,
+      location: validatedData.location?.coordinates
+        ? {
+            type: "Point",
+            coordinates: validatedData.location.coordinates,
+          }
+        : undefined,
       domains: undefined, // Explicitly undefined - sparse index will ignore this
       status: "trial",
       isTrial: true,
@@ -329,6 +346,52 @@ router.get("/", requireAdmin, requireSuperAdmin, async (req, res) => {
     console.error("List tenants error:", error);
     res.status(500).json({
       error: "Failed to list tenants",
+      message: error.message,
+    });
+  }
+});
+
+/**
+ * GET /api/tenants/public
+ * Get all active public tenants (no authentication required)
+ * This is used for the search page to list all available businesses
+ */
+router.get("/public", async (req, res) => {
+  try {
+    const { search, limit = 100 } = req.query;
+
+    const query = {
+      status: { $in: ["active", "trial"] }, // Show active and trial tenants
+      isPublic: { $ne: false }, // Only show public tenants (default to public if field doesn't exist)
+    };
+
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { businessName: { $regex: search, $options: "i" } },
+        { address: { $regex: search, $options: "i" } },
+        { description: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const tenants = await Tenant.find(query)
+      .select(
+        "name slug address description location branding services rating reviewCount"
+      )
+      .sort({ createdAt: -1 })
+      .limit(parseInt(limit))
+      .lean();
+
+    res.json({
+      success: true,
+      tenants,
+      count: tenants.length,
+    });
+  } catch (error) {
+    console.error("Get public tenants error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to get public tenants",
       message: error.message,
     });
   }
