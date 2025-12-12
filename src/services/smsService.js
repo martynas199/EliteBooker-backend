@@ -46,13 +46,15 @@ async function sendSMS(phone, message) {
  * Send booking confirmation SMS
  */
 async function sendBookingConfirmation(booking) {
-  const message = `Booking Confirmed! ${booking.service.name} on ${new Date(
+  const serviceName = booking.serviceName || booking.service?.name || 'your service';
+  const phone = booking.customerPhone || booking.customer?.phone;
+  const time = booking.startTime || booking.time;
+  
+  const message = `Booking Confirmed! ${serviceName} on ${new Date(
     booking.date
-  ).toLocaleDateString()} at ${booking.time}. Location: ${
-    booking.location.name
-  }. Thank you!`;
+  ).toLocaleDateString()} at ${time}. Thank you!`;
 
-  return sendSMS(booking.customer.phone, message);
+  return sendSMS(phone, message);
 }
 
 /**
