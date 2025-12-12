@@ -7,6 +7,7 @@ import { sendConfirmationEmail } from "../emails/mailer.js";
 import ClientService from "../services/clientService.js";
 import jwt from "jsonwebtoken";
 import Client from "../models/Client.js";
+import smsService from "../services/smsService.js";
 
 const r = Router();
 let stripeInstance = null;
@@ -235,6 +236,18 @@ r.get("/confirm", async (req, res, next) => {
         "[CHECKOUT CONFIRM] Confirmation email sent to:",
         confirmedAppt.client?.email
       );
+
+      // Send SMS confirmation
+      if (confirmedAppt.client?.phone) {
+        smsService.sendBookingConfirmation({
+          serviceName: confirmedAppt.serviceId?.name || 'your service',
+          date: confirmedAppt.date,
+          startTime: confirmedAppt.startTime,
+          customerPhone: confirmedAppt.client.phone
+        })
+          .then(() => console.log("[CHECKOUT CONFIRM] SMS confirmation sent"))
+          .catch(err => console.error("[CHECKOUT CONFIRM] SMS failed:", err.message));
+      }
     } catch (emailErr) {
       console.error(
         "[CHECKOUT CONFIRM] Failed to send confirmation email:",
