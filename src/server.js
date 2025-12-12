@@ -174,7 +174,7 @@ app.use("/api/user-auth/register", registerLimiter);
 app.use("/api/user-auth", userAuthRouter);
 
 // OAuth routes (Google, Apple login)
-app.use("/api/auth", oauthRouter);
+app.use("/api/oauth", oauthRouter);
 
 // Tenant routes (public for registration, protected for management)
 app.use("/api/tenants", tenantsRouter);

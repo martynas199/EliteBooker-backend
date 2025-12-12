@@ -123,7 +123,7 @@ if (
         privateKeyString: process.env.APPLE_PRIVATE_KEY,
         callbackURL: `${
           process.env.BACKEND_URL || "http://localhost:4000"
-        }/api/auth/apple/callback`,
+        }/api/oauth/apple/callback`,
         passReqToCallback: false,
       },
       async (accessToken, refreshToken, idToken, profile, done) => {
