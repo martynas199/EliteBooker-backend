@@ -243,11 +243,26 @@ r.get("/confirm", async (req, res, next) => {
           confirmedAppt.serviceId?.name ||
           confirmedAppt.serviceName ||
           "your service";
+        
+        // Extract time from start Date object
+        const startDate = new Date(confirmedAppt.start);
+        const timeStr = startDate.toLocaleTimeString("en-GB", {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+
+        console.log("[CHECKOUT CONFIRM] SMS data:", {
+          serviceName,
+          start: confirmedAppt.start,
+          extractedTime: timeStr,
+          phone: confirmedAppt.client.phone
+        });
+
         smsService
           .sendBookingConfirmation({
             serviceName: serviceName,
-            date: confirmedAppt.date,
-            startTime: confirmedAppt.startTime,
+            date: confirmedAppt.start,
+            startTime: timeStr,
             customerPhone: confirmedAppt.client.phone,
           })
           .then(() =>

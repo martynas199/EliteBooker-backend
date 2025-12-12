@@ -48,20 +48,42 @@ async function sendSMS(phone, message) {
 async function sendBookingConfirmation(booking) {
   console.log("[SMS] Booking data received:", JSON.stringify(booking, null, 2));
 
+  // Handle different data structures
   const serviceName =
-    booking.serviceName || booking.service?.name || "your service";
-  const phone = booking.customerPhone || booking.customer?.phone;
-  const time = booking.startTime || booking.time || "your scheduled time";
+    booking.serviceName || booking.service?.name || booking.serviceId?.name || "your service";
+  const phone = booking.customerPhone || booking.customer?.phone || booking.client?.phone;
+  
+  // Extract time - handle both Date objects and time strings
+  let time = booking.startTime || booking.time || "your scheduled time";
+  let dateObj = booking.date || booking.start;
+
+  // If we have a Date object for the appointment start, extract the time from it
+  if (dateObj && typeof dateObj !== 'string') {
+    try {
+      const startDate = new Date(dateObj);
+      if (!isNaN(startDate.getTime())) {
+        // Extract time if not already provided as a string
+        if (!booking.startTime && !booking.time) {
+          time = startDate.toLocaleTimeString("en-GB", {
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+        }
+      }
+    } catch (err) {
+      console.error("[SMS] Time extraction error:", err);
+    }
+  }
 
   console.log(
-    `[SMS] Extracted - Service: ${serviceName}, Date: ${booking.date}, Time: ${time}, Phone: ${phone}`
+    `[SMS] Extracted - Service: ${serviceName}, Date: ${dateObj}, Time: ${time}, Phone: ${phone}`
   );
 
   // Format date properly
   let dateStr = "your appointment date";
-  if (booking.date) {
+  if (dateObj) {
     try {
-      const date = new Date(booking.date);
+      const date = new Date(dateObj);
       console.log(`[SMS] Date object created:`, date);
       if (!isNaN(date.getTime())) {
         dateStr = date.toLocaleDateString("en-GB", {
