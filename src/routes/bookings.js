@@ -265,9 +265,10 @@ router.post("/create", async (req, res) => {
 
     // Step 7: Send confirmation SMS (async, don't wait)
     if (customerPhone) {
-      smsService.sendBookingConfirmation(appointment)
+      smsService
+        .sendBookingConfirmation(appointment)
         .then(() => console.log("[Bookings] SMS confirmation sent"))
-        .catch(err => console.error("[Bookings] SMS failed:", err.message));
+        .catch((err) => console.error("[Bookings] SMS failed:", err.message));
     }
   } catch (error) {
     console.error("[Bookings] Error creating booking:", error);

@@ -46,13 +46,42 @@ async function sendSMS(phone, message) {
  * Send booking confirmation SMS
  */
 async function sendBookingConfirmation(booking) {
-  const serviceName = booking.serviceName || booking.service?.name || 'your service';
+  console.log("[SMS] Booking data received:", JSON.stringify(booking, null, 2));
+
+  const serviceName =
+    booking.serviceName || booking.service?.name || "your service";
   const phone = booking.customerPhone || booking.customer?.phone;
-  const time = booking.startTime || booking.time;
-  
-  const message = `Booking Confirmed! ${serviceName} on ${new Date(
-    booking.date
-  ).toLocaleDateString()} at ${time}. Thank you!`;
+  const time = booking.startTime || booking.time || "your scheduled time";
+
+  console.log(
+    `[SMS] Extracted - Service: ${serviceName}, Date: ${booking.date}, Time: ${time}, Phone: ${phone}`
+  );
+
+  // Format date properly
+  let dateStr = "your appointment date";
+  if (booking.date) {
+    try {
+      const date = new Date(booking.date);
+      console.log(`[SMS] Date object created:`, date);
+      if (!isNaN(date.getTime())) {
+        dateStr = date.toLocaleDateString("en-GB", {
+          weekday: "short",
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        });
+        console.log(`[SMS] Formatted date:`, dateStr);
+      } else {
+        console.log(`[SMS] Invalid date object`);
+      }
+    } catch (err) {
+      console.error("[SMS] Date parsing error:", err);
+    }
+  } else {
+    console.log(`[SMS] No date field in booking object`);
+  }
+
+  const message = `Booking Confirmed! ${serviceName} on ${dateStr} at ${time}. Thank you!`;
 
   return sendSMS(phone, message);
 }

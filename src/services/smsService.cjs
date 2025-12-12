@@ -1,10 +1,10 @@
-const axios = require('axios');
+const axios = require("axios");
 
 /**
  * Get SMS API URL from environment or fallback
  */
 function getSmsApiUrl() {
-  return process.env.SMS_API_URL || 'http://localhost:3001';
+  return process.env.SMS_API_URL || "http://localhost:3001";
 }
 
 /**
@@ -12,28 +12,32 @@ function getSmsApiUrl() {
  */
 async function sendSMS(phone, message) {
   const SMS_API_URL = getSmsApiUrl();
-  
+
   try {
     console.log(`[SMS] Sending to ${phone}: ${message}`);
     console.log(`[SMS] Using API URL: ${SMS_API_URL}`);
-    
-    const response = await axios.post(`${SMS_API_URL}/send-sms`, {
-      phone,
-      message
-    }, {
-      timeout: 10000 // 10 second timeout
-    });
 
-    console.log('[SMS] ✓ Sent successfully:', response.data);
+    const response = await axios.post(
+      `${SMS_API_URL}/send-sms`,
+      {
+        phone,
+        message,
+      },
+      {
+        timeout: 10000, // 10 second timeout
+      }
+    );
+
+    console.log("[SMS] ✓ Sent successfully:", response.data);
     return {
       success: true,
-      data: response.data
+      data: response.data,
     };
   } catch (error) {
-    console.error('[SMS] ✗ Failed:', error.message);
+    console.error("[SMS] ✗ Failed:", error.message);
     return {
       success: false,
-      error: error.message
+      error: error.message,
     };
   }
 }
@@ -42,9 +46,32 @@ async function sendSMS(phone, message) {
  * Send booking confirmation SMS
  */
 async function sendBookingConfirmation(booking) {
-  const message = `Booking Confirmed! ${booking.serviceName} on ${new Date(booking.date).toLocaleDateString('en-GB')} at ${booking.startTime}. Thank you for choosing us!`;
-  
-  return sendSMS(booking.customerPhone, message);
+  const serviceName =
+    booking.serviceName || booking.service?.name || "your service";
+  const phone = booking.customerPhone || booking.customer?.phone;
+  const time = booking.startTime || booking.time || "your scheduled time";
+
+  // Format date properly
+  let dateStr = "your appointment date";
+  if (booking.date) {
+    try {
+      const date = new Date(booking.date);
+      if (!isNaN(date.getTime())) {
+        dateStr = date.toLocaleDateString("en-GB", {
+          weekday: "short",
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        });
+      }
+    } catch (err) {
+      console.error("[SMS] Date parsing error:", err);
+    }
+  }
+
+  const message = `Booking Confirmed! ${serviceName} on ${dateStr} at ${time}. Thank you!`;
+
+  return sendSMS(phone, message);
 }
 
 /**
@@ -52,7 +79,7 @@ async function sendBookingConfirmation(booking) {
  */
 async function sendBookingReminder(booking) {
   const message = `Reminder: Your appointment for ${booking.serviceName} is tomorrow at ${booking.startTime}. See you then!`;
-  
+
   return sendSMS(booking.customerPhone, message);
 }
 
@@ -60,8 +87,12 @@ async function sendBookingReminder(booking) {
  * Send booking cancellation SMS
  */
 async function sendBookingCancellation(booking) {
-  const message = `Your booking for ${booking.serviceName} on ${new Date(booking.date).toLocaleDateString('en-GB')} has been cancelled. Contact us if you have questions.`;
-  
+  const message = `Your booking for ${booking.serviceName} on ${new Date(
+    booking.date
+  ).toLocaleDateString(
+    "en-GB"
+  )} has been cancelled. Contact us if you have questions.`;
+
   return sendSMS(booking.customerPhone, message);
 }
 
@@ -69,8 +100,12 @@ async function sendBookingCancellation(booking) {
  * Send booking rescheduled SMS
  */
 async function sendBookingRescheduled(booking, oldDate, oldTime) {
-  const message = `Booking Rescheduled! From ${new Date(oldDate).toLocaleDateString('en-GB')} ${oldTime} to ${new Date(booking.date).toLocaleDateString('en-GB')} ${booking.startTime}.`;
-  
+  const message = `Booking Rescheduled! From ${new Date(
+    oldDate
+  ).toLocaleDateString("en-GB")} ${oldTime} to ${new Date(
+    booking.date
+  ).toLocaleDateString("en-GB")} ${booking.startTime}.`;
+
   return sendSMS(booking.customerPhone, message);
 }
 
@@ -79,5 +114,5 @@ module.exports = {
   sendBookingConfirmation,
   sendBookingReminder,
   sendBookingCancellation,
-  sendBookingRescheduled
+  sendBookingRescheduled,
 };
