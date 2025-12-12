@@ -239,14 +239,17 @@ r.get("/confirm", async (req, res, next) => {
 
       // Send SMS confirmation
       if (confirmedAppt.client?.phone) {
+        const serviceName = confirmedAppt.serviceId?.name || confirmedAppt.serviceName || 'your service';
         smsService.sendBookingConfirmation({
-          serviceName: confirmedAppt.serviceId?.name || 'your service',
+          serviceName: serviceName,
           date: confirmedAppt.date,
           startTime: confirmedAppt.startTime,
           customerPhone: confirmedAppt.client.phone
         })
-          .then(() => console.log("[CHECKOUT CONFIRM] SMS confirmation sent"))
+          .then(() => console.log("[CHECKOUT CONFIRM] SMS confirmation sent to:", confirmedAppt.client.phone))
           .catch(err => console.error("[CHECKOUT CONFIRM] SMS failed:", err.message));
+      } else {
+        console.log("[CHECKOUT CONFIRM] No phone number, skipping SMS");
       }
     } catch (emailErr) {
       console.error(
