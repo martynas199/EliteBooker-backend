@@ -9,6 +9,7 @@ const Appointment = require("../models/Appointment");
 const Specialist = require("../models/Specialist");
 const Service = require("../models/Service");
 const { requireAuth } = require("../middleware/auth");
+const smsService = require("../services/smsService.cjs");
 
 const router = express.Router();
 const lockService = getLockService();
@@ -262,8 +263,12 @@ router.post("/create", async (req, res) => {
       message: "Booking created successfully",
     });
 
-    // TODO: Send confirmation email/SMS (implement separately)
-    console.log("[Bookings] TODO: Send confirmation to:", customerEmail);
+    // Step 7: Send confirmation SMS (async, don't wait)
+    if (customerPhone) {
+      smsService.sendBookingConfirmation(appointment)
+        .then(() => console.log("[Bookings] SMS confirmation sent"))
+        .catch(err => console.error("[Bookings] SMS failed:", err.message));
+    }
   } catch (error) {
     console.error("[Bookings] Error creating booking:", error);
 
