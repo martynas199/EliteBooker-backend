@@ -74,6 +74,14 @@ const clientSchema = new mongoose.Schema(
       default: Date.now,
     },
 
+    // Favorites
+    favoriteTenants: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Tenant",
+      },
+    ],
+
     // GDPR & Privacy
     marketingConsent: {
       type: Boolean,

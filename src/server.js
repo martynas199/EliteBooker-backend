@@ -42,6 +42,8 @@ import locksRouter from "./routes/locks.js";
 import featuresRouter from "./routes/features.js";
 import adminClientsRouter from "./routes/admin/clients.js";
 import clientRouter from "./routes/client.js";
+import favoritesRouter from "./routes/favorites.js";
+import giftCardsRouter from "./routes/giftCards.js";
 import {
   apiLimiter,
   authLimiter,
@@ -247,6 +249,8 @@ app.use("/api/features", featuresRouter); // Premium features subscription route
 
 // Client-facing routes (authentication required for most)
 app.use("/api/client", clientRouter); // Client profile, bookings, GDPR
+app.use("/api/favorites", favoritesRouter); // Client favorites
+app.use("/api/gift-cards", giftCardsRouter); // Gift cards
 
 // Error handling
 app.use((err, req, res, next) => {
