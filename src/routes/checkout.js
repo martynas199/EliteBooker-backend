@@ -243,7 +243,7 @@ r.get("/confirm", async (req, res, next) => {
           confirmedAppt.serviceId?.name ||
           confirmedAppt.serviceName ||
           "your service";
-        
+
         // Extract time from start Date object
         const startDate = new Date(confirmedAppt.start);
         const timeStr = startDate.toLocaleTimeString("en-GB", {
@@ -255,7 +255,7 @@ r.get("/confirm", async (req, res, next) => {
           serviceName,
           start: confirmedAppt.start,
           extractedTime: timeStr,
-          phone: confirmedAppt.client.phone
+          phone: confirmedAppt.client.phone,
         });
 
         smsService
@@ -406,7 +406,7 @@ r.post("/create-session", async (req, res, next) => {
       appt = await Appointment.create({
         client,
         clientId: globalClient._id, // Link to global client
-        specialistId: Specialist._id,
+        specialistId: specialist._id,
         serviceId,
         variantName,
         start,

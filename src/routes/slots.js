@@ -90,14 +90,6 @@ r.get("/fully-booked", async (req, res) => {
       return res.status(404).json({ error: "Specialist not found" });
     }
 
-    console.log(
-      `[/slots/fully-booked] Checking specialist ${specialist.name} for ${year}-${monthNum}`
-    );
-    console.log(
-      `[/slots/fully-booked] Working hours:`,
-      specialist.workingHours
-    );
-
     // Get services for this specialist
     const services = await Service.find({
       $or: [
@@ -236,6 +228,7 @@ r.get("/", async (req, res) => {
   }
 
   const { specialistId, serviceId, variantName, date, any } = req.query;
+
   if (!serviceId || !variantName || !date)
     return res.status(400).json({ error: "Missing params" });
   const service = await Service.findById(serviceId).lean();
@@ -247,6 +240,7 @@ r.get("/", async (req, res) => {
     bufferBeforeMin: variant.bufferBeforeMin || 0,
     bufferAfterMin: variant.bufferAfterMin || 0,
   };
+
   const salonTz = process.env.SALON_TZ || "Europe/London";
   const stepMin = Number(process.env.SLOTS_STEP_MIN || 15);
   let slots = [];
@@ -261,51 +255,91 @@ r.get("/", async (req, res) => {
     if (!b) return res.status(404).json({ error: "Specialist not found" });
     const dayStart = new Date(date);
     const dayEnd = new Date(new Date(date).getTime() + 86400000);
+
     const appts = await Appointment.find({
       specialistId: targetId,
       start: { $gte: dayStart, $lt: dayEnd },
       status: { $ne: "cancelled" },
     }).lean();
+
+    const appointmentsForSlots = appts.map((a) => ({
+      start: new Date(a.start).toISOString(),
+      end: new Date(a.end).toISOString(),
+      status: a.status,
+    }));
+
     slots = computeSlotsForBeautician({
       date,
       salonTz,
       stepMin,
       service: svc,
       specialist: normalizeBeautician(b),
-      appointments: appts.map((a) => ({
-        start: new Date(a.start).toISOString(),
-        end: new Date(a.end).toISOString(),
-        status: a.status,
-      })),
+      appointments: appointmentsForSlots,
     });
+
+    // Transform slots to include startTime and endTime
+    slots = slots.map((slot) => ({
+      startTime: new Date(slot.startISO).toLocaleTimeString("en-GB", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+      endTime: new Date(slot.endISO).toLocaleTimeString("en-GB", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+      startISO: slot.startISO,
+      endISO: slot.endISO,
+      specialistId: slot.specialistId,
+    }));
   } else {
     const b = await Specialist.findById(specialistId).lean();
     if (!b) return res.status(404).json({ error: "Specialist not found" });
 
     const normalizedBeautician = normalizeBeautician(b);
 
+    const dayStart = new Date(date);
+    const dayEnd = new Date(new Date(date).getTime() + 86400000);
+
     const appts = await Appointment.find({
       specialistId,
       start: {
-        $gte: new Date(date),
-        $lt: new Date(new Date(date).getTime() + 86400000),
+        $gte: dayStart,
+        $lt: dayEnd,
       },
       status: { $ne: "cancelled" },
     }).lean();
+
+    const appointmentsForSlots = appts.map((a) => ({
+      start: new Date(a.start).toISOString(),
+      end: new Date(a.end).toISOString(),
+      status: a.status,
+    }));
 
     slots = computeSlotsForBeautician({
       date,
       salonTz,
       stepMin,
       service: svc,
-      specialist: normalizedBeautician, // Use the same normalized instance
-      appointments: appts.map((a) => ({
-        start: new Date(a.start).toISOString(),
-        end: new Date(a.end).toISOString(),
-        status: a.status,
-      })),
+      specialist: normalizeBeautician(b),
+      appointments: appointmentsForSlots,
     });
+
+    // Transform slots to include startTime and endTime
+    slots = slots.map((slot) => ({
+      startTime: new Date(slot.startISO).toLocaleTimeString("en-GB", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+      endTime: new Date(slot.endISO).toLocaleTimeString("en-GB", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+      startISO: slot.startISO,
+      endISO: slot.endISO,
+      specialistId: slot.specialistId,
+    }));
   }
+
   res.json({ slots });
 });
 export default r;

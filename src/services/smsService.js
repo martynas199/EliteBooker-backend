@@ -14,9 +14,6 @@ async function sendSMS(phone, message) {
   const SMS_API_URL = getSmsApiUrl();
 
   try {
-    console.log(`[SMS] Sending to ${phone}: ${message}`);
-    console.log(`[SMS] Using API URL: ${SMS_API_URL}`);
-
     const response = await axios.post(
       `${SMS_API_URL}/send-sms`,
       {
@@ -28,7 +25,6 @@ async function sendSMS(phone, message) {
       }
     );
 
-    console.log("[SMS] ✓ Sent successfully:", response.data);
     return {
       success: true,
       data: response.data,
@@ -46,19 +42,21 @@ async function sendSMS(phone, message) {
  * Send booking confirmation SMS
  */
 async function sendBookingConfirmation(booking) {
-  console.log("[SMS] Booking data received:", JSON.stringify(booking, null, 2));
-
   // Handle different data structures
   const serviceName =
-    booking.serviceName || booking.service?.name || booking.serviceId?.name || "your service";
-  const phone = booking.customerPhone || booking.customer?.phone || booking.client?.phone;
-  
+    booking.serviceName ||
+    booking.service?.name ||
+    booking.serviceId?.name ||
+    "your service";
+  const phone =
+    booking.customerPhone || booking.customer?.phone || booking.client?.phone;
+
   // Extract time - handle both Date objects and time strings
   let time = booking.startTime || booking.time || "your scheduled time";
   let dateObj = booking.date || booking.start;
 
   // If we have a Date object for the appointment start, extract the time from it
-  if (dateObj && typeof dateObj !== 'string') {
+  if (dateObj && typeof dateObj !== "string") {
     try {
       const startDate = new Date(dateObj);
       if (!isNaN(startDate.getTime())) {
@@ -75,16 +73,11 @@ async function sendBookingConfirmation(booking) {
     }
   }
 
-  console.log(
-    `[SMS] Extracted - Service: ${serviceName}, Date: ${dateObj}, Time: ${time}, Phone: ${phone}`
-  );
-
   // Format date properly
   let dateStr = "your appointment date";
   if (dateObj) {
     try {
       const date = new Date(dateObj);
-      console.log(`[SMS] Date object created:`, date);
       if (!isNaN(date.getTime())) {
         dateStr = date.toLocaleDateString("en-GB", {
           weekday: "short",
@@ -92,15 +85,10 @@ async function sendBookingConfirmation(booking) {
           month: "short",
           year: "numeric",
         });
-        console.log(`[SMS] Formatted date:`, dateStr);
-      } else {
-        console.log(`[SMS] Invalid date object`);
       }
     } catch (err) {
       console.error("[SMS] Date parsing error:", err);
     }
-  } else {
-    console.log(`[SMS] No date field in booking object`);
   }
 
   const message = `Booking Confirmed! ${serviceName} on ${dateStr} at ${time}. Thank you!`;
