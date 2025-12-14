@@ -390,29 +390,21 @@ router.get("/public", async (req, res) => {
     const enrichedTenants = await Promise.all(
       tenants.map(async (tenant) => {
         try {
+          // Use base queries to bypass multi-tenant plugin
           // Check HeroSection first (like landing pages do)
           const heroSection = await HeroSection.findOne({ tenantId: tenant._id })
             .select("centerImage")
             .sort({ order: 1 })
-            .lean();
+            .lean()
+            .exec();
           
           // Then check Settings as fallback
           const settings = await Settings.findOne({ tenantId: tenant._id })
             .select("heroImage")
-            .lean();
+            .lean()
+            .exec();
 
           const heroUrl = heroSection?.centerImage?.url || settings?.heroImage?.url;
-
-          console.log(
-            `[TENANTS/PUBLIC] Tenant ${tenant.name} (${tenant._id}):`,
-            {
-              hasHeroSection: !!heroSection,
-              heroSectionUrl: heroSection?.centerImage?.url || "NONE",
-              hasSettings: !!settings,
-              settingsUrl: settings?.heroImage?.url || "NONE",
-              finalUrl: heroUrl || "NONE",
-            }
-          );
 
           // Add heroImage to branding if found
           if (heroUrl) {
