@@ -44,6 +44,16 @@ function getTransport() {
     auth: { user, pass },
   });
   console.log("[MAILER] Transport created successfully");
+  
+  // Test the connection
+  transport.verify((error, success) => {
+    if (error) {
+      console.error("[MAILER] ✗ SMTP connection test failed:", error);
+    } else {
+      console.log("[MAILER] ✓ SMTP connection verified successfully");
+    }
+  });
+  
   return transport;
 }
 
@@ -187,12 +197,14 @@ export async function sendCancellationEmails({
   // Optional: Send notification to specialist/salon staff
   const beauticianEmail = process.env.BEAUTICIAN_NOTIFY_EMAIL;
   if (beauticianEmail) {
+    console.log("[MAILER] Sending beautician notification to:", beauticianEmail);
     const beauticianName = appointment.specialistId?.name || "Staff";
 
-    await tx.sendMail({
-      from,
-      to: beauticianEmail,
-      subject: `Appointment Cancelled - ${serviceName}`,
+    try {
+      await tx.sendMail({
+        from,
+        to: beauticianEmail,
+        subject: `Appointment Cancelled - ${serviceName}`,
       text: `A slot has been freed up.\n\nAppointment Details:\n- Service: ${serviceName}\n- Date & Time: ${startDate}\n- Specialist: ${beauticianName}\n- Client: ${
         appointment.client?.name || "Unknown"
       }\n- Client Email: ${
@@ -243,7 +255,14 @@ export async function sendCancellationEmails({
           )}</p>
         </div>
       `,
-    });
+      });
+      console.log("[MAILER] ✓ Beautician notification sent successfully");
+    } catch (error) {
+      console.error("[MAILER] ✗ Failed to send beautician notification:", error);
+      // Don't throw - beautician notification failure shouldn't break the flow
+    }
+  } else {
+    console.log("[MAILER] No beautician email configured, skipping notification");
   }
 }
 
@@ -286,7 +305,36 @@ export async function sendConfirmationEmail({
     return;
   }
 
-  const serviceName = service?.name || appointment.variantName || "Service";
+  // Handle multiple services
+  const hasMultipleServices = appointment.services && appointment.services.length > 1;
+  const serviceName = hasMultipleServices 
+    ? `${appointment.services.length} Services` 
+    : (service?.name || appointment.variantName || "Service");
+  
+  // Create service list for email
+  let servicesList = '';
+  let servicesHtml = '';
+  
+  if (hasMultipleServices) {
+    servicesList = appointment.services.map((s, i) => 
+      `${i + 1}. ${s.variantName || 'Service'} (${s.duration}min - ${formatCurrency(s.price, currency)})`
+    ).join('\n');
+    
+    servicesHtml = `
+      <div style="margin: 12px 0;">
+        <strong>Services:</strong>
+        <ul style="margin: 8px 0; padding-left: 20px;">
+          ${appointment.services.map(s => 
+            `<li>${s.variantName || 'Service'} <span style="color: #6b7280;">(${s.duration}min - ${formatCurrency(s.price, currency)})</span></li>`
+          ).join('')}
+        </ul>
+      </div>
+    `;
+  } else {
+    servicesList = serviceName;
+    servicesHtml = `<p style="margin: 8px 0;"><strong>Service:</strong> ${serviceName}</p>`;
+  }
+  
   const beauticianName = specialist?.name || "Our team";
   const currency = appointment.currency || "GBP";
   const price = appointment.price
@@ -337,7 +385,7 @@ export async function sendConfirmationEmail({
   }
 
   console.log("[MAILER] Preparing confirmation email...");
-  console.log("[MAILER] Service:", serviceName);
+  console.log("[MAILER] Services:", hasMultipleServices ? `${appointment.services.length} services` : serviceName);
   console.log("[MAILER] Specialist:", beauticianName);
   console.log("[MAILER] Time:", startTime);
   console.log("[MAILER] Appointment status:", appointment.status);
@@ -358,10 +406,10 @@ export async function sendConfirmationEmail({
 
 Your appointment has been confirmed!
 
-Service: ${serviceName}
+${hasMultipleServices ? 'Services:\n' + servicesList : 'Service: ' + servicesList}
 With: ${beauticianName}
 Date & Time: ${startTime}
-Price: ${price}
+Total Price: ${price}
 ${
   isDepositPayment
     ? `Deposit: ${formatCurrency(
@@ -400,10 +448,10 @@ Thank you for choosing us!`,
         
         <div style="background: linear-gradient(135deg, rgba(124, 58, 237, 0.05) 0%, rgba(236, 72, 153, 0.05) 100%); padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #7c3aed;">
           <h3 style="margin-top: 0; margin-bottom: 16px; background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-size: 18px;">Booking Details</h3>
-          <p style="margin: 8px 0;"><strong>Service:</strong> ${serviceName}</p>
+          ${servicesHtml}
           <p style="margin: 8px 0;"><strong>With:</strong> ${beauticianName}</p>
           <p style="margin: 8px 0;"><strong>Date & Time:</strong> ${startTime}</p>
-          <p style="margin: 8px 0;"><strong>Price:</strong> ${price}</p>
+          <p style="margin: 8px 0;"><strong>Total Price:</strong> ${price}</p>
           ${
             isDepositPayment
               ? `

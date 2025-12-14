@@ -12,8 +12,22 @@ function getSmsApiUrl() {
  */
 async function sendSMS(phone, message) {
   const SMS_API_URL = getSmsApiUrl();
+  
+  console.log("[SMS] Attempting to send SMS");
+  console.log("[SMS] API URL:", SMS_API_URL);
+  console.log("[SMS] Phone:", phone);
+  console.log("[SMS] Message:", message);
+
+  if (!phone) {
+    console.error("[SMS] ✗ No phone number provided");
+    return {
+      success: false,
+      error: "No phone number provided",
+    };
+  }
 
   try {
+    console.log("[SMS] Making request to SMS gateway...");
     const response = await axios.post(
       `${SMS_API_URL}/send-sms`,
       {
@@ -25,12 +39,21 @@ async function sendSMS(phone, message) {
       }
     );
 
+    console.log("[SMS] ✓ SMS sent successfully:", response.data);
     return {
       success: true,
       data: response.data,
     };
   } catch (error) {
     console.error("[SMS] ✗ Failed:", error.message);
+    if (error.response) {
+      console.error("[SMS] Response status:", error.response.status);
+      console.error("[SMS] Response data:", error.response.data);
+    } else if (error.request) {
+      console.error("[SMS] No response received. Gateway may be down.");
+    } else {
+      console.error("[SMS] Request setup error:", error.message);
+    }
     return {
       success: false,
       error: error.message,
@@ -42,6 +65,9 @@ async function sendSMS(phone, message) {
  * Send booking confirmation SMS
  */
 async function sendBookingConfirmation(booking) {
+  console.log("[SMS] sendBookingConfirmation called");
+  console.log("[SMS] Booking data:", JSON.stringify(booking, null, 2));
+  
   // Handle different data structures
   const serviceName =
     booking.serviceName ||
@@ -50,6 +76,9 @@ async function sendBookingConfirmation(booking) {
     "your service";
   const phone =
     booking.customerPhone || booking.customer?.phone || booking.client?.phone;
+
+  console.log("[SMS] Extracted service name:", serviceName);
+  console.log("[SMS] Extracted phone:", phone);
 
   // Extract time - handle both Date objects and time strings
   let time = booking.startTime || booking.time || "your scheduled time";
@@ -92,6 +121,7 @@ async function sendBookingConfirmation(booking) {
   }
 
   const message = `Booking Confirmed! ${serviceName} on ${dateStr} at ${time}. Thank you!`;
+  console.log("[SMS] Final message:", message);
 
   return sendSMS(phone, message);
 }

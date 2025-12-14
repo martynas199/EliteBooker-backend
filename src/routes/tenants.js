@@ -392,19 +392,22 @@ router.get("/public", async (req, res) => {
         try {
           // Use base queries to bypass multi-tenant plugin
           // Check HeroSection first (like landing pages do)
-          const heroSection = await HeroSection.findOne({ tenantId: tenant._id })
+          const heroSection = await HeroSection.findOne({
+            tenantId: tenant._id,
+          })
             .select("centerImage")
             .sort({ order: 1 })
             .lean()
             .exec();
-          
+
           // Then check Settings as fallback
           const settings = await Settings.findOne({ tenantId: tenant._id })
             .select("heroImage")
             .lean()
             .exec();
 
-          const heroUrl = heroSection?.centerImage?.url || settings?.heroImage?.url;
+          const heroUrl =
+            heroSection?.centerImage?.url || settings?.heroImage?.url;
 
           // Add heroImage to branding if found
           if (heroUrl) {
@@ -415,7 +418,10 @@ router.get("/public", async (req, res) => {
                 heroImages: [
                   {
                     url: heroUrl,
-                    alt: heroSection?.centerImage?.alt || settings?.heroImage?.alt || tenant.name,
+                    alt:
+                      heroSection?.centerImage?.alt ||
+                      settings?.heroImage?.alt ||
+                      tenant.name,
                   },
                 ],
               },
