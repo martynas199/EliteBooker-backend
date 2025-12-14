@@ -44,7 +44,7 @@ function getTransport() {
     auth: { user, pass },
   });
   console.log("[MAILER] Transport created successfully");
-  
+
   // Test the connection
   transport.verify((error, success) => {
     if (error) {
@@ -53,7 +53,7 @@ function getTransport() {
       console.log("[MAILER] ✓ SMTP connection verified successfully");
     }
   });
-  
+
   return transport;
 }
 
@@ -197,7 +197,10 @@ export async function sendCancellationEmails({
   // Optional: Send notification to specialist/salon staff
   const beauticianEmail = process.env.BEAUTICIAN_NOTIFY_EMAIL;
   if (beauticianEmail) {
-    console.log("[MAILER] Sending beautician notification to:", beauticianEmail);
+    console.log(
+      "[MAILER] Sending beautician notification to:",
+      beauticianEmail
+    );
     const beauticianName = appointment.specialistId?.name || "Staff";
 
     try {
@@ -205,16 +208,16 @@ export async function sendCancellationEmails({
         from,
         to: beauticianEmail,
         subject: `Appointment Cancelled - ${serviceName}`,
-      text: `A slot has been freed up.\n\nAppointment Details:\n- Service: ${serviceName}\n- Date & Time: ${startDate}\n- Specialist: ${beauticianName}\n- Client: ${
-        appointment.client?.name || "Unknown"
-      }\n- Client Email: ${
-        appointment.client?.email || "N/A"
-      }\n- Client Phone: ${appointment.client?.phone || "N/A"}\n${
-        reason && reason.trim() ? `- Cancellation Reason: ${reason}\n` : ""
-      }${
-        hasRefund ? `- Refund: ${refundAmountFormatted}` : "- Refund: None"
-      }\n\nAppointment ID: ${String(appointment._id)}`,
-      html: `
+        text: `A slot has been freed up.\n\nAppointment Details:\n- Service: ${serviceName}\n- Date & Time: ${startDate}\n- Specialist: ${beauticianName}\n- Client: ${
+          appointment.client?.name || "Unknown"
+        }\n- Client Email: ${
+          appointment.client?.email || "N/A"
+        }\n- Client Phone: ${appointment.client?.phone || "N/A"}\n${
+          reason && reason.trim() ? `- Cancellation Reason: ${reason}\n` : ""
+        }${
+          hasRefund ? `- Refund: ${refundAmountFormatted}` : "- Refund: None"
+        }\n\nAppointment ID: ${String(appointment._id)}`,
+        html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background: linear-gradient(135deg, #7c3aed 0%, #ec4899 50%, #06b6d4 100%); padding: 30px 20px; border-radius: 12px 12px 0 0; margin: -20px -20px 20px -20px;">
             <h2 style="color: white; margin: 0; font-size: 24px; text-align: center;">📅 Appointment Cancelled - Slot Freed</h2>
@@ -258,11 +261,16 @@ export async function sendCancellationEmails({
       });
       console.log("[MAILER] ✓ Beautician notification sent successfully");
     } catch (error) {
-      console.error("[MAILER] ✗ Failed to send beautician notification:", error);
+      console.error(
+        "[MAILER] ✗ Failed to send beautician notification:",
+        error
+      );
       // Don't throw - beautician notification failure shouldn't break the flow
     }
   } else {
-    console.log("[MAILER] No beautician email configured, skipping notification");
+    console.log(
+      "[MAILER] No beautician email configured, skipping notification"
+    );
   }
 }
 
@@ -305,28 +313,45 @@ export async function sendConfirmationEmail({
     return;
   }
 
+  // Define currency first (needed for formatting)
+  const currency = appointment.currency || "GBP";
+  const beauticianName = specialist?.name || "Our team";
+
   // Handle multiple services
-  const hasMultipleServices = appointment.services && appointment.services.length > 1;
-  const serviceName = hasMultipleServices 
-    ? `${appointment.services.length} Services` 
-    : (service?.name || appointment.variantName || "Service");
-  
+  const hasMultipleServices =
+    appointment.services && appointment.services.length > 1;
+  const serviceName = hasMultipleServices
+    ? `${appointment.services.length} Services`
+    : service?.name || appointment.variantName || "Service";
+
   // Create service list for email
-  let servicesList = '';
-  let servicesHtml = '';
-  
+  let servicesList = "";
+  let servicesHtml = "";
+
   if (hasMultipleServices) {
-    servicesList = appointment.services.map((s, i) => 
-      `${i + 1}. ${s.variantName || 'Service'} (${s.duration}min - ${formatCurrency(s.price, currency)})`
-    ).join('\n');
-    
+    servicesList = appointment.services
+      .map(
+        (s, i) =>
+          `${i + 1}. ${s.variantName || "Service"} (${
+            s.duration
+          }min - ${formatCurrency(s.price, currency)})`
+      )
+      .join("\n");
+
     servicesHtml = `
       <div style="margin: 12px 0;">
         <strong>Services:</strong>
         <ul style="margin: 8px 0; padding-left: 20px;">
-          ${appointment.services.map(s => 
-            `<li>${s.variantName || 'Service'} <span style="color: #6b7280;">(${s.duration}min - ${formatCurrency(s.price, currency)})</span></li>`
-          ).join('')}
+          ${appointment.services
+            .map(
+              (s) =>
+                `<li>${
+                  s.variantName || "Service"
+                } <span style="color: #6b7280;">(${
+                  s.duration
+                }min - ${formatCurrency(s.price, currency)})</span></li>`
+            )
+            .join("")}
         </ul>
       </div>
     `;
@@ -334,9 +359,6 @@ export async function sendConfirmationEmail({
     servicesList = serviceName;
     servicesHtml = `<p style="margin: 8px 0;"><strong>Service:</strong> ${serviceName}</p>`;
   }
-  
-  const beauticianName = specialist?.name || "Our team";
-  const currency = appointment.currency || "GBP";
   const price = appointment.price
     ? formatCurrency(appointment.price, currency)
     : "";
@@ -385,7 +407,12 @@ export async function sendConfirmationEmail({
   }
 
   console.log("[MAILER] Preparing confirmation email...");
-  console.log("[MAILER] Services:", hasMultipleServices ? `${appointment.services.length} services` : serviceName);
+  console.log(
+    "[MAILER] Services:",
+    hasMultipleServices
+      ? `${appointment.services.length} services`
+      : serviceName
+  );
   console.log("[MAILER] Specialist:", beauticianName);
   console.log("[MAILER] Time:", startTime);
   console.log("[MAILER] Appointment status:", appointment.status);
@@ -406,7 +433,11 @@ export async function sendConfirmationEmail({
 
 Your appointment has been confirmed!
 
-${hasMultipleServices ? 'Services:\n' + servicesList : 'Service: ' + servicesList}
+${
+  hasMultipleServices
+    ? "Services:\n" + servicesList
+    : "Service: " + servicesList
+}
 With: ${beauticianName}
 Date & Time: ${startTime}
 Total Price: ${price}

@@ -12,7 +12,7 @@ function getSmsApiUrl() {
  */
 async function sendSMS(phone, message) {
   const SMS_API_URL = getSmsApiUrl();
-  
+
   console.log("[SMS] Attempting to send SMS");
   console.log("[SMS] API URL:", SMS_API_URL);
   console.log("[SMS] Phone:", phone);
@@ -67,17 +67,43 @@ async function sendSMS(phone, message) {
 async function sendBookingConfirmation(booking) {
   console.log("[SMS] sendBookingConfirmation called");
   console.log("[SMS] Booking data:", JSON.stringify(booking, null, 2));
-  
-  // Handle different data structures
-  const serviceName =
-    booking.serviceName ||
-    booking.service?.name ||
-    booking.serviceId?.name ||
-    "your service";
+
+  // Handle different data structures for service name
+  let serviceName = "your service";
+
+  // Check if multiple services
+  if (booking.services && booking.services.length > 0) {
+    if (booking.services.length === 1) {
+      serviceName =
+        booking.services[0].variantName ||
+        booking.services[0].serviceName ||
+        "your service";
+    } else {
+      // Multiple services - list them
+      serviceName = booking.services
+        .map((s) => s.variantName || s.serviceName || "Service")
+        .join(", ");
+    }
+  } else if (booking.serviceName) {
+    serviceName = booking.serviceName;
+  } else if (booking.service?.name) {
+    serviceName = booking.service.name;
+  } else if (booking.serviceId?.name) {
+    serviceName = booking.serviceId.name;
+  }
+
+  // Get specialist/beautician name
+  const specialistName =
+    booking.specialistName ||
+    booking.specialist?.name ||
+    booking.specialistId?.name ||
+    "our team";
+
   const phone =
     booking.customerPhone || booking.customer?.phone || booking.client?.phone;
 
   console.log("[SMS] Extracted service name:", serviceName);
+  console.log("[SMS] Extracted specialist name:", specialistName);
   console.log("[SMS] Extracted phone:", phone);
 
   // Extract time - handle both Date objects and time strings
@@ -120,7 +146,7 @@ async function sendBookingConfirmation(booking) {
     }
   }
 
-  const message = `Booking Confirmed! ${serviceName} on ${dateStr} at ${time}. Thank you!`;
+  const message = `Booking Confirmed! ${serviceName} with ${specialistName} on ${dateStr} at ${time}. Thank you!`;
   console.log("[SMS] Final message:", message);
 
   return sendSMS(phone, message);

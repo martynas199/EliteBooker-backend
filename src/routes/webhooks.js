@@ -9,6 +9,7 @@ import {
   sendAdminOrderNotification,
   sendBeauticianProductOrderNotification,
 } from "../emails/mailer.js";
+import smsService from "../services/smsService.js";
 
 const r = Router();
 let stripeInstance = null;
@@ -117,6 +118,37 @@ r.post("/stripe", async (req, res) => {
                   "[WEBHOOK] Failed to send confirmation email:",
                   emailErr
                 );
+              }
+
+              // Send SMS confirmation
+              if (appointment.client?.phone) {
+                console.log("[WEBHOOK] Sending SMS with data:", {
+                  services: appointment.services,
+                  serviceId: appointment.serviceId?.name,
+                  specialist: appointment.specialistId?.name,
+                  phone: appointment.client.phone,
+                });
+
+                smsService
+                  .sendBookingConfirmation({
+                    services: appointment.services,
+                    serviceName:
+                      appointment.serviceId?.name || appointment.serviceName,
+                    date: appointment.start,
+                    specialistName: appointment.specialistId?.name,
+                    customerPhone: appointment.client.phone,
+                  })
+                  .then(() =>
+                    console.log(
+                      "[WEBHOOK] SMS confirmation sent to:",
+                      appointment.client.phone
+                    )
+                  )
+                  .catch((err) =>
+                    console.error("[WEBHOOK] SMS failed:", err.message)
+                  );
+              } else {
+                console.log("[WEBHOOK] No phone number, skipping SMS");
               }
             }
           } catch (e) {

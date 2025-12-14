@@ -316,7 +316,8 @@ router.get("/:id", async (req, res) => {
 
     const appointment = await Appointment.findById(id)
       .populate("specialistId", "name email phone")
-      .populate("serviceId", "name category");
+      .populate("serviceId", "name category")
+      .populate("services.serviceId", "name category");
 
     if (!appointment) {
       return res.status(404).json({
