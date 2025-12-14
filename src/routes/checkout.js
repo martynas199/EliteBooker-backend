@@ -5,6 +5,7 @@ import Specialist from "../models/Specialist.js";
 import Appointment from "../models/Appointment.js";
 import { sendConfirmationEmail } from "../emails/mailer.js";
 import ClientService from "../services/clientService.js";
+import AppointmentService from "../services/appointmentService.js";
 import jwt from "jsonwebtoken";
 import Client from "../models/Client.js";
 import smsService from "../services/smsService.js";
@@ -315,21 +316,76 @@ r.post("/create-session", async (req, res, next) => {
         any,
         serviceId,
         variantName,
+        services, // NEW: Support multiple services
         startISO,
         client,
         userId,
-        locationId, // NEW: Accept locationId
+        locationId,
       } = req.body || {};
-      service = await Service.findById(serviceId).lean();
-      if (!service) return res.status(404).json({ error: "Service not found" });
-      const variant = (service.variants || []).find(
-        (v) => v.name === variantName
-      );
-      if (!variant) return res.status(404).json({ error: "Variant not found" });
+
+      // Handle multiple services
+      let totalPrice = 0;
+      let totalDuration = 0;
+      let servicesData = [];
+
+      if (services && Array.isArray(services) && services.length > 0) {
+        // Multi-service booking
+        for (const svc of services) {
+          const fullService = await Service.findById(svc.serviceId).lean();
+          if (!fullService) continue;
+
+          const variant = (fullService.variants || []).find(
+            (v) => v.name === svc.variantName
+          );
+          if (!variant) continue;
+
+          const servicePrice = variant.promoPrice || variant.price || 0;
+          const serviceDuration =
+            variant.durationMin +
+            (variant.bufferBeforeMin || 0) +
+            (variant.bufferAfterMin || 0);
+
+          totalPrice += servicePrice;
+          totalDuration += serviceDuration;
+
+          servicesData.push({
+            serviceId: svc.serviceId,
+            variantName: svc.variantName,
+            price: servicePrice,
+            duration: serviceDuration,
+          });
+        }
+      } else {
+        // Legacy single service booking
+        service = await Service.findById(serviceId).lean();
+        if (!service)
+          return res.status(404).json({ error: "Service not found" });
+        const variant = (service.variants || []).find(
+          (v) => v.name === variantName
+        );
+        if (!variant)
+          return res.status(404).json({ error: "Variant not found" });
+
+        totalPrice = variant.promoPrice || variant.price;
+        totalDuration =
+          variant.durationMin +
+          (variant.bufferBeforeMin || 0) +
+          (variant.bufferAfterMin || 0);
+
+        servicesData.push({
+          serviceId,
+          variantName,
+          price: totalPrice,
+          duration: totalDuration,
+        });
+      }
       let specialist = null;
       if (any) {
+        // Get first service to find available specialists
+        const firstServiceId = servicesData[0]?.serviceId || serviceId;
+        const firstService = await Service.findById(firstServiceId).lean();
         specialist = await Specialist.findOne({
-          _id: { $in: service.beauticianIds },
+          _id: { $in: firstService.beauticianIds },
           active: true,
         }).lean();
       } else {
@@ -337,20 +393,24 @@ r.post("/create-session", async (req, res, next) => {
       }
       if (!specialist)
         return res.status(400).json({ error: "No specialist available" });
+
       const start = new Date(startISO);
-      const end = new Date(
-        start.getTime() +
-          (variant.durationMin +
-            (variant.bufferBeforeMin || 0) +
-            (variant.bufferAfterMin || 0)) *
-            60000
-      );
+      const end = new Date(start.getTime() + totalDuration * 60000);
+      
+      console.log('[CHECKOUT] Checking slot availability:', {
+        specialistId: specialist._id,
+        start: start.toISOString(),
+        end: end.toISOString(),
+        totalDuration,
+        servicesCount: servicesData.length
+      });
+      
       // Check for conflicts, excluding:
       // - Cancelled appointments
       // - reserved_unpaid appointments older than 3 minutes (expired)
       const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
       const conflict = await Appointment.findOne({
-        specialistId: Specialist._id,
+        specialistId: specialist._id,
         start: { $lt: end },
         end: { $gt: start },
         $and: [
@@ -363,8 +423,20 @@ r.post("/create-session", async (req, res, next) => {
           },
         ],
       }).lean();
-      if (conflict)
+      
+      if (conflict) {
+        console.log('[CHECKOUT] Slot conflict detected:', {
+          conflictingAppointmentId: conflict._id,
+          conflictStart: conflict.start,
+          conflictEnd: conflict.end,
+          conflictStatus: conflict.status,
+          requestedStart: start.toISOString(),
+          requestedEnd: end.toISOString()
+        });
         return res.status(409).json({ error: "Slot no longer available" });
+      }
+      
+      console.log('[CHECKOUT] No conflicts found, slot is available');
 
       // Check if client is logged in via clientToken cookie
       let globalClient = null;
@@ -407,15 +479,19 @@ r.post("/create-session", async (req, res, next) => {
         client,
         clientId: globalClient._id, // Link to global client
         specialistId: specialist._id,
-        serviceId,
-        variantName,
+        // Multi-service support
+        services: servicesData,
+        totalDuration,
+        // Legacy single service fields (for backward compatibility)
+        serviceId: servicesData[0]?.serviceId,
+        variantName: servicesData[0]?.variantName,
         start,
         end,
-        price: variant.promoPrice || variant.price,
+        price: totalPrice,
         status: "reserved_unpaid",
-        tenantId: req.tenantId, // Add tenantId from middleware
-        ...(userId ? { userId } : {}), // Add userId if provided (logged-in users)
-        ...(locationId ? { locationId } : {}), // Add locationId if provided
+        tenantId: req.tenantId,
+        ...(userId ? { userId } : {}),
+        ...(locationId ? { locationId } : {}),
       });
 
       console.log(
@@ -489,6 +565,36 @@ r.post("/create-session", async (req, res, next) => {
     if (unit_amount < 1)
       return res.status(400).json({ error: "Invalid amount" });
 
+    // Build service name for Stripe checkout
+    let serviceName;
+    let serviceDescription;
+    if (appt.services && appt.services.length > 0) {
+      // Multi-service booking - use bulk service fetch for performance
+      const serviceIds = appt.services
+        .map((s) => s.serviceId)
+        .filter(Boolean);
+      const serviceMap = await AppointmentService.getServiceMapByIds(serviceIds);
+
+      if (appt.services.length === 1) {
+        const svc = serviceMap.get(appt.services[0].serviceId.toString());
+        serviceName = svc
+          ? `${svc.name} - ${appt.services[0].variantName}`
+          : "Service";
+      } else {
+        serviceName = `${appt.services.length} Services`;
+        const serviceNames = appt.services.map((s) => {
+          const svc = serviceMap.get(s.serviceId.toString());
+          return svc ? `${svc.name} (${s.variantName})` : "Service";
+        });
+        serviceDescription = serviceNames.join(", ");
+      }
+    } else if (service) {
+      // Legacy single service
+      serviceName = `${service.name} - ${appt.variantName}`;
+    } else {
+      serviceName = "Service";
+    }
+
     // Multi-tenant Stripe Connect setup
     // Use platform Stripe account and transfer to specialist if they're connected
     const stripe = getStripe();
@@ -561,12 +667,12 @@ r.post("/create-session", async (req, res, next) => {
             currency,
             unit_amount,
             product_data: {
-              name: `${service.name} - ${appt.variantName}`,
-              description: isDeposit
+              name: serviceName,
+              description: serviceDescription || (isDeposit
                 ? `Deposit payment (${depositPct}% of total ${baseAmount.toFixed(
                     2
                   )})`
-                : `Full payment (total ${baseAmount.toFixed(2)})`,
+                : `Full payment (total ${baseAmount.toFixed(2)})`),
             },
           },
           quantity: 1,

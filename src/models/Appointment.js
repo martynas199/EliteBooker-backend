@@ -85,11 +85,21 @@ const AppointmentSchema = new mongoose.Schema(
       ref: "Specialist",
       index: true,
     },
+    // Multiple services support
+    services: [{
+      serviceId: { type: mongoose.Schema.Types.ObjectId, ref: "Service" },
+      variantName: String,
+      price: Number,
+      duration: Number, // in minutes
+      _id: false
+    }],
+    // Legacy single service fields (kept for backward compatibility)
     serviceId: { type: mongoose.Schema.Types.ObjectId, ref: "Service" },
     variantName: String,
     start: Date,
     end: Date,
-    price: Number,
+    price: Number, // Total price of all services
+    totalDuration: Number, // Total duration in minutes
     status: {
       type: String,
       enum: [

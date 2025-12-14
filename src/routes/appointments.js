@@ -10,6 +10,7 @@ import {
   sendCancellationEmails,
   sendConfirmationEmail,
 } from "../emails/mailer.js";
+import AppointmentService from "../services/appointmentService.js";
 const r = Router();
 
 r.get("/", async (req, res) => {
@@ -21,83 +22,45 @@ r.get("/", async (req, res) => {
       // Parse pagination params
       const page = Math.max(1, parseInt(req.query.page) || 1);
       const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
-      const skip = (page - 1) * limit;
 
-      // Get total count for pagination metadata
-      const total = await Appointment.countDocuments();
-
-      // Get paginated appointments
-      const list = await Appointment.find()
-        .sort({ start: -1 })
-        .skip(skip)
-        .limit(limit)
-        .populate({ path: "serviceId", select: "name" })
-        .populate({ path: "specialistId", select: "name" })
-        .lean();
-
-      const rows = list.map((a) => ({
-        ...a,
-        service:
-          a.serviceId && typeof a.serviceId === "object" && a.serviceId._id
-            ? a.serviceId
-            : null,
-        specialist:
-          a.specialistId &&
-          typeof a.specialistId === "object" &&
-          a.specialistId._id
-            ? a.specialistId
-            : null,
-      }));
-
-      // Return paginated response
-      res.json({
-        data: rows,
-        pagination: {
-          page,
-          limit,
-          total,
-          totalPages: Math.ceil(total / limit),
-          hasMore: page * limit < total,
-        },
+      // Use service layer for paginated results
+      const result = await AppointmentService.getAppointmentsPaginated({
+        page,
+        limit,
       });
+
+      res.json(result);
     } else {
       // Backward compatibility: return array if no page param
-      const list = await Appointment.find()
-        .sort({ start: -1 })
-        .populate({ path: "serviceId", select: "name" })
-        .populate({ path: "specialistId", select: "name" })
-        .lean();
-
-      const rows = list.map((a) => ({
-        ...a,
-        service:
-          a.serviceId && typeof a.serviceId === "object" && a.serviceId._id
-            ? a.serviceId
-            : null,
-        specialist:
-          a.specialistId &&
-          typeof a.specialistId === "object" &&
-          a.specialistId._id
-            ? a.specialistId
-            : null,
-      }));
-
-      res.json(rows);
+      const appointments = await AppointmentService.getAllAppointments();
+      res.json(appointments);
     }
   } catch (err) {
     console.error("appointments_list_err", err);
     res.status(500).json({ error: "Failed to fetch appointments" });
   }
 });
+
 r.get("/:id", async (req, res) => {
   const { id } = req.params;
-  const a = await Appointment.findById(id).lean();
-  if (!a) return res.status(404).json({ error: "Appointment not found" });
-  const [s, b] = await Promise.all([
-    Service.findById(a.serviceId).lean(),
-    Specialist.findById(a.specialistId).lean(),
-  ]);
-  res.json({ ...a, service: s || null, specialist: b || null });
+  
+  try {
+    const appointment = await AppointmentService.getAppointmentById(id);
+    
+    if (!appointment) {
+      return res.status(404).json({ error: "Appointment not found" });
+    }
+
+    // Fetch specialist separately (not in bulk for single appointment)
+    const specialist = appointment.specialistId
+      ? await Specialist.findById(appointment.specialistId).lean()
+      : null;
+
+    res.json({ ...appointment, specialist: specialist || null });
+  } catch (err) {
+    console.error("appointment_get_err", err);
+    res.status(500).json({ error: "Failed to fetch appointment" });
+  }
 });
 r.post("/", async (req, res) => {
   const {

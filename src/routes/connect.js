@@ -18,8 +18,8 @@ function getStripe() {
 
 /**
  * POST /api/connect/onboard
- * Create a Stripe Connect Express account for a specialist
- * and return the onboarding link
+ * Create a Stripe Connect Standard account for a specialist.
+ * Standard accounts have zero monthly fees and Stripe-hosted onboarding.
  */
 router.post("/onboard", async (req, res) => {
   try {
@@ -59,8 +59,10 @@ router.post("/onboard", async (req, res) => {
 
     // Create new Stripe Connect account if doesn't exist
     if (!stripeAccountId) {
+      console.log(`[CONNECT] Creating Standard account for specialist ${specialistId}`);
+      
       const account = await stripe.accounts.create({
-        type: "express",
+        type: 'standard',
         country: "GB",
         email: email,
         capabilities: {
@@ -72,10 +74,13 @@ router.post("/onboard", async (req, res) => {
 
       stripeAccountId = account.id;
 
-      // Save Stripe account ID to database
+      // Save Stripe account ID and type to database
       Specialist.stripeAccountId = stripeAccountId;
+      Specialist.stripeAccountType = 'standard';
       Specialist.stripeStatus = "pending";
       await Specialist.save();
+      
+      console.log(`[CONNECT] Created Standard account: ${stripeAccountId}`);
     }
 
     // Create account link for onboarding
@@ -93,6 +98,7 @@ router.post("/onboard", async (req, res) => {
       success: true,
       url: accountLink.url,
       stripeAccountId: stripeAccountId,
+      accountType: 'standard',
     });
   } catch (error) {
     console.error("Stripe Connect onboarding error:", error);
@@ -121,6 +127,7 @@ router.get("/status/:specialistId", async (req, res) => {
         status: "not_connected",
         connected: false,
         stripeAccountId: null,
+        accountType: null,
       });
     }
 
@@ -144,6 +151,7 @@ router.get("/status/:specialistId", async (req, res) => {
         status: "not_connected",
         connected: false,
         stripeAccountId: null,
+        accountType: null,
         message:
           "Previous account was invalid and has been cleared. Please reconnect.",
       });
@@ -156,6 +164,7 @@ router.get("/status/:specialistId", async (req, res) => {
     if (isComplete && Specialist.stripeStatus !== "connected") {
       Specialist.stripeStatus = "connected";
       Specialist.stripeOnboardingCompleted = true;
+      Specialist.stripePayoutsEnabled = account.payouts_enabled || false;
       await Specialist.save();
     } else if (!isComplete && Specialist.stripeStatus === "connected") {
       Specialist.stripeStatus = "pending";
@@ -167,6 +176,7 @@ router.get("/status/:specialistId", async (req, res) => {
       status: Specialist.stripeStatus,
       connected: isComplete,
       stripeAccountId: Specialist.stripeAccountId,
+      accountType: 'standard',
       chargesEnabled: account.charges_enabled,
       detailsSubmitted: account.details_submitted,
       payoutsEnabled: account.payouts_enabled,

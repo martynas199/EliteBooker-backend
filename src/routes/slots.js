@@ -227,7 +227,16 @@ r.get("/", async (req, res) => {
     });
   }
 
-  const { specialistId, serviceId, variantName, date, any } = req.query;
+  const { specialistId, serviceId, variantName, date, any, totalDuration } = req.query;
+
+  console.log('[SLOTS] Request params:', { 
+    specialistId, 
+    serviceId, 
+    variantName, 
+    date, 
+    totalDuration: totalDuration ? parseInt(totalDuration) : 'not provided',
+    any
+  });
 
   if (!serviceId || !variantName || !date)
     return res.status(400).json({ error: "Missing params" });
@@ -235,11 +244,19 @@ r.get("/", async (req, res) => {
   if (!service) return res.status(404).json({ error: "Service not found" });
   const variant = (service.variants || []).find((v) => v.name === variantName);
   if (!variant) return res.status(404).json({ error: "Variant not found" });
+  
+  // Use totalDuration if provided (multi-service booking), otherwise use variant duration
+  const durationMin = totalDuration ? parseInt(totalDuration) : variant.durationMin;
+  
+  console.log('[SLOTS] Using duration:', durationMin, 'minutes', totalDuration ? '(multi-service total)' : '(single service)');
+  
   const svc = {
-    durationMin: variant.durationMin,
+    durationMin: durationMin,
     bufferBeforeMin: variant.bufferBeforeMin || 0,
     bufferAfterMin: variant.bufferAfterMin || 0,
   };
+
+  console.log('[SLOTS] Service config:', svc);
 
   const salonTz = process.env.SALON_TZ || "Europe/London";
   const stepMin = Number(process.env.SLOTS_STEP_MIN || 15);
@@ -340,6 +357,7 @@ r.get("/", async (req, res) => {
     }));
   }
 
+  console.log('[SLOTS] Returning', slots.length, 'available slots for date:', date);
   res.json({ slots });
 });
 export default r;

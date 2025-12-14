@@ -160,7 +160,11 @@ giftCardSchema.methods.markAsSent = async function () {
 };
 
 // Redeem gift card
-giftCardSchema.methods.redeem = async function (amount, clientId, appointmentId) {
+giftCardSchema.methods.redeem = async function (
+  amount,
+  clientId,
+  appointmentId
+) {
   if (!this.isValid()) {
     throw new Error("Gift card is not valid for redemption");
   }

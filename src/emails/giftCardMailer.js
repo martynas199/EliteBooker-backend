@@ -24,7 +24,9 @@ function getTransport() {
   const pass = process.env.SMTP_PASS;
 
   if (!host || !user || !pass) {
-    console.warn("[GIFT-CARD-MAILER] SMTP not configured - emails will be skipped");
+    console.warn(
+      "[GIFT-CARD-MAILER] SMTP not configured - emails will be skipped"
+    );
     return null;
   }
 
@@ -44,21 +46,29 @@ export async function sendGiftCardPurchaseConfirmation({
   tenant,
   specialist = null,
 }) {
-  console.log("[GIFT-CARD-MAILER] Sending purchase confirmation for:", giftCard.code);
-  
+  console.log(
+    "[GIFT-CARD-MAILER] Sending purchase confirmation for:",
+    giftCard.code
+  );
+
   const tx = getTransport();
   if (!tx) {
-    console.warn("[GIFT-CARD-MAILER] No transport - skipping purchase confirmation");
+    console.warn(
+      "[GIFT-CARD-MAILER] No transport - skipping purchase confirmation"
+    );
     return;
   }
 
   const from = process.env.SMTP_FROM || process.env.SMTP_USER;
-  const purchaseDate = new Date(giftCard.purchaseDate).toLocaleDateString("en-GB", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  const purchaseDate = new Date(giftCard.purchaseDate).toLocaleDateString(
+    "en-GB",
+    {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    }
+  );
   const expiryDate = new Date(giftCard.expiryDate).toLocaleDateString("en-GB", {
     year: "numeric",
     month: "long",
@@ -134,7 +144,9 @@ ${businessName}`;
               </p>
               
               <p style="margin: 0 0 30px; color: #666666; font-size: 15px; line-height: 1.6;">
-                Your gift card purchase was successful! We'll send it to <strong>${giftCard.recipientName}</strong> right away.
+                Your gift card purchase was successful! We'll send it to <strong>${
+                  giftCard.recipientName
+                }</strong> right away.
               </p>
 
               <!-- Gift Card Code Box -->
@@ -177,16 +189,24 @@ ${businessName}`;
                   Recipient Information
                 </h3>
                 <p style="margin: 0 0 8px; color: #666666; font-size: 14px;">
-                  <strong style="color: #333333;">Name:</strong> ${giftCard.recipientName}
+                  <strong style="color: #333333;">Name:</strong> ${
+                    giftCard.recipientName
+                  }
                 </p>
                 <p style="margin: 0 0 8px; color: #666666; font-size: 14px;">
-                  <strong style="color: #333333;">Email:</strong> ${giftCard.recipientEmail}
+                  <strong style="color: #333333;">Email:</strong> ${
+                    giftCard.recipientEmail
+                  }
                 </p>
-                ${giftCard.message ? `
+                ${
+                  giftCard.message
+                    ? `
                 <p style="margin: 15px 0 0; color: #666666; font-size: 14px; font-style: italic; padding: 15px; background-color: #ffffff; border-radius: 4px;">
                   "${giftCard.message}"
                 </p>
-                ` : ""}
+                `
+                    : ""
+                }
               </div>
 
               <!-- Info Boxes -->
@@ -243,9 +263,15 @@ ${businessName}`;
       text: textContent,
       html: htmlContent,
     });
-    console.log("[GIFT-CARD-MAILER] Purchase confirmation sent to:", giftCard.purchaserEmail);
+    console.log(
+      "[GIFT-CARD-MAILER] Purchase confirmation sent to:",
+      giftCard.purchaserEmail
+    );
   } catch (error) {
-    console.error("[GIFT-CARD-MAILER] Failed to send purchase confirmation:", error);
+    console.error(
+      "[GIFT-CARD-MAILER] Failed to send purchase confirmation:",
+      error
+    );
     throw error;
   }
 }
@@ -258,11 +284,16 @@ export async function sendGiftCardToRecipient({
   tenant,
   specialist = null,
 }) {
-  console.log("[GIFT-CARD-MAILER] Sending gift card to recipient:", giftCard.recipientEmail);
-  
+  console.log(
+    "[GIFT-CARD-MAILER] Sending gift card to recipient:",
+    giftCard.recipientEmail
+  );
+
   const tx = getTransport();
   if (!tx) {
-    console.warn("[GIFT-CARD-MAILER] No transport - skipping recipient notification");
+    console.warn(
+      "[GIFT-CARD-MAILER] No transport - skipping recipient notification"
+    );
     return;
   }
 
@@ -276,7 +307,11 @@ export async function sendGiftCardToRecipient({
   const businessName = tenant?.businessName || tenant?.name || "the salon";
   const specialistName = specialist ? ` with ${specialist.name}` : "";
   const tenantSlug = tenant?.slug || "";
-  const bookingUrl = tenantSlug ? `${process.env.FRONTEND_URL || "https://your-domain.com"}/salon/${tenantSlug}` : "";
+  const bookingUrl = tenantSlug
+    ? `${
+        process.env.FRONTEND_URL || "https://your-domain.com"
+      }/salon/${tenantSlug}`
+    : "";
 
   const textContent = `Hi ${giftCard.recipientName},
 
@@ -291,7 +326,13 @@ Amount: ${amount}
 Valid Until: ${expiryDate}
 Redeemable At: ${businessName}${specialistName}
 
-${giftCard.message ? `PERSONAL MESSAGE FROM ${giftCard.purchaserName.toUpperCase()}:\n"${giftCard.message}"\n\n` : ""}HOW TO REDEEM
+${
+  giftCard.message
+    ? `PERSONAL MESSAGE FROM ${giftCard.purchaserName.toUpperCase()}:\n"${
+        giftCard.message
+      }"\n\n`
+    : ""
+}HOW TO REDEEM
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 1. Visit ${businessName} online${bookingUrl ? ` at:\n   ${bookingUrl}` : ""}
 2. Select your service and book an appointment
@@ -345,10 +386,14 @@ ${businessName}`;
               </p>
               
               <p style="margin: 0 0 30px; color: #666666; font-size: 15px; line-height: 1.6;">
-                Great news! <strong>${giftCard.purchaserName}</strong> has sent you a gift card to use at ${businessName}${specialistName}!
+                Great news! <strong>${
+                  giftCard.purchaserName
+                }</strong> has sent you a gift card to use at ${businessName}${specialistName}!
               </p>
 
-              ${giftCard.message ? `
+              ${
+                giftCard.message
+                  ? `
               <!-- Personal Message -->
               <div style="background: linear-gradient(135deg, #fff5f5 0%, #ffe5e5 100%); border-left: 4px solid #f5576c; border-radius: 8px; padding: 20px; margin: 30px 0;">
                 <p style="margin: 0 0 10px; color: #999999; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">
@@ -358,7 +403,9 @@ ${businessName}`;
                   "${giftCard.message}"
                 </p>
               </div>
-              ` : ""}
+              `
+                  : ""
+              }
 
               <!-- Gift Card Display -->
               <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 12px; padding: 40px 30px; text-align: center; margin: 30px 0; box-shadow: 0 8px 16px rgba(245, 87, 108, 0.3);">
@@ -391,7 +438,11 @@ ${businessName}`;
                       </div>
                     </td>
                     <td style="padding: 12px 0; color: #666666; font-size: 15px; line-height: 1.6;">
-                      Visit ${businessName}${bookingUrl ? ` at <a href="${bookingUrl}" style="color: #f5576c; text-decoration: none; font-weight: 600;">${bookingUrl}</a>` : ""}
+                      Visit ${businessName}${
+    bookingUrl
+      ? ` at <a href="${bookingUrl}" style="color: #f5576c; text-decoration: none; font-weight: 600;">${bookingUrl}</a>`
+      : ""
+  }
                     </td>
                   </tr>
                   <tr>
@@ -427,14 +478,18 @@ ${businessName}`;
                 </table>
               </div>
 
-              ${bookingUrl ? `
+              ${
+                bookingUrl
+                  ? `
               <!-- CTA Button -->
               <div style="text-align: center; margin: 30px 0;">
                 <a href="${bookingUrl}" style="display: inline-block; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 12px rgba(245, 87, 108, 0.3);">
                   Book Your Appointment
                 </a>
               </div>
-              ` : ""}
+              `
+                  : ""
+              }
 
               <!-- Important Info -->
               <div style="background-color: #fff8e1; border-radius: 8px; padding: 20px; margin: 30px 0;">
@@ -482,7 +537,10 @@ ${businessName}`;
       text: textContent,
       html: htmlContent,
     });
-    console.log("[GIFT-CARD-MAILER] Gift card sent to recipient:", giftCard.recipientEmail);
+    console.log(
+      "[GIFT-CARD-MAILER] Gift card sent to recipient:",
+      giftCard.recipientEmail
+    );
   } catch (error) {
     console.error("[GIFT-CARD-MAILER] Failed to send to recipient:", error);
     throw error;
@@ -497,26 +555,34 @@ export async function sendGiftCardSaleNotification({
   tenant,
   specialist = null,
 }) {
-  console.log("[GIFT-CARD-MAILER] Sending sale notification for:", giftCard.code);
-  
+  console.log(
+    "[GIFT-CARD-MAILER] Sending sale notification for:",
+    giftCard.code
+  );
+
   const tx = getTransport();
   if (!tx) {
-    console.warn("[GIFT-CARD-MAILER] No transport - skipping sale notification");
+    console.warn(
+      "[GIFT-CARD-MAILER] No transport - skipping sale notification"
+    );
     return;
   }
 
   const from = process.env.SMTP_FROM || process.env.SMTP_USER;
-  const purchaseDate = new Date(giftCard.purchaseDate).toLocaleDateString("en-GB", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const purchaseDate = new Date(giftCard.purchaseDate).toLocaleDateString(
+    "en-GB",
+    {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }
+  );
   const amount = formatCurrency(giftCard.amount, giftCard.currency);
   const businessName = tenant?.businessName || tenant?.name || "Your Salon";
-  
+
   // Send to specialist if specified, otherwise to tenant admin
   const recipientEmail = specialist?.email || tenant?.email;
   const recipientName = specialist?.name || "Salon Team";
@@ -679,9 +745,15 @@ Booking System`;
       text: textContent,
       html: htmlContent,
     });
-    console.log("[GIFT-CARD-MAILER] Sale notification sent to:", recipientEmail);
+    console.log(
+      "[GIFT-CARD-MAILER] Sale notification sent to:",
+      recipientEmail
+    );
   } catch (error) {
-    console.error("[GIFT-CARD-MAILER] Failed to send sale notification:", error);
+    console.error(
+      "[GIFT-CARD-MAILER] Failed to send sale notification:",
+      error
+    );
     throw error;
   }
 }

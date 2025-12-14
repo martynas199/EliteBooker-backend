@@ -80,6 +80,11 @@ const SpecialistSchema = new mongoose.Schema(
 
     // Stripe Connect fields
     stripeAccountId: { type: String, index: true },
+    stripeAccountType: {
+      type: String,
+      enum: ["standard"],
+      default: "standard",
+    },
     stripeStatus: {
       type: String,
       enum: [

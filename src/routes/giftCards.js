@@ -31,7 +31,8 @@ router.post("/", authenticateClient, async (req, res) => {
     // Validation
     if (!tenantId || !amount || !recipientName || !recipientEmail) {
       return res.status(400).json({
-        error: "Missing required fields: tenantId, amount, recipientName, recipientEmail",
+        error:
+          "Missing required fields: tenantId, amount, recipientName, recipientEmail",
       });
     }
 
@@ -95,8 +96,11 @@ router.post("/", authenticateClient, async (req, res) => {
     // Send emails (async, don't wait for them)
     (async () => {
       try {
-        console.log("[GIFT CARDS] Sending emails for gift card:", giftCard.code);
-        
+        console.log(
+          "[GIFT CARDS] Sending emails for gift card:",
+          giftCard.code
+        );
+
         // Get populated tenant and specialist data for emails
         const populatedGiftCard = await GiftCard.findById(giftCard._id)
           .populate("tenantId")
@@ -128,8 +132,11 @@ router.post("/", authenticateClient, async (req, res) => {
         giftCard.status = "sent";
         giftCard.sentDate = new Date();
         await giftCard.save();
-        
-        console.log("[GIFT CARDS] All emails sent successfully for:", giftCard.code);
+
+        console.log(
+          "[GIFT CARDS] All emails sent successfully for:",
+          giftCard.code
+        );
       } catch (emailError) {
         console.error("[GIFT CARDS] Email sending failed:", emailError);
         // Don't fail the request if emails fail
@@ -231,7 +238,9 @@ router.patch("/:code/redeem", authenticateClient, async (req, res) => {
     });
   } catch (error) {
     console.error("[GIFT CARDS] Redeem error:", error);
-    res.status(400).json({ error: error.message || "Failed to redeem gift card" });
+    res
+      .status(400)
+      .json({ error: error.message || "Failed to redeem gift card" });
   }
 });
 
