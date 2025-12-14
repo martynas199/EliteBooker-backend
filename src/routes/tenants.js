@@ -9,6 +9,7 @@ import { z } from "zod";
 import Tenant from "../models/Tenant.js";
 import Admin from "../models/Admin.js";
 import Settings from "../models/Settings.js";
+import HeroSection from "../models/HeroSection.js";
 import Specialist from "../models/Specialist.js";
 import Location from "../models/Location.js";
 import { requireAdmin, requireSuperAdmin } from "../middleware/requireAdmin.js";
@@ -382,10 +383,67 @@ router.get("/public", async (req, res) => {
       .limit(parseInt(limit))
       .lean();
 
+    // Enrich tenants with hero image from HeroSection or Settings
+    console.log(
+      `[TENANTS/PUBLIC] Enriching ${tenants.length} tenants with hero images...`
+    );
+    const enrichedTenants = await Promise.all(
+      tenants.map(async (tenant) => {
+        try {
+          // Check HeroSection first (like landing pages do)
+          const heroSection = await HeroSection.findOne({ tenantId: tenant._id })
+            .select("centerImage")
+            .sort({ order: 1 })
+            .lean();
+          
+          // Then check Settings as fallback
+          const settings = await Settings.findOne({ tenantId: tenant._id })
+            .select("heroImage")
+            .lean();
+
+          const heroUrl = heroSection?.centerImage?.url || settings?.heroImage?.url;
+
+          console.log(
+            `[TENANTS/PUBLIC] Tenant ${tenant.name} (${tenant._id}):`,
+            {
+              hasHeroSection: !!heroSection,
+              heroSectionUrl: heroSection?.centerImage?.url || "NONE",
+              hasSettings: !!settings,
+              settingsUrl: settings?.heroImage?.url || "NONE",
+              finalUrl: heroUrl || "NONE",
+            }
+          );
+
+          // Add heroImage to branding if found
+          if (heroUrl) {
+            return {
+              ...tenant,
+              branding: {
+                ...tenant.branding,
+                heroImages: [
+                  {
+                    url: heroUrl,
+                    alt: heroSection?.centerImage?.alt || settings?.heroImage?.alt || tenant.name,
+                  },
+                ],
+              },
+            };
+          }
+          return tenant;
+        } catch (err) {
+          console.error(
+            `Error fetching hero image for tenant ${tenant._id}:`,
+            err
+          );
+          return tenant;
+        }
+      })
+    );
+
     res.json({
       success: true,
-      tenants,
-      count: tenants.length,
+      tenants: enrichedTenants,
+      count: enrichedTenants.length,
     });
   } catch (error) {
     console.error("Get public tenants error:", error);

@@ -43,10 +43,10 @@ r.get("/", async (req, res) => {
 
 r.get("/:id", async (req, res) => {
   const { id } = req.params;
-  
+
   try {
     const appointment = await AppointmentService.getAppointmentById(id);
-    
+
     if (!appointment) {
       return res.status(404).json({ error: "Appointment not found" });
     }

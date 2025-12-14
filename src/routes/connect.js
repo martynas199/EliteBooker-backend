@@ -59,10 +59,12 @@ router.post("/onboard", async (req, res) => {
 
     // Create new Stripe Connect account if doesn't exist
     if (!stripeAccountId) {
-      console.log(`[CONNECT] Creating Standard account for specialist ${specialistId}`);
-      
+      console.log(
+        `[CONNECT] Creating Standard account for specialist ${specialistId}`
+      );
+
       const account = await stripe.accounts.create({
-        type: 'standard',
+        type: "standard",
         country: "GB",
         email: email,
         capabilities: {
@@ -76,10 +78,10 @@ router.post("/onboard", async (req, res) => {
 
       // Save Stripe account ID and type to database
       Specialist.stripeAccountId = stripeAccountId;
-      Specialist.stripeAccountType = 'standard';
+      Specialist.stripeAccountType = "standard";
       Specialist.stripeStatus = "pending";
       await Specialist.save();
-      
+
       console.log(`[CONNECT] Created Standard account: ${stripeAccountId}`);
     }
 
@@ -98,7 +100,7 @@ router.post("/onboard", async (req, res) => {
       success: true,
       url: accountLink.url,
       stripeAccountId: stripeAccountId,
-      accountType: 'standard',
+      accountType: "standard",
     });
   } catch (error) {
     console.error("Stripe Connect onboarding error:", error);
@@ -176,7 +178,7 @@ router.get("/status/:specialistId", async (req, res) => {
       status: Specialist.stripeStatus,
       connected: isComplete,
       stripeAccountId: Specialist.stripeAccountId,
-      accountType: 'standard',
+      accountType: "standard",
       chargesEnabled: account.charges_enabled,
       detailsSubmitted: account.details_submitted,
       payoutsEnabled: account.payouts_enabled,

@@ -24,6 +24,7 @@ POST /api/connect/onboard
 ```
 
 The system creates a **Standard account** with:
+
 - Type: `standard`
 - Country: `GB`
 - Capabilities: `transfers` and `card_payments`
@@ -43,6 +44,7 @@ payment_intent_data: {
 ```
 
 **How money flows:**
+
 1. Client pays £50 for a booking
 2. Stripe takes transaction fee (~2.9% + £0.30 = £1.75)
 3. Platform takes £0.50 application fee
@@ -65,24 +67,28 @@ payment_intent_data: {
 ## API Endpoints
 
 ### 1. Create Onboarding Link
+
 ```javascript
-POST /api/connect/onboard
+POST / api / connect / onboard;
 // Creates Standard account and returns Stripe-hosted onboarding URL
 ```
 
 ### 2. Check Account Status
+
 ```javascript
 GET /api/connect/status/:specialistId
 // Returns connection status and account details
 ```
 
 ### 3. Dashboard Access
+
 ```javascript
 POST /api/connect/dashboard-link/:specialistId
 // Generates login link to Stripe Dashboard
 ```
 
 ### 4. Disconnect Account
+
 ```javascript
 DELETE /api/connect/disconnect/:specialistId
 // Removes Stripe connection (for testing)
@@ -91,11 +97,13 @@ DELETE /api/connect/disconnect/:specialistId
 ## Cost Comparison
 
 ### Standard Accounts (Current Setup)
+
 - Monthly fee: **£0**
 - Per transaction: 2.9% + £0.30 (Stripe standard rate)
 - **Total for 100 inactive specialists: £0/month**
 
 ### Express Accounts (Old Approach)
+
 - Monthly fee: **£2 per account**
 - Per transaction: 2.9% + £0.30 (same rate)
 - **Total for 100 inactive specialists: £200/month = £2,400/year**
@@ -103,12 +111,14 @@ DELETE /api/connect/disconnect/:specialistId
 ## Testing
 
 ### Test Mode
+
 1. Use test API keys in `.env`
 2. Create test specialist account
 3. Complete onboarding with test data
 4. Process test payment (use card `4242 4242 4242 4242`)
 
 ### Verify Standard Account
+
 ```javascript
 // Check account type in Stripe Dashboard
 // Should show: Account type = Standard
@@ -127,6 +137,7 @@ DELETE /api/connect/disconnect/:specialistId
 ## Support
 
 For Stripe Connect issues:
+
 - Check Stripe Dashboard for account status
 - Review Stripe logs for webhook events
 - Test in Stripe test mode before going live

@@ -86,13 +86,15 @@ const AppointmentSchema = new mongoose.Schema(
       index: true,
     },
     // Multiple services support
-    services: [{
-      serviceId: { type: mongoose.Schema.Types.ObjectId, ref: "Service" },
-      variantName: String,
-      price: Number,
-      duration: Number, // in minutes
-      _id: false
-    }],
+    services: [
+      {
+        serviceId: { type: mongoose.Schema.Types.ObjectId, ref: "Service" },
+        variantName: String,
+        price: Number,
+        duration: Number, // in minutes
+        _id: false,
+      },
+    ],
     // Legacy single service fields (kept for backward compatibility)
     serviceId: { type: mongoose.Schema.Types.ObjectId, ref: "Service" },
     variantName: String,

@@ -240,7 +240,9 @@ r.get("/confirm", async (req, res, next) => {
             _id: { $in: serviceIds },
           }).lean();
           // Use first service for email display (or combine names)
-          serviceForEmail = services[0] || { name: confirmedAppt.services[0].serviceName || "Service" };
+          serviceForEmail = services[0] || {
+            name: confirmedAppt.services[0].serviceName || "Service",
+          };
         }
       }
 
@@ -257,13 +259,14 @@ r.get("/confirm", async (req, res, next) => {
       // Send SMS confirmation
       if (confirmedAppt.client?.phone) {
         let serviceName = "your service";
-        
+
         // Handle both single and multi-service appointments
         if (confirmedAppt.serviceId?.name) {
           serviceName = confirmedAppt.serviceId.name;
         } else if (confirmedAppt.services?.length > 0) {
           // For multi-service: show first service name or combine
-          serviceName = confirmedAppt.services[0].serviceName || "your services";
+          serviceName =
+            confirmedAppt.services[0].serviceName || "your services";
         } else if (confirmedAppt.serviceName) {
           serviceName = confirmedAppt.serviceName;
         }
@@ -419,15 +422,15 @@ r.post("/create-session", async (req, res, next) => {
 
       const start = new Date(startISO);
       const end = new Date(start.getTime() + totalDuration * 60000);
-      
-      console.log('[CHECKOUT] Checking slot availability:', {
+
+      console.log("[CHECKOUT] Checking slot availability:", {
         specialistId: specialist._id,
         start: start.toISOString(),
         end: end.toISOString(),
         totalDuration,
-        servicesCount: servicesData.length
+        servicesCount: servicesData.length,
       });
-      
+
       // Check for conflicts, excluding:
       // - Cancelled appointments
       // - reserved_unpaid appointments older than 3 minutes (expired)
@@ -446,20 +449,20 @@ r.post("/create-session", async (req, res, next) => {
           },
         ],
       }).lean();
-      
+
       if (conflict) {
-        console.log('[CHECKOUT] Slot conflict detected:', {
+        console.log("[CHECKOUT] Slot conflict detected:", {
           conflictingAppointmentId: conflict._id,
           conflictStart: conflict.start,
           conflictEnd: conflict.end,
           conflictStatus: conflict.status,
           requestedStart: start.toISOString(),
-          requestedEnd: end.toISOString()
+          requestedEnd: end.toISOString(),
         });
         return res.status(409).json({ error: "Slot no longer available" });
       }
-      
-      console.log('[CHECKOUT] No conflicts found, slot is available');
+
+      console.log("[CHECKOUT] No conflicts found, slot is available");
 
       // Check if client is logged in via clientToken cookie
       let globalClient = null;
@@ -593,10 +596,10 @@ r.post("/create-session", async (req, res, next) => {
     let serviceDescription;
     if (appt.services && appt.services.length > 0) {
       // Multi-service booking - use bulk service fetch for performance
-      const serviceIds = appt.services
-        .map((s) => s.serviceId)
-        .filter(Boolean);
-      const serviceMap = await AppointmentService.getServiceMapByIds(serviceIds);
+      const serviceIds = appt.services.map((s) => s.serviceId).filter(Boolean);
+      const serviceMap = await AppointmentService.getServiceMapByIds(
+        serviceIds
+      );
 
       if (appt.services.length === 1) {
         const svc = serviceMap.get(appt.services[0].serviceId.toString());
@@ -691,11 +694,13 @@ r.post("/create-session", async (req, res, next) => {
             unit_amount,
             product_data: {
               name: serviceName,
-              description: serviceDescription || (isDeposit
-                ? `Deposit payment (${depositPct}% of total ${baseAmount.toFixed(
-                    2
-                  )})`
-                : `Full payment (total ${baseAmount.toFixed(2)})`),
+              description:
+                serviceDescription ||
+                (isDeposit
+                  ? `Deposit payment (${depositPct}% of total ${baseAmount.toFixed(
+                      2
+                    )})`
+                  : `Full payment (total ${baseAmount.toFixed(2)})`),
             },
           },
           quantity: 1,
