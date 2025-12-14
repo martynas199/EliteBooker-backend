@@ -228,9 +228,25 @@ r.get("/confirm", async (req, res, next) => {
         confirmedAppt.client?.email
       );
 
+      // For multi-service bookings, fetch service details
+      let serviceForEmail = confirmedAppt.serviceId;
+      if (!serviceForEmail && confirmedAppt.services?.length > 0) {
+        // Bulk fetch all services for multi-service appointment
+        const serviceIds = confirmedAppt.services
+          .map((s) => s.serviceId)
+          .filter(Boolean);
+        if (serviceIds.length > 0) {
+          const services = await Service.find({
+            _id: { $in: serviceIds },
+          }).lean();
+          // Use first service for email display (or combine names)
+          serviceForEmail = services[0] || { name: confirmedAppt.services[0].serviceName || "Service" };
+        }
+      }
+
       await sendConfirmationEmail({
         appointment: confirmedAppt,
-        service: confirmedAppt.serviceId,
+        service: serviceForEmail || { name: "Service" },
         specialist: confirmedAppt.specialistId,
       });
       console.log(
@@ -240,10 +256,17 @@ r.get("/confirm", async (req, res, next) => {
 
       // Send SMS confirmation
       if (confirmedAppt.client?.phone) {
-        const serviceName =
-          confirmedAppt.serviceId?.name ||
-          confirmedAppt.serviceName ||
-          "your service";
+        let serviceName = "your service";
+        
+        // Handle both single and multi-service appointments
+        if (confirmedAppt.serviceId?.name) {
+          serviceName = confirmedAppt.serviceId.name;
+        } else if (confirmedAppt.services?.length > 0) {
+          // For multi-service: show first service name or combine
+          serviceName = confirmedAppt.services[0].serviceName || "your services";
+        } else if (confirmedAppt.serviceName) {
+          serviceName = confirmedAppt.serviceName;
+        }
 
         // Extract time from start Date object
         const startDate = new Date(confirmedAppt.start);
