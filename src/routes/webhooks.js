@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import Appointment from "../models/Appointment.js";
 import Specialist from "../models/Specialist.js";
 import Order from "../models/Order.js";
+import Payment from "../models/Payment.js";
 import {
   sendConfirmationEmail,
   sendOrderConfirmationEmail,
@@ -806,6 +807,234 @@ r.post("/stripe", async (req, res) => {
           );
         } catch (err) {
           console.error("[WEBHOOK] subscription deletion error:", err);
+        }
+        break;
+      }
+
+      // ==================== TAP TO PAY PAYMENT EVENTS ====================
+
+      case "payment_intent.succeeded": {
+        const paymentIntent = event.data.object;
+        console.log("[WEBHOOK] Payment intent succeeded:", paymentIntent.id);
+
+        try {
+          const payment = await Payment.findOne({
+            "stripe.paymentIntentId": paymentIntent.id,
+          })
+            .populate("client", "firstName lastName email phone")
+            .populate("tenant", "name settings");
+
+          if (!payment) {
+            console.log(
+              "[WEBHOOK] Payment not found for intent:",
+              paymentIntent.id
+            );
+            break;
+          }
+
+          // Update payment status
+          payment.status = "succeeded";
+          payment.processedAt = new Date();
+
+          // Extract card details from charge
+          if (paymentIntent.charges?.data?.[0]) {
+            const charge = paymentIntent.charges.data[0];
+            payment.stripe.chargeId = charge.id;
+            payment.stripe.paymentMethodId = charge.payment_method;
+
+            // Get card details if available
+            if (charge.payment_method_details?.card_present) {
+              payment.stripe.cardBrand =
+                charge.payment_method_details.card_present.brand;
+              payment.stripe.cardLast4 =
+                charge.payment_method_details.card_present.last4;
+            }
+
+            // Calculate actual fees from charge
+            if (charge.balance_transaction) {
+              try {
+                const stripe = getStripe();
+                const balanceTransaction =
+                  await stripe.balanceTransactions.retrieve(
+                    charge.balance_transaction,
+                    {
+                      stripeAccount: payment.stripe.connectedAccountId,
+                    }
+                  );
+
+                payment.fees.stripe = Math.abs(balanceTransaction.fee);
+                payment.fees.total =
+                  payment.fees.stripe + payment.fees.platform;
+                payment.netAmount = payment.total - payment.fees.total;
+              } catch (feeError) {
+                console.error(
+                  "[WEBHOOK] Error fetching balance transaction:",
+                  feeError
+                );
+              }
+            }
+          }
+
+          // Generate receipt number
+          if (!payment.receipt.receiptNumber) {
+            payment.receipt.receiptNumber = await Payment.generateReceiptNumber(
+              payment.tenant._id
+            );
+          }
+
+          await payment.save();
+          console.log("[WEBHOOK] Payment updated successfully:", payment._id);
+
+          // Update appointment status if payment is linked to an appointment
+          if (payment.appointment) {
+            const appointment = await Appointment.findById(payment.appointment);
+            if (appointment) {
+              // Check if appointment is now fully paid
+              const allPayments = await Payment.find({
+                appointment: payment.appointment,
+                status: "succeeded",
+              });
+
+              const totalPaid = allPayments.reduce(
+                (sum, p) => sum + p.total,
+                0
+              );
+              const appointmentTotal = appointment.services.reduce(
+                (sum, s) => sum + (s.price || 0),
+                0
+              );
+
+              if (totalPaid >= appointmentTotal) {
+                appointment.payment = appointment.payment || {};
+                appointment.payment.status = "succeeded";
+              } else {
+                appointment.payment = appointment.payment || {};
+                appointment.payment.status = "partially_paid";
+              }
+
+              // Add payment to appointment audit trail
+              appointment.audit = appointment.audit || [];
+              appointment.audit.push({
+                at: new Date(),
+                action: "tap_to_pay_payment_received",
+                meta: {
+                  paymentId: payment._id,
+                  amount: payment.total,
+                  method: payment.method,
+                  receiptNumber: payment.receipt.receiptNumber,
+                },
+              });
+
+              await appointment.save();
+              console.log(
+                "[WEBHOOK] Appointment payment status updated:",
+                appointment._id
+              );
+            }
+          }
+
+          // TODO: Send receipt via email/SMS
+          console.log(
+            "[WEBHOOK] Receipt should be sent to:",
+            payment.client.email || payment.client.phone
+          );
+        } catch (error) {
+          console.error("[WEBHOOK] Error handling payment success:", error);
+        }
+        break;
+      }
+
+      case "payment_intent.payment_failed": {
+        const paymentIntent = event.data.object;
+        console.log("[WEBHOOK] Payment intent failed:", paymentIntent.id);
+
+        try {
+          const payment = await Payment.findOne({
+            "stripe.paymentIntentId": paymentIntent.id,
+          });
+
+          if (!payment) {
+            console.log(
+              "[WEBHOOK] Payment not found for intent:",
+              paymentIntent.id
+            );
+            break;
+          }
+
+          payment.status = "failed";
+          payment.failedAt = new Date();
+          payment.error = {
+            code: paymentIntent.last_payment_error?.code,
+            message:
+              paymentIntent.last_payment_error?.message || "Payment failed",
+            occurredAt: new Date(),
+          };
+
+          await payment.save();
+          console.log("[WEBHOOK] Payment failure recorded:", payment._id);
+        } catch (error) {
+          console.error("[WEBHOOK] Error handling payment failure:", error);
+        }
+        break;
+      }
+
+      case "payment_intent.canceled": {
+        const paymentIntent = event.data.object;
+        console.log("[WEBHOOK] Payment intent canceled:", paymentIntent.id);
+
+        try {
+          const payment = await Payment.findOne({
+            "stripe.paymentIntentId": paymentIntent.id,
+          });
+
+          if (!payment) {
+            console.log(
+              "[WEBHOOK] Payment not found for intent:",
+              paymentIntent.id
+            );
+            break;
+          }
+
+          payment.status = "canceled";
+          await payment.save();
+          console.log("[WEBHOOK] Payment cancellation recorded:", payment._id);
+        } catch (error) {
+          console.error(
+            "[WEBHOOK] Error handling payment cancellation:",
+            error
+          );
+        }
+        break;
+      }
+
+      case "charge.refunded": {
+        const charge = event.data.object;
+        console.log("[WEBHOOK] Charge refunded:", charge.id);
+
+        try {
+          const payment = await Payment.findOne({
+            "stripe.chargeId": charge.id,
+          });
+
+          if (!payment) {
+            console.log("[WEBHOOK] Payment not found for charge:", charge.id);
+            break;
+          }
+
+          // Update refund status based on total refunded
+          const totalRefunded = charge.amount_refunded;
+
+          if (totalRefunded >= payment.total) {
+            payment.status = "refunded";
+          } else if (totalRefunded > 0) {
+            payment.status = "partially_refunded";
+          }
+
+          payment.refundedAt = new Date();
+          await payment.save();
+          console.log("[WEBHOOK] Refund recorded:", payment._id);
+        } catch (error) {
+          console.error("[WEBHOOK] Error handling refund:", error);
         }
         break;
       }

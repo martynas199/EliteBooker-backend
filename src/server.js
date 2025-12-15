@@ -44,6 +44,7 @@ import adminClientsRouter from "./routes/admin/clients.js";
 import clientRouter from "./routes/client.js";
 import favoritesRouter from "./routes/favorites.js";
 import giftCardsRouter from "./routes/giftCards.js";
+import paymentsRouter from "./routes/payments.js";
 import { startReminderCron } from "./services/reminderService.js";
 import {
   apiLimiter,
@@ -248,6 +249,7 @@ app.use("/api/reports", reportsRouter); // Revenue and earnings reports
 app.use("/api/admin/admins", adminsRouter); // Admin management routes
 app.use("/api/admin/clients", adminClientsRouter); // Client management routes
 app.use("/api/analytics", analyticsRouter); // Profit analytics routes
+app.use("/api/payments", paymentsRouter); // Tap to Pay payment routes
 app.use("/api/subscriptions", subscriptionsRouter); // E-commerce subscription routes
 app.use("/api/calendar", calendarRouter); // Google Calendar integration routes
 app.use("/api/features", featuresRouter); // Premium features subscription routes

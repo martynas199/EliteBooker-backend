@@ -406,27 +406,19 @@ router.get("/public", async (req, res) => {
             .lean()
             .exec();
 
-          const heroUrl =
-            heroSection?.centerImage?.url || settings?.heroImage?.url;
-
-          // Add heroImage to branding if found
-          if (heroUrl) {
+          // Add centerImage directly to tenant (simpler structure)
+          if (heroSection?.centerImage) {
             return {
               ...tenant,
-              branding: {
-                ...tenant.branding,
-                heroImages: [
-                  {
-                    url: heroUrl,
-                    alt:
-                      heroSection?.centerImage?.alt ||
-                      settings?.heroImage?.alt ||
-                      tenant.name,
-                  },
-                ],
-              },
+              centerImage: heroSection.centerImage,
+            };
+          } else if (settings?.heroImage) {
+            return {
+              ...tenant,
+              centerImage: settings.heroImage,
             };
           }
+
           return tenant;
         } catch (err) {
           console.error(
