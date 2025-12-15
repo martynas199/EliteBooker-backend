@@ -44,6 +44,7 @@ import adminClientsRouter from "./routes/admin/clients.js";
 import clientRouter from "./routes/client.js";
 import favoritesRouter from "./routes/favorites.js";
 import giftCardsRouter from "./routes/giftCards.js";
+import { startReminderCron } from "./services/reminderService.js";
 import {
   apiLimiter,
   authLimiter,
@@ -152,6 +153,10 @@ const mongoOptions = {
 try {
   await mongoose.connect(MONGO_URI, mongoOptions);
   console.log("✓ MongoDB connected successfully");
+
+  // Start reminder cron job (runs every 1 hour, 07:00-21:00 only)
+  console.log("Starting appointment reminder cron job...");
+  startReminderCron();
 } catch (error) {
   console.error("MongoDB connection error:", error.message);
   console.error(

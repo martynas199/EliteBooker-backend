@@ -126,6 +126,13 @@ const AppointmentSchema = new mongoose.Schema(
     // Google Calendar integration
     googleCalendarEventId: String, // Store event ID for updates/deletions
 
+    // Reminder tracking
+    reminder: {
+      sent: { type: Boolean, default: false },
+      sentAt: Date,
+      types: [{ type: String, enum: ["sms", "email"] }], // Which notifications were sent
+    },
+
     // Multi-Location Support
     locationId: {
       type: mongoose.Schema.Types.ObjectId,
