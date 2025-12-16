@@ -40,6 +40,7 @@ import tenantsRouter from "./routes/tenants.js";
 import calendarRouter from "./routes/calendar.js";
 import locksRouter from "./routes/locks.js";
 import featuresRouter from "./routes/features.js";
+import seminarRoutes from "./routes/seminarRoutes.js";
 import adminClientsRouter from "./routes/admin/clients.js";
 import clientRouter from "./routes/client.js";
 import favoritesRouter from "./routes/favorites.js";
@@ -217,6 +218,7 @@ app.use("/api/slots", readLimiter, slotsRouter);
 app.use("/api/salon", readLimiter, salonRouter);
 app.use("/api/hero-sections", readLimiter, heroSectionsRouter);
 app.use("/api/products", readLimiter, productsRouter);
+app.use("/api/seminars", readLimiter, seminarRoutes); // Seminar routes (public + protected)
 app.use("/api/about-us", aboutUsRouter);
 app.use("/api/blog-posts", readLimiter, blogPostsRouter);
 app.use("/api/locations", readLimiter, locationsRouter);

@@ -79,6 +79,20 @@ export function clearTenantCache(tenantId = null) {
  */
 export async function resolveTenant(req, res, next) {
   try {
+    // Skip tenant resolution for public auth routes that don't need tenant context
+    const publicAuthRoutes = [
+      "/api/auth/forgot-password",
+      "/api/auth/reset-password",
+      "/api/tenants/register",
+    ];
+
+    if (publicAuthRoutes.includes(req.path)) {
+      req.tenant = null;
+      req.tenantId = null;
+      req.tenantResolution = "skipped-public-route";
+      return next();
+    }
+
     let tenant = null;
 
     console.log("[resolveTenant] Request:", {
