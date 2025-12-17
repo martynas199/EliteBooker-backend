@@ -18,7 +18,7 @@ class AppointmentRepository {
   async findAll({ skip = 0, limit = 50, filters = {}, tenantId } = {}) {
     // CRITICAL: Always filter by tenantId to prevent cross-tenant data leaks
     const query = tenantId ? { ...filters, tenantId } : filters;
-    
+
     return await Appointment.find(query)
       .sort({ start: -1 })
       .skip(skip)

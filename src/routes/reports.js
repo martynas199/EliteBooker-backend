@@ -19,7 +19,7 @@ router.get("/revenue", async (req, res) => {
 
     // CRITICAL: Get tenantId from request (set by optionalAuth middleware)
     const tenantId = req.tenantId;
-    
+
     if (!tenantId) {
       console.warn("[Reports Revenue] No tenantId found in request");
       return res.status(403).json({ error: "Tenant context required" });

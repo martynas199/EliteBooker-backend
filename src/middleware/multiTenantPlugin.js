@@ -10,6 +10,10 @@
  */
 
 import mongoose from "mongoose";
+import {
+  getTenantContext,
+  enterTenantContext,
+} from "./tenantContextStorage.js";
 
 /**
  * Plugin to add multi-tenant support to a schema
@@ -38,8 +42,8 @@ export function multiTenantPlugin(schema, options = {}) {
    * Uses req.tenantId from the request context
    */
   function addTenantFilter(next) {
-    // Get tenant ID from query options (set by middleware)
-    const tenantId = this.getOptions().tenantId;
+    // Get tenant ID from query options or async context
+    const tenantId = this.getOptions().tenantId || getTenantContext();
 
     if (tenantId) {
       // Add tenantId to the query filter
@@ -70,9 +74,12 @@ export function multiTenantPlugin(schema, options = {}) {
    * Uses req.tenantId from the request context
    */
   schema.pre("save", function (next) {
+    const tenantIdFromOptions =
+      this.$__.saveOptions?.tenantId || getTenantContext();
+
     // Get tenant ID from options (set by middleware)
-    if (!this.tenantId && this.$__.saveOptions?.tenantId) {
-      this.tenantId = this.$__.saveOptions.tenantId;
+    if (!this.tenantId && tenantIdFromOptions) {
+      this.tenantId = tenantIdFromOptions;
     }
 
     // Validate tenantId exists before saving
@@ -226,49 +233,12 @@ export function setDocumentTenantContext(doc, tenantId) {
  * Express middleware to attach tenant context to Mongoose operations
  * Should be used after tenant resolution middleware
  */
-export function attachTenantToModels(req, res, next) {
-  console.log("[attachTenantToModels] Called with tenantId:", req.tenantId);
-
+export function attachTenantToModels(req, _res, next) {
   if (!req.tenantId) {
-    // No tenant context - skip for public routes or handle error
-    console.log("[attachTenantToModels] No tenantId, skipping");
     return next();
   }
 
-  console.log(
-    "[attachTenantToModels] Setting up Mongoose overrides for tenantId:",
-    req.tenantId
-  );
-
-  // Store original methods
-  const originalExec = mongoose.Query.prototype.exec;
-  const originalSave = mongoose.Model.prototype.save;
-
-  // Override Query.exec to add tenant context
-  mongoose.Query.prototype.exec = function (callback) {
-    if (!this.getOptions().tenantId) {
-      this.setOptions({ tenantId: req.tenantId });
-    }
-    return originalExec.call(this, callback);
-  };
-
-  // Override Model.save to add tenant context
-  mongoose.Model.prototype.save = function (options) {
-    if (!this.$__.saveOptions) {
-      this.$__.saveOptions = {};
-    }
-    if (!this.$__.saveOptions.tenantId) {
-      this.$__.saveOptions.tenantId = req.tenantId;
-    }
-    return originalSave.call(this, options);
-  };
-
-  // Restore original methods after request
-  res.on("finish", () => {
-    mongoose.Query.prototype.exec = originalExec;
-    mongoose.Model.prototype.save = originalSave;
-  });
-
+  enterTenantContext(req.tenantId);
   next();
 }
 

@@ -11,13 +11,39 @@ import {
   sendConfirmationEmail,
 } from "../emails/mailer.js";
 import AppointmentService from "../services/appointmentService.js";
+import requireAdmin from "../middleware/requireAdmin.js";
 const r = Router();
+
+r.get("/metrics", requireAdmin, async (req, res) => {
+  try {
+    if (!req.tenantId) {
+      return res.status(403).json({ error: "Tenant context required" });
+    }
+
+    const specialistIdParam =
+      typeof req.query.specialistId === "string" &&
+      req.query.specialistId.trim() !== "" &&
+      req.query.specialistId !== "all"
+        ? req.query.specialistId.trim()
+        : null;
+
+    const metrics = await AppointmentService.getDashboardMetrics({
+      tenantId: req.tenantId,
+      specialistId: specialistIdParam,
+    });
+
+    res.json(metrics);
+  } catch (err) {
+    console.error("appointments_metrics_err", err);
+    res.status(500).json({ error: "Failed to fetch appointment metrics" });
+  }
+});
 
 r.get("/", async (req, res) => {
   try {
     // CRITICAL: Always pass tenantId to prevent cross-tenant data leaks
     const tenantId = req.tenantId;
-    
+
     if (!tenantId) {
       console.warn("[Appointments] No tenantId found in request");
       return res.status(403).json({ error: "Tenant context required" });
@@ -41,7 +67,9 @@ r.get("/", async (req, res) => {
       res.json(result);
     } else {
       // Backward compatibility: return array if no page param
-      const appointments = await AppointmentService.getAllAppointments(tenantId);
+      const appointments = await AppointmentService.getAllAppointments(
+        tenantId
+      );
       res.json(appointments);
     }
   } catch (err) {

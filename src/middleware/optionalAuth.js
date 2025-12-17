@@ -4,6 +4,13 @@ import Admin from "../models/Admin.js";
 
 const JWT_SECRET =
   process.env.JWT_SECRET || "your-secret-key-change-this-in-production";
+const AUTH_DEBUG = process.env.AUTH_DEBUG === "true";
+
+const authDebugLog = (...args) => {
+  if (AUTH_DEBUG) {
+    console.log(...args);
+  }
+};
 
 /**
  * Optional authentication middleware
@@ -25,19 +32,19 @@ export async function optionalAuth(req, res, next) {
       req.headers.authorization.startsWith("Bearer")
     ) {
       token = req.headers.authorization.split(" ")[1];
-      console.log("[optionalAuth] Token from Bearer header");
+      authDebugLog("[optionalAuth] Token from Bearer header");
     } else if (req.cookies && req.cookies.accessToken) {
       token = req.cookies.accessToken;
-      console.log("[optionalAuth] Token from accessToken cookie");
+      authDebugLog("[optionalAuth] Token from accessToken cookie");
     } else if (req.cookies && req.cookies.jwt) {
       // Backward compatibility
       token = req.cookies.jwt;
-      console.log("[optionalAuth] Token from jwt cookie");
+      authDebugLog("[optionalAuth] Token from jwt cookie");
     }
 
     // No token = continue as guest
     if (!token) {
-      console.log("[optionalAuth] No token found, continuing as guest");
+      authDebugLog("[optionalAuth] No token found, continuing as guest");
       return next();
     }
 
@@ -45,13 +52,13 @@ export async function optionalAuth(req, res, next) {
     let decoded;
     try {
       decoded = jwt.verify(token, JWT_SECRET);
-      console.log(
+      authDebugLog(
         "[optionalAuth] Token verified, decoded admin ID:",
         decoded.id
       );
     } catch (jwtError) {
       // Invalid token - continue as guest
-      console.log(
+      authDebugLog(
         "[optionalAuth] Token verification failed:",
         jwtError.message
       );
@@ -65,7 +72,7 @@ export async function optionalAuth(req, res, next) {
     });
 
     if (!adminDoc) {
-      console.log("[optionalAuth] Admin not found for ID:", decoded.id);
+      authDebugLog("[optionalAuth] Admin not found for ID:", decoded.id);
       return next();
     }
 
@@ -85,11 +92,11 @@ export async function optionalAuth(req, res, next) {
     };
 
     if (!admin.active) {
-      console.log("[optionalAuth] Admin is inactive:", admin.email);
+      authDebugLog("[optionalAuth] Admin is inactive:", admin.email);
       return next();
     }
 
-    console.log("[optionalAuth] Admin found:", {
+    authDebugLog("[optionalAuth] Admin found:", {
       email: admin.email,
       tenantId: admin.tenantId,
       tenantIdType: admin.tenantId?.constructor.name,
@@ -111,7 +118,7 @@ export async function optionalAuth(req, res, next) {
     // This ensures routes like /api/salon can get the correct tenant info
     if (admin.tenantId && !req.tenantId) {
       req.tenantId = admin.tenantId;
-      console.log("[optionalAuth] Set req.tenantId from admin:", {
+      authDebugLog("[optionalAuth] Set req.tenantId from admin:", {
         value: req.tenantId,
         type: req.tenantId?.constructor.name,
         string: req.tenantId?.toString(),
@@ -119,7 +126,7 @@ export async function optionalAuth(req, res, next) {
         isSuperAdmin: admin.role === "super_admin",
       });
     } else if (req.tenantId) {
-      console.log(
+      authDebugLog(
         "[optionalAuth] tenantId already set by resolveTenant, keeping it:",
         {
           existing: req.tenantId.toString(),
@@ -132,7 +139,7 @@ export async function optionalAuth(req, res, next) {
     // Mark super admin status for access control
     if (admin.role === "super_admin") {
       req.isSuperAdmin = true;
-      console.log(
+      authDebugLog(
         "[optionalAuth] Super admin status set (but tenantId still set from token)"
       );
     }
