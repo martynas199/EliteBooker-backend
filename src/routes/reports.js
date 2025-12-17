@@ -17,6 +17,14 @@ router.get("/revenue", async (req, res) => {
   try {
     const { startDate, endDate, specialistId } = req.query;
 
+    // CRITICAL: Get tenantId from request (set by optionalAuth middleware)
+    const tenantId = req.tenantId;
+    
+    if (!tenantId) {
+      console.warn("[Reports Revenue] No tenantId found in request");
+      return res.status(403).json({ error: "Tenant context required" });
+    }
+
     // Build date filter
     const dateFilter = {};
     if (startDate) {
@@ -28,8 +36,9 @@ router.get("/revenue", async (req, res) => {
 
     const hasDateFilter = Object.keys(dateFilter).length > 0;
 
-    // 1. Aggregate booking revenue by specialist
+    // 1. Aggregate booking revenue by specialist FOR THIS TENANT ONLY
     const bookingMatch = {
+      tenantId, // CRITICAL: Filter by tenant
       status: { $in: ["confirmed", "completed"] },
       "payment.status": "succeeded",
     };
@@ -74,8 +83,9 @@ router.get("/revenue", async (req, res) => {
       },
     ]);
 
-    // 2. Aggregate product revenue by specialist
+    // 2. Aggregate product revenue by specialist FOR THIS TENANT ONLY
     const orderMatch = {
+      tenantId, // CRITICAL: Filter by tenant
       paymentStatus: "paid",
       orderStatus: { $ne: "cancelled" },
     };

@@ -9,15 +9,16 @@ class AppointmentService {
    * Get appointments with paginated results and populated services
    * Performance optimized with bulk fetching
    * @param {Object} options - Query options
+   * @param {string} options.tenantId - Tenant ID for filtering
    * @returns {Promise<Object>} Paginated appointments with populated services
    */
-  async getAppointmentsPaginated({ page = 1, limit = 50 } = {}) {
+  async getAppointmentsPaginated({ page = 1, limit = 50, tenantId = null } = {}) {
     const skip = (page - 1) * limit;
 
     // Fetch appointments and total count in parallel
     const [appointments, total] = await Promise.all([
-      AppointmentRepository.findAll({ skip, limit }),
-      AppointmentRepository.count(),
+      AppointmentRepository.findAll({ skip, limit, tenantId }),
+      AppointmentRepository.count({}, tenantId),
     ]);
 
     // Bulk populate services for performance
@@ -39,12 +40,14 @@ class AppointmentService {
 
   /**
    * Get all appointments with populated services (no pagination)
+   * @param {string} tenantId - Tenant ID for filtering
    * @returns {Promise<Array>} All appointments with populated services
    */
-  async getAllAppointments() {
+  async getAllAppointments(tenantId = null) {
     const appointments = await AppointmentRepository.findAll({
       skip: 0,
       limit: Number.MAX_SAFE_INTEGER,
+      tenantId,
     });
     return await this.populateServicesInBulk(appointments);
   }

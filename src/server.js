@@ -56,6 +56,7 @@ import {
 } from "./middleware/rateLimiter.js";
 import { resolveTenant } from "./middleware/resolveTenant.js";
 import { attachTenantToModels } from "./middleware/multiTenantPlugin.js";
+import optionalAuth from "./middleware/optionalAuth.js";
 
 const app = express();
 
@@ -189,6 +190,9 @@ app.use(passport.initialize());
 app.use(resolveTenant);
 // Attach tenant context to Mongoose operations
 app.use(attachTenantToModels);
+// Optional authentication middleware (extracts admin from JWT and sets req.tenantId)
+// This must come AFTER resolveTenant to allow tenant resolution from JWT token
+app.use(optionalAuth);
 
 // Authentication routes with stricter rate limiting (BEFORE general limiter)
 // Admin auth

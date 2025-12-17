@@ -15,6 +15,14 @@ const r = Router();
 
 r.get("/", async (req, res) => {
   try {
+    // CRITICAL: Always pass tenantId to prevent cross-tenant data leaks
+    const tenantId = req.tenantId;
+    
+    if (!tenantId) {
+      console.warn("[Appointments] No tenantId found in request");
+      return res.status(403).json({ error: "Tenant context required" });
+    }
+
     // Check if pagination is requested
     const usePagination = req.query.page !== undefined;
 
@@ -23,16 +31,17 @@ r.get("/", async (req, res) => {
       const page = Math.max(1, parseInt(req.query.page) || 1);
       const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
 
-      // Use service layer for paginated results
+      // Use service layer for paginated results with tenant filtering
       const result = await AppointmentService.getAppointmentsPaginated({
         page,
         limit,
+        tenantId,
       });
 
       res.json(result);
     } else {
       // Backward compatibility: return array if no page param
-      const appointments = await AppointmentService.getAllAppointments();
+      const appointments = await AppointmentService.getAllAppointments(tenantId);
       res.json(appointments);
     }
   } catch (err) {

@@ -12,10 +12,14 @@ class AppointmentRepository {
    * @param {number} options.skip - Number of records to skip
    * @param {number} options.limit - Max records to return
    * @param {Object} options.filters - Additional filters
+   * @param {string} options.tenantId - Tenant ID for multi-tenant filtering
    * @returns {Promise<Array>} Array of appointments
    */
-  async findAll({ skip = 0, limit = 50, filters = {} } = {}) {
-    return await Appointment.find(filters)
+  async findAll({ skip = 0, limit = 50, filters = {}, tenantId } = {}) {
+    // CRITICAL: Always filter by tenantId to prevent cross-tenant data leaks
+    const query = tenantId ? { ...filters, tenantId } : filters;
+    
+    return await Appointment.find(query)
       .sort({ start: -1 })
       .skip(skip)
       .limit(limit)
@@ -27,10 +31,13 @@ class AppointmentRepository {
   /**
    * Count total appointments
    * @param {Object} filters - Query filters
+   * @param {string} tenantId - Tenant ID for multi-tenant filtering
    * @returns {Promise<number>} Total count
    */
-  async count(filters = {}) {
-    return await Appointment.countDocuments(filters);
+  async count(filters = {}, tenantId = null) {
+    // CRITICAL: Always filter by tenantId to prevent cross-tenant data leaks
+    const query = tenantId ? { ...filters, tenantId } : filters;
+    return await Appointment.countDocuments(query);
   }
 
   /**

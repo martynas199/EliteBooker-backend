@@ -13,6 +13,14 @@ router.get("/", async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
 
+    // CRITICAL: Get tenantId from request (set by optionalAuth middleware)
+    const tenantId = req.tenantId;
+    
+    if (!tenantId) {
+      console.warn("[Revenue] No tenantId found in request");
+      return res.status(403).json({ error: "Tenant context required" });
+    }
+
     // Validate dates
     if (!startDate || !endDate) {
       return res.status(400).json({
@@ -33,9 +41,10 @@ router.get("/", async (req, res) => {
         .json({ error: "startDate must be before or equal to endDate" });
     }
 
-    // Find all completed appointments in the date range
+    // Find all completed appointments in the date range FOR THIS TENANT ONLY
     // Use 'start' field instead of 'date' and 'confirmed' status
     const appointments = await Appointment.find({
+      tenantId, // CRITICAL: Filter by tenant
       start: { $gte: start, $lte: end },
       status: { $in: ["completed", "confirmed"] },
     })
