@@ -22,12 +22,12 @@ router.get("/", async (req, res) => {
     // Flatten time-off with specialist info
     const allTimeOff = [];
     for (const specialist of specialists) {
-      if (Specialist.timeOff && Specialist.timeOff.length > 0) {
-        for (const timeOff of Specialist.timeOff) {
+      if (specialist.timeOff && specialist.timeOff.length > 0) {
+        for (const timeOff of specialist.timeOff) {
           allTimeOff.push({
             _id: timeOff._id,
-            specialistId: Specialist._id,
-            beauticianName: Specialist.name,
+            specialistId: specialist._id,
+            beauticianName: specialist.name,
             start: timeOff.start,
             end: timeOff.end,
             reason: timeOff.reason || "",
