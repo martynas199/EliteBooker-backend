@@ -389,7 +389,6 @@ r.post("/logout", async (req, res) => {
  */
 r.get("/me", async (req, res) => {
   try {
-
     // Get token from cookie or Authorization header
     // IMPORTANT: Prioritize Authorization header for cross-domain compatibility
     let token;

@@ -157,7 +157,6 @@ router.put(
           new: true,
           runValidators: true,
         }).populate("lastUpdatedBy", "name email");
-
       } else {
         // Create new
         aboutUs = await AboutUs.create(updateData);
@@ -165,7 +164,6 @@ router.put(
           "lastUpdatedBy",
           "name email"
         );
-
       }
 
       res.json({

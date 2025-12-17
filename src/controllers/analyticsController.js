@@ -44,7 +44,6 @@ export const getProfitAnalytics = async (req, res) => {
 
     // Filter by productId if specified
     if (productId) {
-
       orders = orders.filter((order) =>
         order.items.some(
           (item) => item.productId?._id?.toString() === productId
