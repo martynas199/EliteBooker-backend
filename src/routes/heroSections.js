@@ -70,7 +70,21 @@ r.get("/:id", requireAdmin, async (req, res) => {
 // POST create new hero section
 r.post("/", requireAdmin, async (req, res) => {
   try {
-    const section = new HeroSection(req.body);
+    // TENANT FILTERING: REQUIRED - Must validate tenant context
+    if (!req.tenantId) {
+      console.log("[HERO_SECTIONS] ERROR: No tenantId found in create request");
+      return res.status(400).json({
+        error: "Tenant context required. Please provide tenant information.",
+      });
+    }
+
+    // Ensure tenantId is set from authenticated admin, not from request body
+    const sectionData = {
+      ...req.body,
+      tenantId: req.tenantId, // Force tenant from auth context
+    };
+
+    const section = new HeroSection(sectionData);
     await section.save();
     res.status(201).json(section);
   } catch (error) {
@@ -82,8 +96,17 @@ r.post("/", requireAdmin, async (req, res) => {
 // PATCH update hero section
 r.patch("/:id", requireAdmin, async (req, res) => {
   try {
-    const section = await HeroSection.findByIdAndUpdate(
-      req.params.id,
+    // TENANT FILTERING: REQUIRED - Must validate tenant context
+    if (!req.tenantId) {
+      console.log("[HERO_SECTIONS] ERROR: No tenantId found in update request");
+      return res.status(400).json({
+        error: "Tenant context required. Please provide tenant information.",
+      });
+    }
+
+    // Find and update only within tenant scope
+    const section = await HeroSection.findOneAndUpdate(
+      { _id: req.params.id, tenantId: req.tenantId },
       req.body,
       { new: true, runValidators: true }
     );
@@ -100,7 +123,18 @@ r.patch("/:id", requireAdmin, async (req, res) => {
 // DELETE hero section
 r.delete("/:id", requireAdmin, async (req, res) => {
   try {
-    const section = await HeroSection.findById(req.params.id);
+    // TENANT FILTERING: REQUIRED - Must validate tenant context
+    if (!req.tenantId) {
+      console.log("[HERO_SECTIONS] ERROR: No tenantId found in delete request");
+      return res.status(400).json({
+        error: "Tenant context required. Please provide tenant information.",
+      });
+    }
+
+    const section = await HeroSection.findOne({
+      _id: req.params.id,
+      tenantId: req.tenantId,
+    });
     if (!section) {
       return res.status(404).json({ error: "Hero section not found" });
     }
@@ -140,8 +174,20 @@ r.post(
         return res.status(400).json({ error: "No image file provided" });
       }
 
-      const section = await HeroSection.findById(req.params.id);
+      // TENANT FILTERING: REQUIRED - Must validate tenant context
+      if (!req.tenantId) {
+        deleteLocalFile(req.file.path);
+        return res.status(400).json({
+          error: "Tenant context required.",
+        });
+      }
+
+      const section = await HeroSection.findOne({
+        _id: req.params.id,
+        tenantId: req.tenantId,
+      });
       if (!section) {
+        deleteLocalFile(req.file.path);
         return res.status(404).json({ error: "Hero section not found" });
       }
 
@@ -195,8 +241,20 @@ r.post(
         return res.status(400).json({ error: "No image file provided" });
       }
 
-      const section = await HeroSection.findById(req.params.id);
+      // TENANT FILTERING: REQUIRED - Must validate tenant context
+      if (!req.tenantId) {
+        deleteLocalFile(req.file.path);
+        return res.status(400).json({
+          error: "Tenant context required.",
+        });
+      }
+
+      const section = await HeroSection.findOne({
+        _id: req.params.id,
+        tenantId: req.tenantId,
+      });
       if (!section) {
+        deleteLocalFile(req.file.path);
         return res.status(404).json({ error: "Hero section not found" });
       }
 
