@@ -261,11 +261,12 @@ router.get("/bookings", authenticateClient, async (req, res) => {
 
     const bookings = await Appointment.find(filter)
       .populate("tenantId", "name slug branding")
-      .populate("serviceId")
-      .populate("specialistId")
+      .populate("serviceId", "name category price duration")
+      .populate("specialistId", "name email avatar")
       .sort({ start: -1 })
       .limit(parseInt(limit))
-      .skip(parseInt(skip));
+      .skip(parseInt(skip))
+      .lean(); // Return plain objects for better performance
 
     const total = await Appointment.countDocuments(filter);
 
