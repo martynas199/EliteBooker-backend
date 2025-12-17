@@ -247,10 +247,10 @@ router.get("/segments/all", requireAdmin, async (req, res) => {
     res.json({
       success: true,
       segments: {
-        vip: segments.vip.length,
-        atRisk: segments.atRisk.length,
-        new: segments.new.length,
-        active: segments.active.length,
+        vip: { count: segments.vip.length },
+        atRisk: { count: segments.atRisk.length },
+        new: { count: segments.new.length },
+        active: { count: segments.active.length },
       },
       details: segments,
     });

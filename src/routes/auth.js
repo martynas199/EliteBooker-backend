@@ -14,8 +14,7 @@ const r = Router();
 const JWT_SECRET =
   process.env.JWT_SECRET || "your-secret-key-change-this-in-production";
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "24h"; // 24-hour access token
-const JWT_COOKIE_EXPIRES_IN =
-  process.env.JWT_COOKIE_EXPIRES_IN || 1; // 1 day
+const JWT_COOKIE_EXPIRES_IN = process.env.JWT_COOKIE_EXPIRES_IN || 1; // 1 day
 const REFRESH_TOKEN_EXPIRES_IN = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
 
 // Validation schemas
