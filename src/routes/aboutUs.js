@@ -23,19 +23,14 @@ const upload = multer({
 // GET /api/about-us - Public route to get About Us content
 router.get("/", async (req, res) => {
   try {
-    console.log("[ABOUT-US] Fetching active About Us content");
-
     const aboutUs = await AboutUs.findOne({ isActive: true });
 
     if (!aboutUs) {
-      console.log("[ABOUT-US] No active About Us content found");
       return res.status(404).json({
         error: "About Us content not found",
         message: "No about us content has been configured yet.",
       });
     }
-
-    console.log("[ABOUT-US] ✓ About Us content retrieved successfully");
     res.json({
       success: true,
       data: {
@@ -58,8 +53,6 @@ router.get("/", async (req, res) => {
 // GET /api/admin/about-us - Admin route to get About Us for editing
 router.get("/admin", requireAdmin, requireSuperAdmin, async (req, res) => {
   try {
-    console.log("[ABOUT-US] Admin fetching About Us content for editing");
-
     const aboutUs = await AboutUs.findOne({ isActive: true }).populate(
       "lastUpdatedBy",
       "name email"
@@ -86,10 +79,6 @@ router.put(
   upload.single("image"),
   async (req, res) => {
     try {
-      console.log("[ABOUT-US] Admin updating About Us content");
-      console.log("[ABOUT-US] Body:", req.body);
-      console.log("[ABOUT-US] File:", req.file ? "Image uploaded" : "No image");
-
       // Validation schema
       const UpdateSchema = z.object({
         quote: z
@@ -113,13 +102,10 @@ router.put(
 
       // Handle image upload
       if (req.file) {
-        console.log("[ABOUT-US] Processing new image upload");
-
         // Delete old image from Cloudinary if it exists
         if (aboutUs?.image?.publicId) {
           try {
             await deleteImage(aboutUs.image.publicId);
-            console.log("[ABOUT-US] ✓ Old image deleted from Cloudinary");
           } catch (deleteError) {
             console.warn(
               "[ABOUT-US] ⚠️ Failed to delete old image:",
@@ -141,12 +127,9 @@ router.put(
           url: uploadResult.secure_url,
           publicId: uploadResult.public_id,
         };
-
-        console.log("[ABOUT-US] ✓ New image uploaded to Cloudinary");
       } else if (keepExistingImage === "true" && aboutUs?.image) {
         // Keep existing image
         imageData = aboutUs.image;
-        console.log("[ABOUT-US] ✓ Keeping existing image");
       } else if (!aboutUs?.image) {
         return res.status(400).json({
           error: "Image is required",
@@ -168,8 +151,6 @@ router.put(
         isActive: true,
       };
 
-      console.log("[ABOUT-US] Update data tenantId:", req.tenantId);
-
       if (aboutUs) {
         // Update existing
         aboutUs = await AboutUs.findByIdAndUpdate(aboutUs._id, updateData, {
@@ -177,7 +158,6 @@ router.put(
           runValidators: true,
         }).populate("lastUpdatedBy", "name email");
 
-        console.log("[ABOUT-US] ✓ About Us content updated successfully");
       } else {
         // Create new
         aboutUs = await AboutUs.create(updateData);
@@ -186,7 +166,6 @@ router.put(
           "name email"
         );
 
-        console.log("[ABOUT-US] ✓ About Us content created successfully");
       }
 
       res.json({

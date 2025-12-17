@@ -25,32 +25,21 @@ function getTransport() {
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
 
-  console.log("[MAILER] Checking SMTP configuration...");
-  console.log("[MAILER] SMTP_HOST:", host ? "✓ SET" : "✗ MISSING");
-  console.log("[MAILER] SMTP_PORT:", port);
-  console.log("[MAILER] SMTP_USER:", user ? "✓ SET" : "✗ MISSING");
-  console.log("[MAILER] SMTP_PASS:", pass ? "✓ SET" : "✗ MISSING");
-
   if (!host || !user || !pass) {
-    console.warn("[MAILER] SMTP not fully configured - emails will be skipped");
     return null; // no-op mailer
   }
 
-  console.log("[MAILER] Creating nodemailer transport...");
   const transport = nodemailer.createTransport({
     host,
     port,
     secure: port === 465,
     auth: { user, pass },
   });
-  console.log("[MAILER] Transport created successfully");
 
   // Test the connection
   transport.verify((error, success) => {
     if (error) {
       console.error("[MAILER] ✗ SMTP connection test failed:", error);
-    } else {
-      console.log("[MAILER] ✓ SMTP connection verified successfully");
     }
   });
 
@@ -67,17 +56,11 @@ export async function sendCancellationEmails({
   outcomeStatus,
   reason,
 }) {
-  console.log(
-    "[MAILER] sendCancellationEmails called for appointment:",
-    appointment?._id
-  );
   const tx = getTransport();
   if (!tx) {
-    console.warn("[MAILER] No transport - skipping cancellation emails");
     return;
   }
   const from = process.env.SMTP_FROM || process.env.SMTP_USER;
-  console.log("[MAILER] Sending from:", from);
   const salonTz = process.env.SALON_TZ || "Europe/London";
 
   const startDate = new Date(appointment.start).toLocaleString("en-GB", {
@@ -99,9 +82,7 @@ export async function sendCancellationEmails({
     : null;
 
   const cust = appointment.client?.email;
-  console.log("[MAILER] Customer email:", cust || "NOT SET");
   if (cust) {
-    console.log("[MAILER] Preparing cancellation email for customer...");
     // Build email content conditionally
     let textContent = `Hi ${appointment.client?.name || ""},\n\n`;
     textContent += `Your appointment has been cancelled.\n\n`;
@@ -175,7 +156,6 @@ export async function sendCancellationEmails({
       </div>
     `;
 
-    console.log("[MAILER] Sending cancellation email to:", cust);
     try {
       const info = await tx.sendMail({
         from,
@@ -184,10 +164,6 @@ export async function sendCancellationEmails({
         text: textContent,
         html: htmlContent,
       });
-      console.log(
-        "[MAILER] ✓ Cancellation email sent successfully. MessageId:",
-        info.messageId
-      );
     } catch (error) {
       console.error("[MAILER] ✗ Failed to send cancellation email:", error);
       throw error;
@@ -197,10 +173,6 @@ export async function sendCancellationEmails({
   // Optional: Send notification to specialist/salon staff
   const beauticianEmail = process.env.BEAUTICIAN_NOTIFY_EMAIL;
   if (beauticianEmail) {
-    console.log(
-      "[MAILER] Sending beautician notification to:",
-      beauticianEmail
-    );
     const beauticianName = appointment.specialistId?.name || "Staff";
 
     try {
@@ -259,7 +231,6 @@ export async function sendCancellationEmails({
         </div>
       `,
       });
-      console.log("[MAILER] ✓ Beautician notification sent successfully");
     } catch (error) {
       console.error(
         "[MAILER] ✗ Failed to send beautician notification:",
@@ -267,10 +238,6 @@ export async function sendCancellationEmails({
       );
       // Don't throw - beautician notification failure shouldn't break the flow
     }
-  } else {
-    console.log(
-      "[MAILER] No beautician email configured, skipping notification"
-    );
   }
 }
 

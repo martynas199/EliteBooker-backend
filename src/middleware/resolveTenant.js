@@ -95,37 +95,15 @@ export async function resolveTenant(req, res, next) {
 
     let tenant = null;
 
-    console.log("[resolveTenant] Request:", {
-      path: req.path,
-      headers: {
-        "x-tenant-slug": req.headers["x-tenant-slug"],
-        "x-tenant-id": req.headers["x-tenant-id"],
-      },
-    });
-
     // 1. Check for explicit tenant slug in header (preferred for API calls)
     const tenantSlugHeader = req.headers["x-tenant-slug"];
     if (tenantSlugHeader) {
-      console.log(
-        "[resolveTenant] Looking up tenant by slug:",
-        tenantSlugHeader
-      );
       tenant = await getTenant({ slug: tenantSlugHeader, active: true });
       if (tenant) {
-        console.log("[resolveTenant] Found tenant:", {
-          id: tenant._id,
-          name: tenant.name,
-          slug: tenant.slug,
-        });
         req.tenant = tenant;
         req.tenantId = tenant._id;
         req.tenantResolution = "header-slug";
         return next();
-      } else {
-        console.log(
-          "[resolveTenant] No tenant found for slug:",
-          tenantSlugHeader
-        );
       }
     }
 

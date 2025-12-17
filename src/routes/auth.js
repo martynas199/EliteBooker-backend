@@ -158,7 +158,6 @@ r.post("/login", async (req, res) => {
     // Validate request body
     const validation = loginSchema.safeParse(req.body);
     if (!validation.success) {
-      console.log("[Login] Validation failed:", validation.error);
       return res.status(400).json({
         error: "Validation failed",
         details: validation.error.errors,
@@ -166,7 +165,6 @@ r.post("/login", async (req, res) => {
     }
 
     const { email, password } = validation.data;
-    console.log("[Login] Attempting login for:", email);
 
     // Find admin by email (include password for comparison)
     // IMPORTANT: Bypass multi-tenant filtering by using the collection directly
@@ -176,19 +174,10 @@ r.post("/login", async (req, res) => {
     });
 
     if (!adminDoc) {
-      console.log("[Login] No admin found with email:", email);
       return res.status(401).json({
         error: "Invalid email or password",
       });
     }
-
-    console.log("[Login] Found admin:", {
-      id: adminDoc._id,
-      email: adminDoc.email,
-      active: adminDoc.active,
-      hasPassword: !!adminDoc.password,
-      passwordHash: adminDoc.password?.substring(0, 20) + "...", // Show first 20 chars of hash
-    });
 
     // Hydrate into a Mongoose document with proper initialization
     // Important: We need to bypass the schema's select: false for password
@@ -400,11 +389,6 @@ r.post("/logout", async (req, res) => {
  */
 r.get("/me", async (req, res) => {
   try {
-    console.log("[Auth /me] Request received");
-    console.log("[Auth /me] Cookies:", req.cookies);
-    console.log("[Auth /me] Cookie names:", Object.keys(req.cookies || {}));
-    console.log("[Auth /me] Has accessToken?", !!req.cookies?.accessToken);
-    console.log("[Auth /me] Has jwt?", !!req.cookies?.jwt);
 
     // Get token from cookie or Authorization header
     // IMPORTANT: Prioritize Authorization header for cross-domain compatibility
@@ -423,15 +407,9 @@ r.get("/me", async (req, res) => {
       // Backward compatibility - but warn about old cookie
       token = req.cookies.jwt;
       tokenSource = "jwt cookie (deprecated)";
-      console.warn(
-        "[Auth /me] WARNING: Using deprecated jwt cookie. Should use accessToken."
-      );
     }
 
-    console.log("[Auth /me] Token source:", tokenSource);
-
     if (!token) {
-      console.log("[Auth /me] No token found, returning 401");
       return res.status(401).json({
         error: "Not authenticated. Please log in.",
       });
@@ -439,20 +417,11 @@ r.get("/me", async (req, res) => {
 
     // Verify token
     const decoded = jwt.verify(token, JWT_SECRET);
-    console.log("[Auth /me] Token decoded, admin ID:", decoded.id);
-    console.log("[Auth /me] Token tenantId:", decoded.tenantId);
 
     // Find admin - bypass multi-tenant filtering since we're authenticating
     const adminDoc = await Admin.collection.findOne({
       _id: new mongoose.Types.ObjectId(decoded.id),
     });
-
-    console.log("[Auth /me] Admin doc found:", !!adminDoc);
-    if (adminDoc) {
-      console.log("[Auth /me] Admin email:", adminDoc.email);
-      console.log("[Auth /me] Admin active:", adminDoc.active);
-      console.log("[Auth /me] Admin tenantId:", adminDoc.tenantId);
-    }
 
     let admin = null;
     if (adminDoc) {
@@ -764,7 +733,6 @@ async function sendPasswordResetEmail(admin, resetToken) {
 
   try {
     await transport.sendMail(mailOptions);
-    console.log(`[AUTH] Password reset email sent to ${admin.email}`);
   } catch (error) {
     console.error("[AUTH] Failed to send password reset email:", error);
     throw error;
