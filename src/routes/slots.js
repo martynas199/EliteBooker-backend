@@ -131,21 +131,29 @@ r.get("/fully-booked", async (req, res) => {
 
     // OPTIMIZATION: Fetch ALL appointments for the entire month at once
     const monthStartDate = monthStart.toDate();
-    const monthEndDate = monthEnd.toDate();
+    const monthEndExclusive = monthEnd.add(1, 'day').toDate();
 
     const allMonthAppts = await Appointment.find({
       specialistId,
-      start: { $gte: monthStartDate, $lte: monthEndDate },
+      start: { $gte: monthStartDate, $lt: monthEndExclusive },
       status: { $ne: "cancelled" },
     }).lean();
 
     // Group appointments by date for quick lookup
+    // OPTIMIZATION: Convert to ISO strings once here instead of per-day per-service
     const apptsByDate = {};
     allMonthAppts.forEach((appt) => {
       const dateStr = dayjs(appt.start).tz(salonTz).format("YYYY-MM-DD");
       if (!apptsByDate[dateStr]) apptsByDate[dateStr] = [];
-      apptsByDate[dateStr].push(appt);
+      apptsByDate[dateStr].push({
+        start: new Date(appt.start).toISOString(),
+        end: new Date(appt.end).toISOString(),
+        status: appt.status,
+      });
     });
+
+    // OPTIMIZATION: Normalize specialist once before loop instead of per-day
+    const normalizedSpecialist = normalizeBeautician(specialist);
 
     // Check each day in the month
     const daysInMonth = monthStart.daysInMonth();
@@ -184,12 +192,8 @@ r.get("/fully-booked", async (req, res) => {
             bufferAfterMin: 10,
           };
 
-          // Use pre-fetched appointments for this date
-          const dayAppts = (apptsByDate[dateStr] || []).map((a) => ({
-            start: new Date(a.start).toISOString(),
-            end: new Date(a.end).toISOString(),
-            status: a.status,
-          }));
+          // Use pre-converted appointments (already ISO strings from apptsByDate)
+          const dayAppts = apptsByDate[dateStr] || [];
 
           const slots = computeSlotsForBeautician({
             date: dateStr,
@@ -200,8 +204,8 @@ r.get("/fully-booked", async (req, res) => {
               bufferBeforeMin: variant.bufferBeforeMin || 0,
               bufferAfterMin: variant.bufferAfterMin || 0,
             },
-            specialist: normalizeBeautician(specialist),
-            appointments: dayAppts, // Use pre-fetched data!
+            specialist: normalizedSpecialist, // Use pre-normalized specialist
+            appointments: dayAppts, // Already in correct format!
           });
 
           if (slots.length > 0) {
