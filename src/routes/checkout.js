@@ -376,6 +376,7 @@ r.post("/create-session", async (req, res, next) => {
 
           servicesData.push({
             serviceId: svc.serviceId,
+            serviceName: fullService.name,
             variantName: svc.variantName,
             price: servicePrice,
             duration: serviceDuration,
@@ -400,6 +401,7 @@ r.post("/create-session", async (req, res, next) => {
 
         servicesData.push({
           serviceId,
+          serviceName: service.name,
           variantName,
           price: totalPrice,
           duration: totalDuration,
