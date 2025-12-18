@@ -29,16 +29,16 @@ function normalizeBeautician(specialist) {
 
   const normalized = {
     ...specialist,
-    timeOff: (Specialist.timeOff || []).map((off) => ({
+    timeOff: (specialist.timeOff || []).map((off) => ({
       start: off.start instanceof Date ? off.start.toISOString() : off.start,
       end: off.end instanceof Date ? off.end.toISOString() : off.end,
       reason: off.reason,
     })),
     // Convert Map to plain object for customSchedule (only if it's a Map)
     customSchedule:
-      Specialist.customSchedule instanceof Map
-        ? Object.fromEntries(Specialist.customSchedule)
-        : Specialist.customSchedule || {},
+      specialist.customSchedule instanceof Map
+        ? Object.fromEntries(specialist.customSchedule)
+        : specialist.customSchedule || {},
   };
 
   return normalized;
@@ -131,11 +131,12 @@ r.get("/fully-booked", async (req, res) => {
 
     // OPTIMIZATION: Fetch ALL appointments for the entire month at once
     const monthStartDate = monthStart.toDate();
-    const monthEndExclusive = monthEnd.add(1, 'day').toDate();
+    // Use end-exclusive bound for safer date range querying
+    const monthEndExclusiveDate = monthEnd.add(1, "millisecond").toDate();
 
     const allMonthAppts = await Appointment.find({
       specialistId,
-      start: { $gte: monthStartDate, $lt: monthEndExclusive },
+      start: { $gte: monthStartDate, $lt: monthEndExclusiveDate },
       status: { $ne: "cancelled" },
     }).lean();
 
@@ -184,6 +185,9 @@ r.get("/fully-booked", async (req, res) => {
       // Check if any service has available slots
       let hasAvailableSlots = false;
 
+      // Use pre-fetched/normalized appointments for this date (compute once per day)
+      const dayAppts = apptsByDate[dateStr] || [];
+
       for (const service of services) {
         try {
           const variant = service.variants?.[0] || {
@@ -191,9 +195,6 @@ r.get("/fully-booked", async (req, res) => {
             bufferBeforeMin: 0,
             bufferAfterMin: 10,
           };
-
-          // Use pre-converted appointments (already ISO strings from apptsByDate)
-          const dayAppts = apptsByDate[dateStr] || [];
 
           const slots = computeSlotsForBeautician({
             date: dateStr,
