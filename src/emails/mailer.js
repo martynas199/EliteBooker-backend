@@ -297,12 +297,18 @@ export async function sendConfirmationEmail({
 
   if (hasMultipleServices) {
     servicesList = appointment.services
-      .map(
-        (s, i) =>
-          `${i + 1}. ${s.variantName || "Service"} (${
-            s.duration
-          }min - ${formatCurrency(s.price, currency)})`
-      )
+      .map((s, i) => {
+        const serviceName = s.serviceName || "Service";
+        const variantName = s.variantName || "";
+        const displayName =
+          variantName && serviceName !== variantName
+            ? `${serviceName} (${variantName})`
+            : serviceName;
+        return `${i + 1}. ${displayName} (${s.duration}min - ${formatCurrency(
+          s.price,
+          currency
+        )})`;
+      })
       .join("\n");
 
     servicesHtml = `
@@ -310,14 +316,17 @@ export async function sendConfirmationEmail({
         <strong>Services:</strong>
         <ul style="margin: 8px 0; padding-left: 20px;">
           ${appointment.services
-            .map(
-              (s) =>
-                `<li>${
-                  s.variantName || "Service"
-                } <span style="color: #6b7280;">(${
-                  s.duration
-                }min - ${formatCurrency(s.price, currency)})</span></li>`
-            )
+            .map((s) => {
+              const serviceName = s.serviceName || "Service";
+              const variantName = s.variantName || "";
+              const displayName =
+                variantName && serviceName !== variantName
+                  ? `${serviceName} (${variantName})`
+                  : serviceName;
+              return `<li>${displayName} <span style="color: #6b7280;">(${
+                s.duration
+              }min - ${formatCurrency(s.price, currency)})</span></li>`;
+            })
             .join("")}
         </ul>
       </div>
@@ -652,6 +661,168 @@ Please ensure you're prepared for this appointment.`;
       );
       // Don't throw - specialist notification failure shouldn't block the customer confirmation
     }
+  }
+}
+
+/**
+ * Send appointment reminder email to customer (24 hours before)
+ */
+export async function sendReminderEmail({ appointment, service, specialist }) {
+  console.log("[MAILER] Preparing reminder email...");
+  console.log("[MAILER] Appointment ID:", appointment._id);
+
+  const { tx, from } = await ensureMailer();
+  if (!tx) throw new Error("Email service not configured");
+
+  const customerEmail = appointment.client?.email;
+  if (!customerEmail) {
+    console.log("[MAILER] No customer email found for reminder");
+    return;
+  }
+
+  const beauticianName = specialist?.name || "your specialist";
+  const currency = process.env.CURRENCY || "GBP";
+
+  // Format start time
+  const startDate = new Date(appointment.start);
+  const startTime = startDate.toLocaleString("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  // Handle single or multiple services
+  const hasMultipleServices =
+    appointment.services && appointment.services.length > 1;
+  let serviceName = "your service";
+  let servicesList = "";
+  let servicesHtml = "";
+
+  if (hasMultipleServices) {
+    servicesList = appointment.services
+      .map((s, i) => {
+        const serviceName = s.serviceName || "Service";
+        const variantName = s.variantName || "";
+        const displayName =
+          variantName && serviceName !== variantName
+            ? `${serviceName} (${variantName})`
+            : serviceName;
+        return `${i + 1}. ${displayName} (${s.duration}min - ${formatCurrency(
+          s.price,
+          currency
+        )})`;
+      })
+      .join("\n");
+
+    servicesHtml = `
+      <div style="margin: 12px 0;">
+        <strong>Services:</strong>
+        <ul style="margin: 8px 0; padding-left: 20px;">
+          ${appointment.services
+            .map((s) => {
+              const serviceName = s.serviceName || "Service";
+              const variantName = s.variantName || "";
+              const displayName =
+                variantName && serviceName !== variantName
+                  ? `${serviceName} (${variantName})`
+                  : serviceName;
+              return `<li>${displayName} <span style="color: #6b7280;">(${
+                s.duration
+              }min - ${formatCurrency(s.price, currency)})</span></li>`;
+            })
+            .join("")}
+        </ul>
+      </div>
+    `;
+
+    serviceName = `${appointment.services.length} services`;
+  } else if (appointment.services && appointment.services.length === 1) {
+    const svc = appointment.services[0];
+    const svcName = svc.serviceName || "Service";
+    const varName = svc.variantName || "";
+    serviceName =
+      varName && svcName !== varName ? `${svcName} (${varName})` : svcName;
+    servicesList = serviceName;
+    servicesHtml = `<p style="margin: 8px 0;"><strong>Service:</strong> ${serviceName}</p>`;
+  } else {
+    serviceName = service?.name || appointment.serviceName || "your service";
+    servicesList = serviceName;
+    servicesHtml = `<p style="margin: 8px 0;"><strong>Service:</strong> ${serviceName}</p>`;
+  }
+
+  const price = appointment.price
+    ? formatCurrency(appointment.price, currency)
+    : "";
+
+  try {
+    const info = await tx.sendMail({
+      from,
+      to: customerEmail,
+      subject: `Reminder: ${serviceName} tomorrow`,
+      text: `Hi ${appointment.client?.name || ""},
+
+This is a friendly reminder about your upcoming appointment tomorrow!
+
+${
+  hasMultipleServices
+    ? "Services:\n" + servicesList
+    : "Service: " + servicesList
+}
+With: ${beauticianName}
+Date & Time: ${startTime}
+Total Price: ${price}
+
+${
+  appointment.client?.notes ? `Your notes: ${appointment.client.notes}\n\n` : ""
+}We look forward to seeing you!
+
+If you need to cancel or reschedule, please contact us as soon as possible.
+
+Appointment ID: ${appointment._id}
+
+Thank you!`,
+      html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #f59e0b 0%, #ec4899 50%, #06b6d4 100%); padding: 30px 20px; border-radius: 12px 12px 0 0; margin: -20px -20px 20px -20px;">
+          <h2 style="color: white; margin: 0; font-size: 24px; text-align: center;">⏰ Appointment Reminder</h2>
+        </div>
+        <p>Hi ${appointment.client?.name || ""},</p>
+        <p style="font-size: 16px; color: #111827;">This is a friendly reminder about your upcoming appointment <strong>tomorrow</strong>!</p>
+        
+        <div style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.05) 0%, rgba(236, 72, 153, 0.05) 100%); padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+          <h3 style="margin-top: 0; margin-bottom: 16px; background: linear-gradient(135deg, #f59e0b 0%, #ec4899 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-size: 18px;">Appointment Details</h3>
+          ${servicesHtml}
+          <p style="margin: 8px 0;"><strong>With:</strong> ${beauticianName}</p>
+          <p style="margin: 8px 0;"><strong>Date & Time:</strong> ${startTime}</p>
+          <p style="margin: 8px 0;"><strong>Total Price:</strong> ${price}</p>
+        </div>
+        
+        ${
+          appointment.client?.notes
+            ? `<div style="background-color: #fef3c7; padding: 12px; border-radius: 6px; margin: 16px 0; border-left: 3px solid #f59e0b;">
+            <p style="margin: 0; color: #92400e;"><strong>📝 Your notes:</strong> ${appointment.client.notes}</p>
+          </div>`
+            : ""
+        }
+        
+        <p>We look forward to seeing you!</p>
+        <p style="color: #6b7280; font-size: 12px;">If you need to cancel or reschedule, please contact us as soon as possible.</p>
+        <p style="color: #9ca3af; font-size: 11px; margin-top: 30px;">Appointment ID: ${
+          appointment._id
+        }</p>
+      </div>
+    `,
+    });
+    console.log(
+      "[MAILER] ✓ Reminder email sent successfully. MessageId:",
+      info.messageId
+    );
+  } catch (error) {
+    console.error("[MAILER] ✗ Failed to send reminder email:", error);
+    throw error;
   }
 }
 

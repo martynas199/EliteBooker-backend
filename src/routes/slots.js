@@ -50,7 +50,7 @@ function normalizeBeautician(specialist) {
  */
 r.get("/fully-booked", async (req, res) => {
   const startTime = Date.now();
-  
+
   try {
     // TENANT FILTERING: REQUIRED - Multi-tenant app must always filter by tenant
     if (!req.tenantId) {
@@ -132,7 +132,7 @@ r.get("/fully-booked", async (req, res) => {
     // OPTIMIZATION: Fetch ALL appointments for the entire month at once
     const monthStartDate = monthStart.toDate();
     const monthEndDate = monthEnd.toDate();
-    
+
     const allMonthAppts = await Appointment.find({
       specialistId,
       start: { $gte: monthStartDate, $lte: monthEndDate },
@@ -247,7 +247,7 @@ r.get("/", async (req, res) => {
 
   if (!serviceId || !variantName || !date)
     return res.status(400).json({ error: "Missing params" });
-  
+
   const service = await Service.findById(serviceId).lean();
   if (!service) return res.status(404).json({ error: "Service not found" });
   const variant = (service.variants || []).find((v) => v.name === variantName);

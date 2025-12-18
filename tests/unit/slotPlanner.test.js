@@ -14,12 +14,42 @@ describe("SlotPlanner - computeSlotsForBeautician", () => {
     _id: "specialist123",
     active: true,
     workingHours: {
-      mon: { start: "09:00", end: "17:00", breaks: [], ...workingHoursOverride.mon },
-      tue: { start: "09:00", end: "17:00", breaks: [], ...workingHoursOverride.tue },
-      wed: { start: "09:00", end: "17:00", breaks: [], ...workingHoursOverride.wed },
-      thu: { start: "09:00", end: "17:00", breaks: [], ...workingHoursOverride.thu },
-      fri: { start: "09:00", end: "17:00", breaks: [], ...workingHoursOverride.fri },
-      sat: { start: "10:00", end: "16:00", breaks: [], ...workingHoursOverride.sat },
+      mon: {
+        start: "09:00",
+        end: "17:00",
+        breaks: [],
+        ...workingHoursOverride.mon,
+      },
+      tue: {
+        start: "09:00",
+        end: "17:00",
+        breaks: [],
+        ...workingHoursOverride.tue,
+      },
+      wed: {
+        start: "09:00",
+        end: "17:00",
+        breaks: [],
+        ...workingHoursOverride.wed,
+      },
+      thu: {
+        start: "09:00",
+        end: "17:00",
+        breaks: [],
+        ...workingHoursOverride.thu,
+      },
+      fri: {
+        start: "09:00",
+        end: "17:00",
+        breaks: [],
+        ...workingHoursOverride.fri,
+      },
+      sat: {
+        start: "10:00",
+        end: "16:00",
+        breaks: [],
+        ...workingHoursOverride.sat,
+      },
       sun: null,
     },
     timeOff: [],
@@ -51,7 +81,7 @@ describe("SlotPlanner - computeSlotsForBeautician", () => {
       // With 70 min blocks (60 + 10 buffer) and 15 min steps
       // Should have multiple slots
       expect(slots.length >= 20).toBeTruthy(); // Should have at least 20 slots, got ${slots.length};
-      
+
       // Verify first slot starts at or after 9:00
       const firstSlot = dayjs(slots[0].startISO).tz(salonTz);
       expect(firstSlot.hour() >= 9).toBeTruthy(); // First slot should be at or after 9:00;
@@ -61,7 +91,7 @@ describe("SlotPlanner - computeSlotsForBeautician", () => {
       const specialist = createSpecialist();
       const service = createService();
       const sundayDate = "2024-01-14"; // Sunday
-      
+
       const slots = computeSlotsForBeautician({
         date: sundayDate,
         salonTz,
@@ -77,7 +107,7 @@ describe("SlotPlanner - computeSlotsForBeautician", () => {
     it("should return empty array for inactive specialists", () => {
       const specialist = { ...createSpecialist(), active: false };
       const service = createService();
-      
+
       const slots = computeSlotsForBeautician({
         date: baseDate,
         salonTz,
@@ -94,7 +124,7 @@ describe("SlotPlanner - computeSlotsForBeautician", () => {
       const specialist = createSpecialist();
       const service = createService();
       const saturdayDate = "2024-01-13"; // Saturday (10:00-16:00)
-      
+
       const slots = computeSlotsForBeautician({
         date: saturdayDate,
         salonTz,
@@ -105,11 +135,11 @@ describe("SlotPlanner - computeSlotsForBeautician", () => {
       });
 
       expect(slots.length > 0).toBeTruthy(); // Should generate slots for Saturday;
-      
+
       // Verify first slot is at or after 10:00
       const firstSlot = dayjs(slots[0].startISO).tz(salonTz);
       expect(firstSlot.hour() >= 10).toBeTruthy(); // Saturday should start at 10:00;
-      
+
       // Verify last slot ends by 16:00
       const lastSlot = dayjs(slots[slots.length - 1].endISO).tz(salonTz);
       expect(lastSlot.hour() <= 16).toBeTruthy(); // Saturday should end by 16:00;
@@ -122,7 +152,7 @@ describe("SlotPlanner - computeSlotsForBeautician", () => {
         bufferBeforeMin: 5,
         bufferAfterMin: 10,
       });
-      
+
       const slots = computeSlotsForBeautician({
         date: baseDate,
         salonTz,
@@ -133,19 +163,19 @@ describe("SlotPlanner - computeSlotsForBeautician", () => {
       });
 
       expect(slots.length > 0).toBeTruthy(); // Should generate slots;
-      
+
       // Total block = 30 + 5 + 10 = 45 minutes
       const firstSlot = dayjs(slots[0].startISO);
       const firstSlotEnd = dayjs(slots[0].endISO);
       const duration = firstSlotEnd.diff(firstSlot, "minute");
-      
+
       expect(duration).toBe(45); // Slot duration should be 45 minutes (including buffers);
     });
 
     it("should respect custom step sizes", () => {
       const specialist = createSpecialist();
       const service = createService({ durationMin: 30, bufferAfterMin: 0 });
-      
+
       const slots30 = computeSlotsForBeautician({
         date: baseDate,
         salonTz,
@@ -165,10 +195,13 @@ describe("SlotPlanner - computeSlotsForBeautician", () => {
       });
 
       expect(slots15.length > slots30.length).toBeTruthy(); // 15-minute steps should generate more slots than 30-minute steps;
-      
+
       // Verify 30-minute steps
       if (slots30.length >= 2) {
-        const gap = dayjs(slots30[1].startISO).diff(dayjs(slots30[0].startISO), "minute");
+        const gap = dayjs(slots30[1].startISO).diff(
+          dayjs(slots30[0].startISO),
+          "minute"
+        );
         expect(gap).toBe(30); // Slots should be 30 minutes apart;
       }
     });
@@ -184,7 +217,7 @@ describe("SlotPlanner - computeSlotsForBeautician", () => {
         },
       });
       const service = createService({ durationMin: 30, bufferAfterMin: 0 });
-      
+
       const slots = computeSlotsForBeautician({
         date: baseDate,
         salonTz,
@@ -200,8 +233,8 @@ describe("SlotPlanner - computeSlotsForBeautician", () => {
         const end = dayjs(slot.endISO).tz(salonTz);
         const lunchStart = dayjs.tz(`${baseDate} 12:00`, salonTz);
         const lunchEnd = dayjs.tz(`${baseDate} 13:00`, salonTz);
-        
-        return (start.isBefore(lunchEnd) && end.isAfter(lunchStart));
+
+        return start.isBefore(lunchEnd) && end.isAfter(lunchStart);
       });
 
       expect(hasLunchSlot).toBe(false); // No slots should overlap with lunch break;
@@ -220,7 +253,7 @@ describe("SlotPlanner - computeSlotsForBeautician", () => {
         },
       });
       const service = createService({ durationMin: 30, bufferAfterMin: 0 });
-      
+
       const slots = computeSlotsForBeautician({
         date: baseDate,
         salonTz,
@@ -231,7 +264,7 @@ describe("SlotPlanner - computeSlotsForBeautician", () => {
       });
 
       expect(slots.length > 0).toBeTruthy(); // Should still generate slots around breaks;
-      
+
       // Verify no slots overlap with any break
       const breaks = [
         { start: "10:30", end: "10:45" },
@@ -243,10 +276,13 @@ describe("SlotPlanner - computeSlotsForBeautician", () => {
         const hasOverlap = slots.some((slot) => {
           const start = dayjs(slot.startISO).tz(salonTz);
           const end = dayjs(slot.endISO).tz(salonTz);
-          const breakStart = dayjs.tz(`${baseDate} ${breakTime.start}`, salonTz);
+          const breakStart = dayjs.tz(
+            `${baseDate} ${breakTime.start}`,
+            salonTz
+          );
           const breakEnd = dayjs.tz(`${baseDate} ${breakTime.end}`, salonTz);
-          
-          return (start.isBefore(breakEnd) && end.isAfter(breakStart));
+
+          return start.isBefore(breakEnd) && end.isAfter(breakStart);
         });
 
         expect(hasOverlap).toBe(false); // No slots should overlap with break ${breakTime.start}-${breakTime.end};
@@ -258,7 +294,7 @@ describe("SlotPlanner - computeSlotsForBeautician", () => {
     it("should exclude slots that overlap with existing appointments", () => {
       const specialist = createSpecialist();
       const service = createService({ durationMin: 60, bufferAfterMin: 0 });
-      
+
       const appointments = [
         {
           start: dayjs.tz(`${baseDate} 10:00`, salonTz).toISOString(),
@@ -282,8 +318,8 @@ describe("SlotPlanner - computeSlotsForBeautician", () => {
         const end = dayjs(slot.endISO);
         const apptStart = dayjs.tz(`${baseDate} 10:00`, salonTz);
         const apptEnd = dayjs.tz(`${baseDate} 11:00`, salonTz);
-        
-        return (start.isBefore(apptEnd) && end.isAfter(apptStart));
+
+        return start.isBefore(apptEnd) && end.isAfter(apptStart);
       });
 
       expect(hasOverlap).toBe(false); // No slots should overlap with existing appointment;
@@ -292,7 +328,7 @@ describe("SlotPlanner - computeSlotsForBeautician", () => {
     it("should filter out cancelled appointments", () => {
       const specialist = createSpecialist();
       const service = createService({ durationMin: 60, bufferAfterMin: 0 });
-      
+
       const appointments = [
         {
           start: dayjs.tz(`${baseDate} 10:00`, salonTz).toISOString(),
@@ -326,7 +362,7 @@ describe("SlotPlanner - computeSlotsForBeautician", () => {
     it("should handle multiple appointments", () => {
       const specialist = createSpecialist();
       const service = createService({ durationMin: 30, bufferAfterMin: 0 });
-      
+
       const appointments = [
         {
           start: dayjs.tz(`${baseDate} 09:00`, salonTz).toISOString(),
@@ -363,8 +399,8 @@ describe("SlotPlanner - computeSlotsForBeautician", () => {
           const slotEnd = dayjs(slot.endISO);
           const apptStart = dayjs(appt.start);
           const apptEnd = dayjs(appt.end);
-          
-          return (slotStart.isBefore(apptEnd) && slotEnd.isAfter(apptStart));
+
+          return slotStart.isBefore(apptEnd) && slotEnd.isAfter(apptStart);
         });
 
         expect(hasOverlap).toBe(false); // No slots should overlap with appointments;
@@ -374,7 +410,7 @@ describe("SlotPlanner - computeSlotsForBeautician", () => {
     it("should allow slots before and after appointments", () => {
       const specialist = createSpecialist();
       const service = createService({ durationMin: 60, bufferAfterMin: 0 });
-      
+
       const appointments = [
         {
           start: dayjs.tz(`${baseDate} 12:00`, salonTz).toISOString(),
@@ -499,7 +535,7 @@ describe("SlotPlanner - computeSlotsForBeautician", () => {
         mon: { start: "09:00", end: "10:00", breaks: [] },
       });
       const service = createService({ durationMin: 30, bufferAfterMin: 0 });
-      
+
       const slots = computeSlotsForBeautician({
         date: baseDate,
         salonTz,
@@ -518,7 +554,7 @@ describe("SlotPlanner - computeSlotsForBeautician", () => {
         mon: { start: "09:00", end: "09:30", breaks: [] },
       });
       const service = createService({ durationMin: 60, bufferAfterMin: 0 });
-      
+
       const slots = computeSlotsForBeautician({
         date: baseDate,
         salonTz,
@@ -536,7 +572,7 @@ describe("SlotPlanner - computeSlotsForBeautician", () => {
         mon: { start: "18:00", end: "23:59", breaks: [] },
       });
       const service = createService({ durationMin: 60, bufferAfterMin: 0 });
-      
+
       const slots = computeSlotsForBeautician({
         date: baseDate,
         salonTz,
@@ -547,7 +583,7 @@ describe("SlotPlanner - computeSlotsForBeautician", () => {
       });
 
       expect(slots.length > 0).toBeTruthy(); // Should generate slots for evening hours;
-      
+
       const lastSlot = dayjs(slots[slots.length - 1].endISO).tz(salonTz);
       expect(lastSlot.hour() <= 23).toBeTruthy(); // Last slot should end before midnight;
     });
@@ -558,7 +594,7 @@ describe("SlotPlanner - computeSlotsForBeautician", () => {
         workingHours: {},
       };
       const service = createService();
-      
+
       const slots = computeSlotsForBeautician({
         date: baseDate,
         salonTz,
@@ -576,7 +612,7 @@ describe("SlotPlanner - computeSlotsForBeautician", () => {
     it("should generate correct slots for different timezones", () => {
       const specialist = createSpecialist();
       const service = createService();
-      
+
       const nySlots = computeSlotsForBeautician({
         date: baseDate,
         salonTz: "America/New_York",
@@ -597,7 +633,7 @@ describe("SlotPlanner - computeSlotsForBeautician", () => {
 
       expect(nySlots.length > 0).toBeTruthy(); // Should generate NY slots;
       expect(londonSlots.length > 0).toBeTruthy(); // Should generate London slots;
-      
+
       // Same working hours should generate same number of slots
       expect(nySlots.length).toBe(londonSlots.length); // Should have same number of slots regardless of timezone;
     });
@@ -607,11 +643,17 @@ describe("SlotPlanner - computeSlotsForBeautician", () => {
     it("should handle many appointments efficiently", () => {
       const specialist = createSpecialist();
       const service = createService({ durationMin: 15, bufferAfterMin: 0 });
-      
+
       // Generate 100 appointments throughout the day
       const appointments = Array.from({ length: 100 }, (_, i) => ({
-        start: dayjs.tz(`${baseDate} 09:00`, salonTz).add(i * 5, "minute").toISOString(),
-        end: dayjs.tz(`${baseDate} 09:00`, salonTz).add(i * 5 + 10, "minute").toISOString(),
+        start: dayjs
+          .tz(`${baseDate} 09:00`, salonTz)
+          .add(i * 5, "minute")
+          .toISOString(),
+        end: dayjs
+          .tz(`${baseDate} 09:00`, salonTz)
+          .add(i * 5 + 10, "minute")
+          .toISOString(),
         status: "confirmed",
       }));
 
@@ -635,7 +677,7 @@ describe("SlotPlanner - computeSlotsForBeautician", () => {
     it("should generate consecutive slots with correct spacing", () => {
       const specialist = createSpecialist();
       const service = createService({ durationMin: 30, bufferAfterMin: 0 });
-      
+
       const slots = computeSlotsForBeautician({
         date: baseDate,
         salonTz,
@@ -650,7 +692,7 @@ describe("SlotPlanner - computeSlotsForBeautician", () => {
         const prevStart = dayjs(slots[i - 1].startISO);
         const currStart = dayjs(slots[i].startISO);
         const gap = currStart.diff(prevStart, "minute");
-        
+
         expect(gap).toBe(30); // Consecutive slots should be 30 minutes apart, got ${gap};
       }
     });
@@ -658,7 +700,7 @@ describe("SlotPlanner - computeSlotsForBeautician", () => {
     it("should ensure all slots have valid start and end times", () => {
       const specialist = createSpecialist();
       const service = createService();
-      
+
       const slots = computeSlotsForBeautician({
         date: baseDate,
         salonTz,
@@ -671,10 +713,10 @@ describe("SlotPlanner - computeSlotsForBeautician", () => {
       slots.forEach((slot, index) => {
         expect(slot.startISO).toBeTruthy(); // Slot ${index} should have startISO;
         expect(slot.endISO).toBeTruthy(); // Slot ${index} should have endISO;
-        
+
         const start = dayjs(slot.startISO);
         const end = dayjs(slot.endISO);
-        
+
         expect(start.isValid()).toBeTruthy(); // Slot ${index} start should be valid;
         expect(end.isValid()).toBeTruthy(); // Slot ${index} end should be valid;
         expect(end.isAfter(start)).toBeTruthy(); // Slot ${index} end should be after start;
@@ -684,7 +726,7 @@ describe("SlotPlanner - computeSlotsForBeautician", () => {
     it("should not generate duplicate slots", () => {
       const specialist = createSpecialist();
       const service = createService();
-      
+
       const slots = computeSlotsForBeautician({
         date: baseDate,
         salonTz,
@@ -724,10 +766,9 @@ describe("SlotPlanner - computeSlotsForBeautician", () => {
       // Should use custom schedule (10:00-15:00) instead of regular Monday hours (09:00-17:00)
       const firstSlot = dayjs(slots[0].startISO).tz(salonTz);
       expect(firstSlot.hour() >= 10).toBeTruthy(); // Should start at custom schedule time;
-      
+
       const lastSlot = dayjs(slots[slots.length - 1].endISO).tz(salonTz);
       expect(lastSlot.hour() <= 15).toBeTruthy(); // Should end at custom schedule time;
     });
   });
 });
-

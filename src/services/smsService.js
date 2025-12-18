@@ -74,14 +74,22 @@ async function sendBookingConfirmation(booking) {
   // Check if multiple services
   if (booking.services && booking.services.length > 0) {
     if (booking.services.length === 1) {
-      serviceName =
-        booking.services[0].variantName ||
-        booking.services[0].serviceName ||
-        "your service";
+      const svc = booking.services[0];
+      // Show service name with variant name if both exist
+      if (svc.serviceName && svc.variantName) {
+        serviceName = `${svc.serviceName} (${svc.variantName})`;
+      } else {
+        serviceName = svc.serviceName || svc.variantName || "your service";
+      }
     } else {
-      // Multiple services - list them
+      // Multiple services - list them with service names
       serviceName = booking.services
-        .map((s) => s.variantName || s.serviceName || "Service")
+        .map((s) => {
+          if (s.serviceName && s.variantName) {
+            return `${s.serviceName} (${s.variantName})`;
+          }
+          return s.serviceName || s.variantName || "Service";
+        })
         .join(", ");
     }
   } else if (booking.serviceName) {

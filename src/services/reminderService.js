@@ -1,7 +1,7 @@
 import cron from "node-cron";
 import Appointment from "../models/Appointment.js";
 import smsService from "./smsService.js";
-import { sendConfirmationEmail } from "../emails/mailer.js";
+import { sendReminderEmail } from "../emails/mailer.js";
 
 /**
  * Appointment Reminder Service
@@ -57,10 +57,13 @@ async function sendSMSReminder(appointment) {
     let serviceName = "your appointment";
     if (appointment.services && appointment.services.length > 0) {
       if (appointment.services.length === 1) {
-        serviceName =
-          appointment.services[0].variantName ||
-          appointment.services[0].serviceName ||
-          "your service";
+        const svc = appointment.services[0];
+        // Show service name with variant name if both exist
+        if (svc.serviceName && svc.variantName) {
+          serviceName = `${svc.serviceName} (${svc.variantName})`;
+        } else {
+          serviceName = svc.serviceName || svc.variantName || "your service";
+        }
       } else {
         serviceName = `${appointment.services.length} services`;
       }
@@ -111,13 +114,11 @@ async function sendEmailReminder(appointment) {
   try {
     console.log(`[Reminder] Sending email to ${appointment.client.email}`);
 
-    // Reuse the confirmation email template but with "Reminder" subject
-    // You might want to create a dedicated reminder template in the future
-    await sendConfirmationEmail({
+    // Send dedicated reminder email
+    await sendReminderEmail({
       appointment,
       service: appointment.serviceId,
       specialist: appointment.specialistId,
-      isReminder: true, // Flag to modify subject line if needed
     });
 
     return { success: true };

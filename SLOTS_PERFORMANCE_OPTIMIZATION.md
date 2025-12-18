@@ -1,7 +1,9 @@
 # Slots API Performance Optimization Plan
 
 ## Problem
+
 The `/api/slots/fully-booked` endpoint is slow because it:
+
 - Loops through 28-31 days per month
 - Computes slots for EACH day (expensive algorithm)
 - Fetches appointments for each day separately
@@ -10,17 +12,19 @@ The `/api/slots/fully-booked` endpoint is slow because it:
 ## Solution: Optimize /fully-booked endpoint
 
 ### Current Approach (Slow)
+
 ```javascript
 for (let day = 1; day <= daysInMonth; day++) {
   // Fetch appointments for THIS day
   const appts = await Appointment.find({ ... });
-  // Compute slots for THIS day  
+  // Compute slots for THIS day
   const slots = computeSlotsForBeautician({ ... });
   if (slots.length === 0) fullyBookedSet.add(dateStr);
 }
 ```
 
 ### Optimized Approach (Fast)
+
 ```javascript
 // 1. Fetch ALL appointments for the ENTIRE month at once
 const monthAppts = await Appointment.find({
@@ -41,7 +45,7 @@ monthAppts.forEach(appt => {
 for (let day = 1; day <= daysInMonth; day++) {
   const dateStr = `${year}-${month}-${day}`;
   const dayAppts = apptsByDate[dateStr] || [];
-  
+
   // Now compute slots with pre-fetched appointments
   const slots = computeSlotsForBeautician({
     date: dateStr,
@@ -52,6 +56,7 @@ for (let day = 1; day <= daysInMonth; day++) {
 ```
 
 ### Performance Improvement
+
 - **Before**: 30 database queries (1 per day)
 - **After**: 1 database query (entire month)
 - **Expected speedup**: 10-20x faster
@@ -59,15 +64,18 @@ for (let day = 1; day <= daysInMonth; day++) {
 ## Additional Optimizations
 
 ### 1. Database Index (✅ Already Added)
+
 ```javascript
 AppointmentSchema.index({ specialistId: 1, start: 1, status: 1 });
 ```
 
 ### 2. Increase Cache TTL
+
 Current: 60 seconds (CACHE_TTL = 60000)
 Recommended: 300 seconds (5 minutes) for better caching
 
 ### 3. Add Performance Monitoring (✅ Added)
+
 - Service fetch time
 - Specialist fetch time
 - Appointments fetch time
@@ -75,6 +83,7 @@ Recommended: 300 seconds (5 minutes) for better caching
 - Total request time
 
 ### 4. Consider Response Streaming
+
 For very large calendars, stream the response as dates are computed
 
 ## Implementation Priority
@@ -84,6 +93,7 @@ For very large calendars, stream the response as dates are computed
 3. **LOW**: Add streaming for large date ranges
 
 ## Expected Results
+
 - `/fully-booked` should go from 2000-5000ms → 200-500ms
 - Page load should feel instant
 - Calendar navigation should be smooth
