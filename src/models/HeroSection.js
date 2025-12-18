@@ -52,6 +52,10 @@ const HeroSectionSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    active: {
+      type: Boolean,
+      default: true,
+    },
     overlayOpacity: {
       type: Number,
       default: 0.3,

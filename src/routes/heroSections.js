@@ -28,13 +28,16 @@ r.get("/", async (req, res) => {
       });
     }
 
-    // For public display, only return active sections
-    const sections = await HeroSection.find({
+    // Check if this is an admin request (has admin auth)
+    const isAdminRequest = req.admin && req.admin.role;
+
+    // For admin, return all sections. For public, only return active sections
+    const filter = {
       tenantId: req.tenantId,
-      active: true,
-    })
-      .sort({ order: 1 })
-      .lean();
+      ...(isAdminRequest ? {} : { active: true }),
+    };
+
+    const sections = await HeroSection.find(filter).sort({ order: 1 }).lean();
     res.json(sections);
   } catch (error) {
     console.error("Error fetching hero sections:", error);

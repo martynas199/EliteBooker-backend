@@ -16,9 +16,9 @@ dayjs.extend(timezone);
 
 const r = Router();
 
-// Cache for fully-booked endpoint (60 seconds TTL)
+// Cache for fully-booked endpoint (5 minutes TTL for better performance)
 const fullyBookedCache = new Map();
-const CACHE_TTL = 60000;
+const CACHE_TTL = 300000; // 5 minutes (was 60 seconds)
 
 /**
  * Normalize specialist object for slot computation
@@ -49,6 +49,8 @@ function normalizeBeautician(specialist) {
  * Returns dates that are fully booked (no available slots) for a specialist in a month
  */
 r.get("/fully-booked", async (req, res) => {
+  const startTime = Date.now();
+  
   try {
     // TENANT FILTERING: REQUIRED - Multi-tenant app must always filter by tenant
     if (!req.tenantId) {
@@ -127,6 +129,24 @@ r.get("/fully-booked", async (req, res) => {
     const monthEnd = monthStart.endOf("month");
     const today = dayjs().tz(salonTz).startOf("day");
 
+    // OPTIMIZATION: Fetch ALL appointments for the entire month at once
+    const monthStartDate = monthStart.toDate();
+    const monthEndDate = monthEnd.toDate();
+    
+    const allMonthAppts = await Appointment.find({
+      specialistId,
+      start: { $gte: monthStartDate, $lte: monthEndDate },
+      status: { $ne: "cancelled" },
+    }).lean();
+
+    // Group appointments by date for quick lookup
+    const apptsByDate = {};
+    allMonthAppts.forEach((appt) => {
+      const dateStr = dayjs(appt.start).tz(salonTz).format("YYYY-MM-DD");
+      if (!apptsByDate[dateStr]) apptsByDate[dateStr] = [];
+      apptsByDate[dateStr].push(appt);
+    });
+
     // Check each day in the month
     const daysInMonth = monthStart.daysInMonth();
     for (let day = 1; day <= daysInMonth; day++) {
@@ -164,13 +184,12 @@ r.get("/fully-booked", async (req, res) => {
             bufferAfterMin: 10,
           };
 
-          const dayStart = dateObj.toDate();
-          const dayEnd = dateObj.add(1, "day").toDate();
-          const appts = await Appointment.find({
-            specialistId,
-            start: { $gte: dayStart, $lt: dayEnd },
-            status: { $ne: "cancelled" },
-          }).lean();
+          // Use pre-fetched appointments for this date
+          const dayAppts = (apptsByDate[dateStr] || []).map((a) => ({
+            start: new Date(a.start).toISOString(),
+            end: new Date(a.end).toISOString(),
+            status: a.status,
+          }));
 
           const slots = computeSlotsForBeautician({
             date: dateStr,
@@ -182,11 +201,7 @@ r.get("/fully-booked", async (req, res) => {
               bufferAfterMin: variant.bufferAfterMin || 0,
             },
             specialist: normalizeBeautician(specialist),
-            appointments: appts.map((a) => ({
-              start: new Date(a.start).toISOString(),
-              end: new Date(a.end).toISOString(),
-              status: a.status,
-            })),
+            appointments: dayAppts, // Use pre-fetched data!
           });
 
           if (slots.length > 0) {
@@ -230,17 +245,9 @@ r.get("/", async (req, res) => {
   const { specialistId, serviceId, variantName, date, any, totalDuration } =
     req.query;
 
-  console.log("[SLOTS] Request params:", {
-    specialistId,
-    serviceId,
-    variantName,
-    date,
-    totalDuration: totalDuration ? parseInt(totalDuration) : "not provided",
-    any,
-  });
-
   if (!serviceId || !variantName || !date)
     return res.status(400).json({ error: "Missing params" });
+  
   const service = await Service.findById(serviceId).lean();
   if (!service) return res.status(404).json({ error: "Service not found" });
   const variant = (service.variants || []).find((v) => v.name === variantName);
@@ -251,20 +258,11 @@ r.get("/", async (req, res) => {
     ? parseInt(totalDuration)
     : variant.durationMin;
 
-  console.log(
-    "[SLOTS] Using duration:",
-    durationMin,
-    "minutes",
-    totalDuration ? "(multi-service total)" : "(single service)"
-  );
-
   const svc = {
     durationMin: durationMin,
     bufferBeforeMin: variant.bufferBeforeMin || 0,
     bufferAfterMin: variant.bufferAfterMin || 0,
   };
-
-  console.log("[SLOTS] Service config:", svc);
 
   const salonTz = process.env.SALON_TZ || "Europe/London";
   const stepMin = Number(process.env.SLOTS_STEP_MIN || 15);
@@ -365,12 +363,6 @@ r.get("/", async (req, res) => {
     }));
   }
 
-  console.log(
-    "[SLOTS] Returning",
-    slots.length,
-    "available slots for date:",
-    date
-  );
   res.json({ slots });
 });
 export default r;

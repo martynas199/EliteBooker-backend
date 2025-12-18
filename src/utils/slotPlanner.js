@@ -28,13 +28,13 @@ const WorkingDaySchema = z.object({
 });
 
 const WorkingHoursSchema = z.object({
-  mon: WorkingDaySchema.optional(),
-  tue: WorkingDaySchema.optional(),
-  wed: WorkingDaySchema.optional(),
-  thu: WorkingDaySchema.optional(),
-  fri: WorkingDaySchema.optional(),
-  sat: WorkingDaySchema.optional(),
-  sun: WorkingDaySchema.optional(),
+  mon: WorkingDaySchema.nullable().optional(),
+  tue: WorkingDaySchema.nullable().optional(),
+  wed: WorkingDaySchema.nullable().optional(),
+  thu: WorkingDaySchema.nullable().optional(),
+  fri: WorkingDaySchema.nullable().optional(),
+  sat: WorkingDaySchema.nullable().optional(),
+  sun: WorkingDaySchema.nullable().optional(),
 });
 
 // New array-based working hours format
@@ -322,11 +322,6 @@ function buildBlockingIntervals({
   for (const a of appointments || []) {
     // Skip all cancelled appointments (cancelled, cancelled_no_refund, cancelled_partial_refund, cancelled_full_refund)
     if (a.status && a.status.startsWith("cancelled")) {
-      console.log(`[buildBlockingIntervals] Skipping cancelled appointment:`, {
-        start: a.start,
-        end: a.end,
-        status: a.status,
-      });
       continue;
     }
     blocks.push({ start: new Date(a.start), end: new Date(a.end) });
@@ -363,10 +358,6 @@ export function computeSlotsForBeautician(params) {
   } = p;
   if (specialist.active === false) return [];
 
-  console.log(
-    "[computeSlotsForBeautician] specialist.customSchedule:",
-    specialist.customSchedule
-  );
   const windows = buildWorkingWindows(
     specialist.workingHours,
     date,
