@@ -89,6 +89,7 @@ const AppointmentSchema = new mongoose.Schema(
     services: [
       {
         serviceId: { type: mongoose.Schema.Types.ObjectId, ref: "Service" },
+        serviceName: String, // Service name for display
         variantName: String,
         price: Number,
         duration: Number, // in minutes
