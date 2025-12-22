@@ -226,7 +226,7 @@ const TenantSchema = new mongoose.Schema(
     // Feature flags
     features: {
       enableBlog: { type: Boolean, default: false },
-      enableProducts: { type: Boolean, default: true },
+      enableProducts: { type: Boolean, default: false },
       enableGiftCards: { type: Boolean, default: false },
       enableMemberships: { type: Boolean, default: false },
       enableReviews: { type: Boolean, default: true },

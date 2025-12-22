@@ -343,6 +343,7 @@ export async function sendConfirmationEmail({
   let paymentStatus = "Unknown";
   let isDepositPayment = false;
   let depositAmount = 0;
+  let depositPercentage = 0;
   let bookingFee = 0;
   let remainingBalance = 0;
 
@@ -358,22 +359,22 @@ export async function sendConfirmationEmail({
         : "Payment pending";
   } else if (appointment.payment?.mode === "deposit") {
     isDepositPayment = true;
-    // Calculate deposit amount from payment.amountTotal (in pence/cents)
-    // Note: amountTotal includes the £0.50 booking fee
-    const platformFee = Number(process.env.STRIPE_PLATFORM_FEE || 50); // in pence/cents
-    bookingFee = platformFee / 100; // Convert to main currency unit for display
-    const totalPaid = appointment.payment?.amountTotal
-      ? appointment.payment.amountTotal / 100
-      : 0;
-    depositAmount = totalPaid - bookingFee; // Actual deposit without fee
+    // Calculate deposit amount from payment.depositAmount or amountTotal
+    const depositAmountCents =
+      appointment.payment?.depositAmount ||
+      appointment.payment?.amountTotal ||
+      0;
+    depositAmount = depositAmountCents / 100; // Convert to main currency unit
+    depositPercentage = appointment.payment?.depositPercentage || 30; // Get percentage or default to 30%
 
     const totalPrice = Number(appointment.price || 0);
     remainingBalance = totalPrice - depositAmount;
 
     paymentStatus =
-      appointment.payment?.status === "succeeded"
-        ? `Deposit paid`
-        : "Deposit pending";
+      appointment.payment?.status === "succeeded" ||
+      appointment.payment?.status === "paid"
+        ? `Deposit paid (${depositPercentage}%)`
+        : `Deposit pending (${depositPercentage}%)`;
   } else if (appointment.status === "reserved_unpaid") {
     paymentStatus = "Pay at salon";
   } else if (appointment.status === "confirmed") {
@@ -400,15 +401,34 @@ export async function sendConfirmationEmail({
   console.log("[MAILER] Determined payment status:", paymentStatus);
   console.log("[MAILER] Sending confirmation email to:", customerEmail);
 
+  // Use Stripe checkout URL from payment object for pending deposit
+  const paymentLink =
+    isDepositPayment &&
+    appointment.payment?.status === "pending" &&
+    appointment.payment?.checkoutUrl
+      ? appointment.payment.checkoutUrl
+      : null;
+
   try {
     const info = await tx.sendMail({
       from,
       to: customerEmail,
-      subject: `Appointment Confirmed - ${serviceName}`,
+      subject: `Appointment ${
+        paymentLink ? "Reserved - Deposit Required" : "Confirmed"
+      } - ${serviceName}`,
       text: `Hi ${appointment.client?.name || ""},
 
-Your appointment has been confirmed!
+${
+  paymentLink
+    ? "Your appointment has been reserved and requires a deposit payment to be confirmed."
+    : "Your appointment has been confirmed!"
+}
 
+${
+  paymentLink
+    ? `\n🔗 PAY DEPOSIT NOW:\n${paymentLink}\n\nPlease complete your deposit payment to confirm your booking.\n`
+    : ""
+}
 ${
   hasMultipleServices
     ? "Services:\n" + servicesList
@@ -448,10 +468,34 @@ Thank you for choosing us!`,
       html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: linear-gradient(135deg, #7c3aed 0%, #ec4899 50%, #06b6d4 100%); padding: 30px 20px; border-radius: 12px 12px 0 0; margin: -20px -20px 20px -20px;">
-          <h2 style="color: white; margin: 0; font-size: 24px; text-align: center;">✓ Appointment Confirmed</h2>
+          <h2 style="color: white; margin: 0; font-size: 24px; text-align: center;">${
+            paymentLink
+              ? "⏰ Appointment Reserved - Deposit Required"
+              : "✓ Appointment Confirmed"
+          }</h2>
         </div>
         <p>Hi ${appointment.client?.name || ""},</p>
-        <p>Your appointment has been confirmed!</p>
+        <p>${
+          paymentLink
+            ? "Your appointment has been reserved and requires a deposit payment to be confirmed."
+            : "Your appointment has been confirmed!"
+        }</p>
+        
+        ${
+          paymentLink
+            ? `
+        <div style="background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%); padding: 20px; border-radius: 12px; margin: 20px 0; text-align: center;">
+          <p style="margin: 0 0 12px 0; color: white; font-size: 16px; font-weight: 600;">⏰ Deposit Payment Required</p>
+          <p style="margin: 0 0 16px 0; color: rgba(255,255,255,0.9); font-size: 14px;">Please complete your ${depositPercentage}% deposit payment to confirm your booking.</p>
+          <a href="${paymentLink}" style="display: inline-block; background-color: white; color: #7c3aed; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">💳 Pay Deposit Now</a>
+          <p style="margin: 16px 0 0 0; color: rgba(255,255,255,0.8); font-size: 12px;">Deposit Amount (${depositPercentage}%): ${formatCurrency(
+                depositAmount,
+                currency
+              )}</p>
+        </div>
+        `
+            : ""
+        }
         
         <div style="background: linear-gradient(135deg, rgba(124, 58, 237, 0.05) 0%, rgba(236, 72, 153, 0.05) 100%); padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #7c3aed;">
           <h3 style="margin-top: 0; margin-bottom: 16px; background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-size: 18px;">Booking Details</h3>
@@ -460,7 +504,7 @@ Thank you for choosing us!`,
           <p style="margin: 8px 0;"><strong>Date & Time:</strong> ${startTime}</p>
           <p style="margin: 8px 0;"><strong>Total Price:</strong> ${price}</p>
           ${
-            isDepositPayment
+            isDepositPayment && !paymentLink
               ? `
           <div style="background-color: #ecfdf5; padding: 12px; border-radius: 6px; margin-top: 12px; border-left: 3px solid #10b981;">
             <p style="margin: 0 0 8px 0; color: #065f46; font-weight: 600; font-size: 14px;">💳 Payment Details</p>
@@ -468,10 +512,14 @@ Thank you for choosing us!`,
               depositAmount,
               currency
             )}</strong></p>
-            <p style="margin: 4px 0; color: #047857; font-size: 14px;">Booking Fee: <strong>${formatCurrency(
-              bookingFee,
-              currency
-            )}</strong></p>
+            ${
+              bookingFee > 0
+                ? `<p style="margin: 4px 0; color: #047857; font-size: 14px;">Booking Fee: <strong>${formatCurrency(
+                    bookingFee,
+                    currency
+                  )}</strong></p>`
+                : ""
+            }
             <p style="margin: 8px 0 0 0; padding-top: 8px; border-top: 1px solid #d1fae5; color: #065f46; font-size: 15px; font-weight: 700;">Total Paid: ${formatCurrency(
               depositAmount + bookingFee,
               currency

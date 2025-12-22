@@ -46,6 +46,7 @@ import clientRouter from "./routes/client.js";
 import favoritesRouter from "./routes/favorites.js";
 import giftCardsRouter from "./routes/giftCards.js";
 import paymentsRouter from "./routes/payments.js";
+import supportRouter from "./routes/support.js";
 import { startReminderCron } from "./services/reminderService.js";
 import {
   apiLimiter,
@@ -241,6 +242,9 @@ app.use("/api/shipping", shippingRouter);
 
 // Apply general rate limiting to remaining API routes
 app.use("/api", apiLimiter);
+
+// Support routes (protected - requires authentication)
+app.use("/api/support", supportRouter);
 
 // Booking with rate limiting to prevent spam
 app.use("/api/checkout", bookingLimiter, checkoutRouter);

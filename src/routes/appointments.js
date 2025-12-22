@@ -5,7 +5,7 @@ import Appointment from "../models/Appointment.js";
 import CancellationPolicy from "../models/CancellationPolicy.js";
 import { z } from "zod";
 import { computeCancellationOutcome } from "../controllers/appointments/computeCancellationOutcome.js";
-import { refundPayment } from "../payments/stripe.js";
+import { refundPayment, getStripe } from "../payments/stripe.js";
 import {
   sendCancellationEmails,
   sendConfirmationEmail,
@@ -154,16 +154,48 @@ r.post("/", async (req, res) => {
   }).lean();
   if (conflict)
     return res.status(409).json({ error: "Slot no longer available" });
+  const paymentStatus = req.body.paymentStatus || mode;
   const isInSalon = String(mode).toLowerCase() === "pay_in_salon";
-  const status = isInSalon ? "confirmed" : "reserved_unpaid";
-  const payment = isInSalon
-    ? {
-        mode: "pay_in_salon",
-        provider: "cash",
-        status: "unpaid",
-        amountTotal: Math.round(Number(variant.price || 0) * 100),
-      }
-    : undefined;
+  const isDeposit = paymentStatus === "deposit";
+  const isPaid = paymentStatus === "paid";
+
+  // Check if specialist has Stripe account for deposit payments
+  if (isDeposit && !specialist.stripeAccountId) {
+    return res.status(400).json({
+      error:
+        "This specialist does not have payment processing set up. Please choose a different payment method or contact support.",
+    });
+  }
+
+  let status = "reserved_unpaid";
+  let payment = undefined;
+
+  if (isPaid || isInSalon) {
+    status = "confirmed";
+    payment = {
+      mode: "pay_in_salon",
+      provider: "cash",
+      status: "unpaid",
+      amountTotal: Math.round(Number(variant.price || 0) * 100),
+    };
+  } else if (isDeposit) {
+    // For deposit, create a pending payment that will be completed via link
+    status = "reserved_unpaid";
+    // Get custom deposit percentage (default 30%)
+    const depositPercentage = Number(req.body.depositAmount) || 30;
+    const depositAmount = Math.round(
+      Number(variant.price || 0) * (depositPercentage / 100) * 100
+    ); // in pence
+    payment = {
+      mode: "deposit",
+      provider: "stripe",
+      status: "pending",
+      amountTotal: depositAmount,
+      depositAmount: depositAmount,
+      depositPercentage: depositPercentage,
+      fullAmount: Math.round(Number(variant.price || 0) * 100),
+    };
+  }
   const appt = await Appointment.create({
     client,
     specialistId: Specialist._id,
@@ -179,7 +211,119 @@ r.post("/", async (req, res) => {
     ...(locationId ? { locationId } : {}), // Add locationId if provided
   });
 
-  // Send confirmation email to customer
+  // Handle deposit mode: create Stripe checkout session
+  if (isDeposit) {
+    try {
+      // Get deposit percentage and amounts
+      const depositPercentage = Number(req.body.depositAmount) || 30;
+      const depositAmount =
+        Number(variant.price || 0) * (depositPercentage / 100);
+      const platformFee = 0.5; // £0.50 booking fee
+      const totalAmount = depositAmount + platformFee;
+
+      // Create Stripe Checkout Session
+      const stripe = getStripe();
+
+      const lineItems = [
+        {
+          price_data: {
+            currency: "gbp",
+            product_data: {
+              name: `Deposit for ${service.name} - ${variant.name}`,
+              description: `With ${specialist.name}`,
+            },
+            unit_amount: Math.round(depositAmount * 100),
+          },
+          quantity: 1,
+        },
+        {
+          price_data: {
+            currency: "gbp",
+            product_data: {
+              name: "Booking Fee",
+              description: "Platform booking fee",
+            },
+            unit_amount: Math.round(platformFee * 100),
+          },
+          quantity: 1,
+        },
+      ];
+
+      console.log("[DEPOSIT] Creating Stripe session:", {
+        appointmentId: appt._id.toString(),
+        depositAmount,
+        platformFee,
+        totalAmount,
+        stripeAccountId: specialist.stripeAccountId,
+        customerEmail: client.email,
+      });
+
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ["card"],
+        line_items: lineItems,
+        mode: "payment",
+        success_url: `${process.env.FRONTEND_URL}/booking/${appt._id}/deposit-success`,
+        cancel_url: `${process.env.FRONTEND_URL}/booking/${appt._id}/deposit-cancel`,
+        customer_email: client.email,
+        metadata: {
+          appointmentId: appt._id.toString(),
+          type: "manual_appointment_deposit",
+          tenantId: req.tenantId,
+        },
+        payment_intent_data: {
+          application_fee_amount: Math.round(platformFee * 100),
+          transfer_data: {
+            destination: specialist.stripeAccountId,
+          },
+          statement_descriptor: "ELITE BOOKER",
+          statement_descriptor_suffix: "DEPOSIT",
+        },
+      });
+
+      console.log("[DEPOSIT] Created Stripe session:", {
+        sessionId: session.id,
+        appointmentId: appt._id.toString(),
+        url: session.url,
+      });
+
+      // Update appointment with checkout details
+      appt.payment.checkoutSessionId = session.id;
+      appt.payment.checkoutUrl = session.url;
+
+      try {
+        await appt.save();
+        console.log("[DEPOSIT] Appointment saved with session ID:", session.id);
+      } catch (saveError) {
+        console.error("[DEPOSIT] Failed to save appointment:", saveError);
+        // Try to update via findByIdAndUpdate as fallback
+        await Appointment.findByIdAndUpdate(appt._id, {
+          $set: {
+            "payment.checkoutSessionId": session.id,
+            "payment.checkoutUrl": session.url,
+          },
+        });
+        console.log("[DEPOSIT] Updated appointment via findByIdAndUpdate");
+      }
+
+      // Send confirmation email with deposit payment link
+      sendConfirmationEmail({
+        appointment: appt.toObject(),
+        service,
+        specialist,
+      }).catch((err) => {
+        console.error("Failed to send confirmation email:", err);
+      });
+
+      return res.json({ ok: true, appointmentId: appt._id });
+    } catch (depositError) {
+      console.error("Failed to create deposit checkout:", depositError);
+      return res
+        .status(500)
+        .json({ error: "Failed to create deposit payment session" });
+    }
+  }
+
+  // Send confirmation email to customer (for non-deposit appointments)
   sendConfirmationEmail({
     appointment: appt.toObject(),
     service,

@@ -41,13 +41,19 @@ const PaymentSchema = new mongoose.Schema(
         "refunded",
         "partial_refunded",
         "unpaid",
+        "pending",
       ],
       default: "unpaid",
     },
     sessionId: String,
+    checkoutSessionId: String, // Stripe Checkout Session ID
+    checkoutUrl: String, // Stripe Checkout URL for deposit payments
     amountTotal: { type: Number, default: 0 },
     amountDeposit: { type: Number },
     amountBalance: { type: Number },
+    depositAmount: { type: Number }, // Deposit amount in pence
+    depositPercentage: { type: Number }, // Deposit percentage (e.g., 30 for 30%)
+    fullAmount: { type: Number }, // Full service price in pence
     stripe: { type: PaymentStripeSchema, default: undefined },
   },
   { _id: false }
