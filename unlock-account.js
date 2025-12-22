@@ -46,5 +46,5 @@ async function unlockAccount(email) {
   }
 }
 
-const email = process.argv[2] || "martynas2.20@hotmail.com";
+const email = process.argv[2] || "martynas.20@hotmail.com";
 unlockAccount(email);

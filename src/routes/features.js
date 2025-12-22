@@ -32,6 +32,12 @@ router.get("/:specialistId", requireAdmin, async (req, res) => {
         currentPeriodEnd:
           specialist.subscription?.noFeeBookings?.currentPeriodEnd || null,
       },
+      smsConfirmations: {
+        enabled: specialist.subscription?.smsConfirmations?.enabled || false,
+        status: specialist.subscription?.smsConfirmations?.status || "inactive",
+        currentPeriodEnd:
+          specialist.subscription?.smsConfirmations?.currentPeriodEnd || null,
+      },
     };
 
     console.log(
@@ -177,6 +183,125 @@ router.post("/:specialistId/cancel-no-fee", requireAdmin, async (req, res) => {
     res
       .status(500)
       .json({ error: err.message || "Failed to cancel subscription" });
+  }
+});
+
+/**
+ * POST /api/features/:specialistId/subscribe-sms
+ * Create SMS subscription checkout session
+ */
+router.post("/:specialistId/subscribe-sms", requireAdmin, async (req, res) => {
+  try {
+    const { specialistId } = req.params;
+
+    const specialist = await Specialist.findById(specialistId);
+    if (!specialist) {
+      return res.status(404).json({ error: "Specialist not found" });
+    }
+
+    // Check if already subscribed
+    if (specialist.subscription?.smsConfirmations?.enabled) {
+      return res
+        .status(400)
+        .json({ error: "Already subscribed to SMS confirmations" });
+    }
+
+    const stripe = getStripe();
+
+    // Create or get Stripe customer
+    let customerId = specialist.stripeCustomerId;
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: specialist.email,
+        name: specialist.name,
+        metadata: {
+          specialistId: specialist._id.toString(),
+        },
+      });
+      customerId = customer.id;
+      specialist.stripeCustomerId = customerId;
+      await specialist.save();
+    }
+
+    // Get price ID from environment variable
+    const priceId = process.env.SMS_CONFIRMATIONS_PRICE_ID;
+    if (!priceId) {
+      return res
+        .status(500)
+        .json({ error: "SMS subscription price not configured" });
+    }
+
+    // Create checkout session for subscription
+    const session = await stripe.checkout.sessions.create({
+      customer: customerId,
+      mode: "subscription",
+      payment_method_types: ["card"],
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1,
+        },
+      ],
+      success_url: `${process.env.FRONTEND_URL}/admin/platform-features?success=true&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.FRONTEND_URL}/admin/platform-features?canceled=true`,
+      metadata: {
+        specialistId: specialist._id.toString(),
+        feature: "sms_confirmations",
+      },
+      subscription_data: {
+        metadata: {
+          specialistId: specialist._id.toString(),
+          feature: "sms_confirmations",
+        },
+      },
+    });
+
+    res.json({ checkoutUrl: session.url });
+  } catch (err) {
+    console.error("Error creating SMS subscription:", err);
+    res
+      .status(500)
+      .json({ error: err.message || "Failed to create SMS subscription" });
+  }
+});
+
+/**
+ * POST /api/features/:specialistId/cancel-sms
+ * Cancel SMS subscription (at end of period)
+ */
+router.post("/:specialistId/cancel-sms", requireAdmin, async (req, res) => {
+  try {
+    const { specialistId } = req.params;
+
+    const specialist = await Specialist.findById(specialistId);
+    if (!specialist) {
+      return res.status(404).json({ error: "Specialist not found" });
+    }
+
+    const subscriptionId =
+      specialist.subscription?.smsConfirmations?.stripeSubscriptionId;
+    if (!subscriptionId) {
+      return res
+        .status(400)
+        .json({ error: "No active SMS subscription found" });
+    }
+
+    const stripe = getStripe();
+
+    // Cancel at period end (don't cancel immediately)
+    await stripe.subscriptions.update(subscriptionId, {
+      cancel_at_period_end: true,
+    });
+
+    res.json({
+      message:
+        "SMS subscription will be canceled at the end of the billing period",
+    });
+  } catch (err) {
+    console.error("Error canceling SMS subscription:", err);
+    res
+      .status(500)
+      .json({ error: err.message || "Failed to cancel SMS subscription" });
   }
 });
 
