@@ -43,7 +43,7 @@ You can now log in to your account.
 If you did not request this unlock or have concerns about your account security, please contact support immediately.
 
 Best regards,
-Noble Elegance
+Elite Booker
 
 ---
 This is an automated message. Please do not reply to this email.`,

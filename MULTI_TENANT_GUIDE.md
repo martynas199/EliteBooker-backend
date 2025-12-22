@@ -498,11 +498,11 @@ schema.plugin(multiTenantPlugin);
 
 ```env
 # Multi-Tenant Configuration
-PLATFORM_DOMAIN=nobleelegance.co.uk
+PLATFORM_DOMAIN=elitebooker.co.uk
 DEFAULT_TENANT_SLUG=noble-elegance
-DEFAULT_BUSINESS_NAME=Noble Elegance
-DEFAULT_SALON_NAME=Noble Elegance Beauty Salon
-DEFAULT_TENANT_EMAIL=info@nobleelegance.co.uk
+DEFAULT_BUSINESS_NAME=Elite Booker
+DEFAULT_SALON_NAME=Elite Booker Beauty Salon
+DEFAULT_TENANT_EMAIL=info@elitebooker.co.uk
 DEFAULT_TENANT_PHONE=+44 1945 123456
 
 # Stripe Connect

@@ -98,7 +98,7 @@ const allowedOrigins = [
   "https://elite-booker-frontend-4yty84hoj-martynasgecas-projects.vercel.app", // Vercel preview (temporary until DNS propagates)
   "https://permanentbyjuste.co.uk", // Production frontend
   "https://www.permanentbyjuste.co.uk", // Production frontend with www
-  "https://www.nobleelegance.co.uk", // Production frontend
+  "https://www.elitebooker.co.uk", // Production frontend
   process.env.FRONTEND_URL, // Production frontend URL from env (if different)
 ].filter(Boolean);
 

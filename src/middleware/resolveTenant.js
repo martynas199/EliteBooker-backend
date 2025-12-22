@@ -19,14 +19,10 @@ const JWT_SECRET =
   process.env.JWT_SECRET || "your-secret-key-change-this-in-production";
 
 // Platform domain (configure this based on your deployment)
-const PLATFORM_DOMAIN = process.env.PLATFORM_DOMAIN || "nobleelegance.co.uk";
 const PLATFORM_DOMAINS = [
-  "nobleelegance.co.uk",
-  "www.nobleelegance.co.uk",
-  "permanentbyjuste.co.uk",
-  "www.permanentbyjuste.co.uk",
+  "elitebooker.co.uk",
+  "www.elitebooker.co.uk",
   "localhost:5173",
-  "localhost:5174",
   "localhost:3000",
 ];
 

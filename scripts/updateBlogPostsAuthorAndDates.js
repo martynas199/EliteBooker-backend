@@ -21,7 +21,7 @@ async function updateBlogPosts() {
 
       remiAdmin = await Admin.create({
         name: "Remi",
-        email: "remi@nobleelegance.com",
+        email: "remi@elitebooker.com",
         password: existingAdmin?.password || "tempPassword123!", // Will need to be reset
         role: "admin",
         active: true,

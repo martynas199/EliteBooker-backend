@@ -288,12 +288,12 @@ const services = [
 // Blog post templates for different service types
 const blogTemplates = {
   "Permanent makeup": {
-    title: (name) => `The Ultimate Guide to ${name} at Noble Elegance`,
+    title: (name) => `The Ultimate Guide to ${name} at Elite Booker`,
     excerpt: (name) =>
       `Discover everything you need to know about ${name.toLowerCase()} - from the procedure to aftercare, and why it's one of our most popular treatments in Wisbech.`,
     content: (name) => `
 <h2>What is ${name}?</h2>
-<p>${name} is a semi-permanent cosmetic procedure that enhances your natural features, giving you beautiful, long-lasting results. At Noble Elegance in Wisbech, our expert technicians use the latest techniques and highest quality pigments to create stunning, natural-looking permanent makeup.</p>
+<p>${name} is a semi-permanent cosmetic procedure that enhances your natural features, giving you beautiful, long-lasting results. At Elite Booker in Wisbech, our expert technicians use the latest techniques and highest quality pigments to create stunning, natural-looking permanent makeup.</p>
 
 <h2>Benefits of ${name}</h2>
 <ul>
@@ -324,8 +324,8 @@ const blogTemplates = {
   <li>Attend your touch-up appointment after 6-8 weeks</li>
 </ul>
 
-<h2>Why Choose Noble Elegance?</h2>
-<p>At Noble Elegance in Wisbech, we pride ourselves on:</p>
+<h2>Why Choose Elite Booker?</h2>
+<p>At Elite Booker in Wisbech, we pride ourselves on:</p>
 <ul>
   <li>Fully qualified and experienced permanent makeup artists</li>
   <li>Strict hygiene and safety protocols</li>
@@ -334,10 +334,10 @@ const blogTemplates = {
   <li>Excellent aftercare support</li>
 </ul>
 
-<blockquote>"The permanent makeup procedure at Noble Elegance was comfortable and the results exceeded my expectations. I wake up feeling beautiful every day!" - Sarah, Wisbech</blockquote>
+<blockquote>"The permanent makeup procedure at Elite Booker was comfortable and the results exceeded my expectations. I wake up feeling beautiful every day!" - Sarah, Wisbech</blockquote>
 
 <h2>Book Your Consultation Today</h2>
-<p>Ready to experience the convenience and confidence of ${name.toLowerCase()}? Contact Noble Elegance at our Wisbech salon on <strong>+44 7928 775746</strong> or book online. We serve clients from Wisbech, March, King's Lynn, Peterborough, and throughout Cambridgeshire.</p>
+<p>Ready to experience the convenience and confidence of ${name.toLowerCase()}? Contact Elite Booker at our Wisbech salon on <strong>+44 7928 775746</strong> or book online. We serve clients from Wisbech, March, King's Lynn, Peterborough, and throughout Cambridgeshire.</p>
 
 <p><em>Open Monday to Sunday, 9am-5pm at 12 Blackfriars Rd, Wisbech PE13 1AT</em></p>
 `,
@@ -352,10 +352,10 @@ const blogTemplates = {
   Brows: {
     title: (name) => `${name}: Expert Brow Treatment in Wisbech`,
     excerpt: (name) =>
-      `Transform your brows with ${name.toLowerCase()} at Noble Elegance. Professional results, stunning brows that last.`,
+      `Transform your brows with ${name.toLowerCase()} at Elite Booker. Professional results, stunning brows that last.`,
     content: (name) => `
 <h2>Transform Your Brows with ${name}</h2>
-<p>Beautiful, well-groomed brows frame your face and enhance your natural beauty. At Noble Elegance in Wisbech, our ${name.toLowerCase()} service delivers professional results that will have you loving your brows.</p>
+<p>Beautiful, well-groomed brows frame your face and enhance your natural beauty. At Elite Booker in Wisbech, our ${name.toLowerCase()} service delivers professional results that will have you loving your brows.</p>
 
 <h2>What is ${name}?</h2>
 <p>${name} is a professional treatment that enhances the appearance of your eyebrows, creating fuller, more defined, and perfectly shaped brows. Our skilled specialists in Wisbech use premium products and proven techniques to deliver stunning results.</p>
@@ -370,7 +370,7 @@ const blogTemplates = {
 </ul>
 
 <h2>The Treatment Process</h2>
-<p>Your ${name.toLowerCase()} appointment at Noble Elegance includes:</p>
+<p>Your ${name.toLowerCase()} appointment at Elite Booker includes:</p>
 <ol>
   <li><strong>Consultation:</strong> Discussing your desired brow shape and style</li>
   <li><strong>Preparation:</strong> Cleansing and preparing the brow area</li>
@@ -400,7 +400,7 @@ const blogTemplates = {
 </ul>
 
 <h2>Book Your Brow Appointment</h2>
-<p>Experience the difference professional ${name.toLowerCase()} can make. Visit Noble Elegance at 12 Blackfriars Rd, Wisbech PE13 1AT, or call <strong>+44 7928 775746</strong> to book your appointment. Serving Wisbech, March, King's Lynn, and Peterborough.</p>
+<p>Experience the difference professional ${name.toLowerCase()} can make. Visit Elite Booker at 12 Blackfriars Rd, Wisbech PE13 1AT, or call <strong>+44 7928 775746</strong> to book your appointment. Serving Wisbech, March, King's Lynn, and Peterborough.</p>
 `,
     tags: (name, category) => [
       "brows",
@@ -413,10 +413,10 @@ const blogTemplates = {
   Injections: {
     title: (name) => `${name}: Professional Injectable Treatments in Wisbech`,
     excerpt: (name) =>
-      `Discover ${name.toLowerCase()} at Noble Elegance - expert injectable treatments delivering natural-looking results in Wisbech, Cambridgeshire.`,
+      `Discover ${name.toLowerCase()} at Elite Booker - expert injectable treatments delivering natural-looking results in Wisbech, Cambridgeshire.`,
     content: (name) => `
-<h2>Expert ${name} at Noble Elegance</h2>
-<p>At Noble Elegance in Wisbech, we offer professional ${name.toLowerCase()} treatments delivered by our experienced aesthetic practitioners. Using premium products and advanced techniques, we help you achieve natural-looking, beautiful results.</p>
+<h2>Expert ${name} at Elite Booker</h2>
+<p>At Elite Booker in Wisbech, we offer professional ${name.toLowerCase()} treatments delivered by our experienced aesthetic practitioners. Using premium products and advanced techniques, we help you achieve natural-looking, beautiful results.</p>
 
 <h2>What Are ${name}?</h2>
 <p>${name} are advanced aesthetic treatments that enhance your natural features, reduce signs of aging, or address specific cosmetic concerns. Our practitioners have extensive training and experience in delivering safe, effective injectable treatments.</p>
@@ -432,7 +432,7 @@ const blogTemplates = {
 </ul>
 
 <h2>The Treatment Process</h2>
-<p>Your ${name.toLowerCase()} journey at Noble Elegance includes:</p>
+<p>Your ${name.toLowerCase()} journey at Elite Booker includes:</p>
 <ol>
   <li><strong>Comprehensive Consultation:</strong> Discussing your goals, medical history, and expectations</li>
   <li><strong>Treatment Planning:</strong> Creating a personalized treatment plan</li>
@@ -469,8 +469,8 @@ const blogTemplates = {
   <li>Stay hydrated and avoid excessive sun exposure</li>
 </ul>
 
-<h2>Why Choose Noble Elegance?</h2>
-<p>When you choose Noble Elegance for ${name.toLowerCase()}, you benefit from:</p>
+<h2>Why Choose Elite Booker?</h2>
+<p>When you choose Elite Booker for ${name.toLowerCase()}, you benefit from:</p>
 <ul>
   <li>Qualified and experienced aesthetic practitioners</li>
   <li>Premium, authentic products</li>
@@ -480,10 +480,10 @@ const blogTemplates = {
   <li>Natural-looking results</li>
 </ul>
 
-<blockquote>"I was nervous about trying injectables, but the team at Noble Elegance made me feel so comfortable. The results are exactly what I wanted - natural and subtle!" - Emma, March</blockquote>
+<blockquote>"I was nervous about trying injectables, but the team at Elite Booker made me feel so comfortable. The results are exactly what I wanted - natural and subtle!" - Emma, March</blockquote>
 
 <h2>Book Your Consultation</h2>
-<p>Ready to discover how ${name.toLowerCase()} can enhance your natural beauty? Contact Noble Elegance on <strong>+44 7928 775746</strong> or visit us at 12 Blackfriars Rd, Wisbech PE13 1AT. We welcome clients from Wisbech, March, King's Lynn, Peterborough, Downham Market, and Chatteris.</p>
+<p>Ready to discover how ${name.toLowerCase()} can enhance your natural beauty? Contact Elite Booker on <strong>+44 7928 775746</strong> or visit us at 12 Blackfriars Rd, Wisbech PE13 1AT. We welcome clients from Wisbech, March, King's Lynn, Peterborough, Downham Market, and Chatteris.</p>
 
 <p><em>Open 7 days a week, 9am-5pm. Book your consultation today!</em></p>
 `,
@@ -499,10 +499,10 @@ const blogTemplates = {
   "Face treatment": {
     title: (name) => `${name}: Professional Facial Treatment in Wisbech`,
     excerpt: (name) =>
-      `Experience ${name.toLowerCase()} at Noble Elegance - professional facial treatments for beautiful, healthy skin in Wisbech.`,
+      `Experience ${name.toLowerCase()} at Elite Booker - professional facial treatments for beautiful, healthy skin in Wisbech.`,
     content: (name) => `
-<h2>${name} at Noble Elegance</h2>
-<p>Treat your skin to the luxury it deserves with ${name.toLowerCase()} at Noble Elegance in Wisbech. Our professional facial treatments combine advanced techniques with premium products to deliver visible, lasting results.</p>
+<h2>${name} at Elite Booker</h2>
+<p>Treat your skin to the luxury it deserves with ${name.toLowerCase()} at Elite Booker in Wisbech. Our professional facial treatments combine advanced techniques with premium products to deliver visible, lasting results.</p>
 
 <h2>What is ${name}?</h2>
 <p>${name} is a professional skincare treatment designed to cleanse, exfoliate, nourish, and rejuvenate your skin. Our experienced specialists customize each treatment to address your specific skin concerns and goals.</p>
@@ -518,7 +518,7 @@ const blogTemplates = {
 </ul>
 
 <h2>The Treatment Process</h2>
-<p>Your ${name.toLowerCase()} experience at Noble Elegance includes:</p>
+<p>Your ${name.toLowerCase()} experience at Elite Booker includes:</p>
 <ol>
   <li><strong>Skin Analysis:</strong> Assessing your skin type and concerns</li>
   <li><strong>Cleansing:</strong> Gentle removal of makeup and impurities</li>
@@ -560,7 +560,7 @@ const blogTemplates = {
 </ul>
 
 <h2>What Makes Our Treatments Special?</h2>
-<p>At Noble Elegance, you can expect:</p>
+<p>At Elite Booker, you can expect:</p>
 <ul>
   <li>Qualified and experienced facial therapists</li>
   <li>Premium, professional-grade products</li>
@@ -570,10 +570,10 @@ const blogTemplates = {
   <li>Excellent hygiene standards</li>
 </ul>
 
-<blockquote>"The ${name.toLowerCase()} at Noble Elegance is my monthly treat to myself. My skin has never looked better!" - Lisa, Wisbech</blockquote>
+<blockquote>"The ${name.toLowerCase()} at Elite Booker is my monthly treat to myself. My skin has never looked better!" - Lisa, Wisbech</blockquote>
 
 <h2>Book Your Facial Treatment Today</h2>
-<p>Give your skin the care it deserves with ${name.toLowerCase()} at Noble Elegance. Call <strong>+44 7928 775746</strong> or visit us at 12 Blackfriars Rd, Wisbech PE13 1AT to book your appointment. Serving Wisbech, March, King's Lynn, Peterborough, and surrounding areas.</p>
+<p>Give your skin the care it deserves with ${name.toLowerCase()} at Elite Booker. Call <strong>+44 7928 775746</strong> or visit us at 12 Blackfriars Rd, Wisbech PE13 1AT to book your appointment. Serving Wisbech, March, King's Lynn, Peterborough, and surrounding areas.</p>
 
 <p><em>Open Monday-Sunday, 9am-5pm</em></p>
 `,
@@ -589,13 +589,13 @@ const blogTemplates = {
   Hair: {
     title: (name) => `${name}: Expert Hair Services in Wisbech`,
     excerpt: (name) =>
-      `Transform your hair with ${name.toLowerCase()} at Noble Elegance. Professional hair services in Wisbech by experienced stylists.`,
+      `Transform your hair with ${name.toLowerCase()} at Elite Booker. Professional hair services in Wisbech by experienced stylists.`,
     content: (name) => `
-<h2>Professional ${name} at Noble Elegance</h2>
-<p>Your hair deserves the best care, and at Noble Elegance in Wisbech, our experienced hair stylists deliver exceptional ${name.toLowerCase()} services using premium products and the latest techniques.</p>
+<h2>Professional ${name} at Elite Booker</h2>
+<p>Your hair deserves the best care, and at Elite Booker in Wisbech, our experienced hair stylists deliver exceptional ${name.toLowerCase()} services using premium products and the latest techniques.</p>
 
 <h2>Why Choose Our ${name} Service?</h2>
-<p>When you choose Noble Elegance for ${name.toLowerCase()}, you're choosing:</p>
+<p>When you choose Elite Booker for ${name.toLowerCase()}, you're choosing:</p>
 <ul>
   <li><strong>Expert Stylists:</strong> Qualified professionals with years of experience</li>
   <li><strong>Premium Products:</strong> High-quality, professional-grade hair care</li>
@@ -645,7 +645,7 @@ const blogTemplates = {
 </ul>
 
 <h2>Book Your Hair Appointment</h2>
-<p>Ready for beautiful, healthy hair? Contact Noble Elegance on <strong>+44 7928 775746</strong> or visit our salon at 12 Blackfriars Rd, Wisbech PE13 1AT. We welcome clients from Wisbech, March, King's Lynn, Peterborough, and throughout Cambridgeshire.</p>
+<p>Ready for beautiful, healthy hair? Contact Elite Booker on <strong>+44 7928 775746</strong> or visit our salon at 12 Blackfriars Rd, Wisbech PE13 1AT. We welcome clients from Wisbech, March, King's Lynn, Peterborough, and throughout Cambridgeshire.</p>
 
 <p><em>Open 7 days, 9am-5pm</em></p>
 `,
@@ -661,10 +661,10 @@ const blogTemplates = {
   Waxing: {
     title: (name) => `${name}: Professional Waxing Services in Wisbech`,
     excerpt: (name) =>
-      `Smooth, hair-free skin with ${name.toLowerCase()} at Noble Elegance. Professional waxing in Wisbech using gentle techniques.`,
+      `Smooth, hair-free skin with ${name.toLowerCase()} at Elite Booker. Professional waxing in Wisbech using gentle techniques.`,
     content: (name) => `
-<h2>Professional ${name} at Noble Elegance</h2>
-<p>Achieve smooth, hair-free skin with ${name.toLowerCase()} at Noble Elegance in Wisbech. Our experienced specialists use premium wax and gentle techniques for comfortable, effective hair removal.</p>
+<h2>Professional ${name} at Elite Booker</h2>
+<p>Achieve smooth, hair-free skin with ${name.toLowerCase()} at Elite Booker in Wisbech. Our experienced specialists use premium wax and gentle techniques for comfortable, effective hair removal.</p>
 
 <h2>Benefits of ${name}</h2>
 <ul>
@@ -708,7 +708,7 @@ const blogTemplates = {
   <li>Book regular appointments every 4-6 weeks</li>
 </ul>
 
-<h2>Why Choose Noble Elegance?</h2>
+<h2>Why Choose Elite Booker?</h2>
 <ul>
   <li>Experienced, professional specialists</li>
   <li>Premium quality wax for sensitive skin</li>
@@ -718,10 +718,10 @@ const blogTemplates = {
   <li>Flexible appointment times</li>
 </ul>
 
-<blockquote>"I've tried many salons, but Noble Elegance is by far the best for waxing. The staff are gentle, professional, and the results are always perfect!" - Rachel, March</blockquote>
+<blockquote>"I've tried many salons, but Elite Booker is by far the best for waxing. The staff are gentle, professional, and the results are always perfect!" - Rachel, March</blockquote>
 
 <h2>Book Your Waxing Appointment</h2>
-<p>Ready for smooth, beautiful skin? Call Noble Elegance on <strong>+44 7928 775746</strong> or visit us at 12 Blackfriars Rd, Wisbech PE13 1AT. Serving Wisbech, March, King's Lynn, Peterborough, Downham Market, and Chatteris.</p>
+<p>Ready for smooth, beautiful skin? Call Elite Booker on <strong>+44 7928 775746</strong> or visit us at 12 Blackfriars Rd, Wisbech PE13 1AT. Serving Wisbech, March, King's Lynn, Peterborough, Downham Market, and Chatteris.</p>
 
 <p><em>Open Monday-Sunday, 9am-5pm</em></p>
 `,
@@ -737,10 +737,10 @@ const blogTemplates = {
   default: {
     title: (name) => `${name}: Premium Beauty Treatment in Wisbech`,
     excerpt: (name) =>
-      `Discover ${name.toLowerCase()} at Noble Elegance - professional beauty treatments in Wisbech, Cambridgeshire.`,
+      `Discover ${name.toLowerCase()} at Elite Booker - professional beauty treatments in Wisbech, Cambridgeshire.`,
     content: (name) => `
-<h2>${name} at Noble Elegance</h2>
-<p>Experience ${name.toLowerCase()} at Noble Elegance in Wisbech. Our skilled beauty professionals deliver exceptional results using premium products and advanced techniques.</p>
+<h2>${name} at Elite Booker</h2>
+<p>Experience ${name.toLowerCase()} at Elite Booker in Wisbech. Our skilled beauty professionals deliver exceptional results using premium products and advanced techniques.</p>
 
 <h2>What is ${name}?</h2>
 <p>${name} is a professional beauty treatment designed to enhance your natural features and help you look and feel your best. Our experienced team customizes each treatment to meet your individual needs and goals.</p>
@@ -764,8 +764,8 @@ const blogTemplates = {
   <li><strong>Aftercare:</strong> Guidance for maintaining your results</li>
 </ol>
 
-<h2>Why Choose Noble Elegance?</h2>
-<p>When you visit Noble Elegance for ${name.toLowerCase()}, you benefit from:</p>
+<h2>Why Choose Elite Booker?</h2>
+<p>When you visit Elite Booker for ${name.toLowerCase()}, you benefit from:</p>
 <ul>
   <li>Qualified and experienced beauty professionals</li>
   <li>High-quality, professional-grade products</li>
@@ -782,7 +782,7 @@ const blogTemplates = {
 <p>We'll provide you with detailed aftercare instructions to ensure you get the best possible results from your ${name.toLowerCase()} treatment. Our team is always available to answer any questions you may have.</p>
 
 <h2>Book Your Appointment Today</h2>
-<p>Ready to experience ${name.toLowerCase()} at Noble Elegance? Call us on <strong>+44 7928 775746</strong> or visit our salon at 12 Blackfriars Rd, Wisbech PE13 1AT. We welcome clients from Wisbech, March, King's Lynn, Peterborough, and throughout Cambridgeshire.</p>
+<p>Ready to experience ${name.toLowerCase()} at Elite Booker? Call us on <strong>+44 7928 775746</strong> or visit our salon at 12 Blackfriars Rd, Wisbech PE13 1AT. We welcome clients from Wisbech, March, King's Lynn, Peterborough, and throughout Cambridgeshire.</p>
 
 <p><em>Open Monday-Sunday, 9am-5pm</em></p>
 `,
@@ -790,7 +790,7 @@ const blogTemplates = {
       "beauty treatments",
       "wisbech",
       category.toLowerCase().trim(),
-      "noble elegance",
+      "Elite Booker",
     ],
   },
 };

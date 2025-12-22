@@ -33,7 +33,7 @@ Each blog post includes:
 - Step-by-step process
 - Who it's for
 - Aftercare instructions
-- Why choose Noble Elegance
+- Why choose Elite Booker
 - Customer testimonials (generic)
 - Booking CTA with contact details
 
@@ -114,7 +114,7 @@ Each blog post is optimized for:
 
 - Before & after treatment guides
 - Seasonal beauty tips
-- Behind-the-scenes at Noble Elegance
+- Behind-the-scenes at Elite Booker
 - Beauty myths debunked
 - Treatment comparison articles
 - Client success stories

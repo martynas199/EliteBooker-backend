@@ -87,7 +87,7 @@ Implemented a comprehensive account unlock system that allows super administrato
 - Professional HTML design with:
   - Clear unlock confirmation
   - Security warning
-  - Noble Elegance branding
+  - Elite Booker branding
 - Plain text fallback included
 
 ### 5. Audit Logging

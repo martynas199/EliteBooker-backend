@@ -9,7 +9,7 @@ const aboutUsData = {
   },
   quote:
     "Beauty isn't only seen in the mirror. It's felt in the way we treat our clients, the conversations we share, and the energy we pour into our work.",
-  description: `Noble Elegance was never meant to be just a salon — it's a feeling, a world of calm and beauty created with heart and precision.
+  description: `Elite Booker was never meant to be just a salon — it's a feeling, a world of calm and beauty created with heart and precision.
 
 It started from a dream: to build a place where women could reconnect with their femininity, confidence, and grace. A place that feels like home, but more — where every detail whispers care, and every touch reminds you that you matter.
 
@@ -17,7 +17,7 @@ Here, beauty isn't only seen in the mirror. It's felt in the way we treat our cl
 
 Every product, every method, every moment is chosen with purpose. Nothing is rushed, nothing is done halfway. Because for us, it's not about trends or noise — it's about timeless beauty, inner peace, and the quiet confidence that never goes out of style.
 
-At Noble Elegance, we don't just transform looks. We remind women of who they've always been — strong, graceful, and endlessly beautiful.`,
+At Elite Booker, we don't just transform looks. We remind women of who they've always been — strong, graceful, and endlessly beautiful.`,
   isActive: true,
 };
 
