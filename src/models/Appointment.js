@@ -7,7 +7,7 @@ const PaymentStripeSchema = new mongoose.Schema(
     chargeId: String,
     refundIds: [String],
     // Stripe Connect fields
-    platformFee: { type: Number, default: 50 }, // £0.50 in pence
+    platformFee: { type: Number, default: 99 }, // £0.99 in pence
     beauticianStripeAccount: String, // Connected account ID
     transferId: String, // ID of the transfer to specialist
     // Payment error details (for failed/declined payments)

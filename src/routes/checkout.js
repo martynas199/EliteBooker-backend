@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import Service from "../models/Service.js";
 import Specialist from "../models/Specialist.js";
 import Appointment from "../models/Appointment.js";
+import Tenant from "../models/Tenant.js";
 import { sendConfirmationEmail } from "../emails/mailer.js";
 import ClientService from "../services/clientService.js";
 import AppointmentService from "../services/appointmentService.js";
@@ -128,7 +129,7 @@ r.get("/confirm", async (req, res, next) => {
     console.log("[CHECKOUT CONFIRM] amountTotal:", amountTotal);
 
     // Platform fee (specialist already loaded above)
-    const platformFee = Number(process.env.STRIPE_PLATFORM_FEE || 50);
+    const platformFee = Number(process.env.STRIPE_PLATFORM_FEE || 99);
 
     // Build stripe payment data
     const stripeData = {
@@ -220,7 +221,7 @@ r.get("/confirm", async (req, res, next) => {
       );
       const confirmedAppt = await Appointment.findById(appt._id)
         .populate("serviceId")
-        .populate("specialistId");
+        .populate("specialistId", "name email subscription");
       console.log(
         "[CHECKOUT CONFIRM] Loaded appointment:",
         confirmedAppt._id,
@@ -246,14 +247,9 @@ r.get("/confirm", async (req, res, next) => {
         }
       }
 
-      await sendConfirmationEmail({
-        appointment: confirmedAppt,
-        service: serviceForEmail || { name: "Service" },
-        specialist: confirmedAppt.specialistId,
-      });
+      // Email is sent by webhook handler to avoid duplicates
       console.log(
-        "[CHECKOUT CONFIRM] Confirmation email sent to:",
-        confirmedAppt.client?.email
+        "[CHECKOUT CONFIRM] Skipping email - will be sent by webhook"
       );
 
       // Send SMS confirmation
@@ -285,22 +281,32 @@ r.get("/confirm", async (req, res, next) => {
           phone: confirmedAppt.client.phone,
         });
 
-        smsService
-          .sendBookingConfirmation({
-            serviceName: serviceName,
-            date: confirmedAppt.start,
-            startTime: timeStr,
-            customerPhone: confirmedAppt.client.phone,
-          })
-          .then(() =>
-            console.log(
-              "[CHECKOUT CONFIRM] SMS confirmation sent to:",
-              confirmedAppt.client.phone
-            )
-          )
-          .catch((err) =>
-            console.error("[CHECKOUT CONFIRM] SMS failed:", err.message)
+        // Check if SMS confirmations feature is enabled in tenant settings
+        const smsConfirmationsEnabled =
+          tenantForFlags?.features?.smsConfirmations === true;
+
+        if (!smsConfirmationsEnabled) {
+          console.log(
+            "[CHECKOUT CONFIRM] SMS Confirmations feature is disabled, skipping SMS"
           );
+        } else {
+          smsService
+            .sendBookingConfirmation({
+              serviceName: serviceName,
+              date: confirmedAppt.start,
+              startTime: timeStr,
+              customerPhone: confirmedAppt.client.phone,
+            })
+            .then(() =>
+              console.log(
+                "[CHECKOUT CONFIRM] SMS confirmation sent to:",
+                confirmedAppt.client.phone
+              )
+            )
+            .catch((err) =>
+              console.error("[CHECKOUT CONFIRM] SMS failed:", err.message)
+            );
+        }
       } else {
         console.log("[CHECKOUT CONFIRM] No phone number, skipping SMS");
       }
@@ -547,8 +553,11 @@ r.post("/create-session", async (req, res, next) => {
           "Deposit mode requested but STRIPE_DEPOSIT_PERCENT not configured (1-99)",
       });
     }
-    // Get specialist to check payment settings and Stripe Connect status
+    // Get specialist and tenant to check payment settings
     const specialist = await Specialist.findById(appt.specialistId).lean();
+    const tenantForFlags = await Tenant.findById(appt.tenantId)
+      .select("features")
+      .lean();
 
     // Check if specialist has active no-fee subscription
     const hasNoFeeSubscription =
@@ -560,6 +569,19 @@ r.post("/create-session", async (req, res, next) => {
       hasNoFeeSubscription
     );
 
+    // Require Stripe connection for online payments UNLESS specialist has no-fee subscription
+    if (
+      !hasNoFeeSubscription &&
+      (!specialist?.stripeAccountId || specialist?.stripeStatus !== "connected")
+    ) {
+      return res.status(400).json({
+        error: "Online payments not available",
+        message:
+          "This specialist has not connected their Stripe account yet. Please contact them to set up online payments, or choose a different payment method.",
+        code: "STRIPE_NOT_CONNECTED",
+      });
+    }
+
     // Get tenant for platform fee, currency settings, and URLs
     const tenant = req.tenant;
     const tenantSlug = tenant?.slug || "";
@@ -569,10 +591,13 @@ r.post("/create-session", async (req, res, next) => {
     console.log("[CHECKOUT] Tenant path:", tenantPath);
 
     // Apply booking fee only if specialist doesn't have subscription
+    // Platform fee is controlled by the platform, not individual tenants
     const platformFee = hasNoFeeSubscription
       ? 0
-      : tenant?.paymentSettings?.platformFeePerBooking ||
-        Number(process.env.STRIPE_PLATFORM_FEE || 50); // £0.50 in pence
+      : Number(process.env.STRIPE_PLATFORM_FEE || 99); // £0.99 in pence
+
+    console.log("[CHECKOUT] Platform fee (pence):", platformFee);
+    console.log("[CHECKOUT] Platform fee (pounds):", platformFee / 100);
 
     const baseAmount = Number(appt.price || 0);
 
@@ -587,9 +612,16 @@ r.post("/create-session", async (req, res, next) => {
         : baseAmount;
     }
 
+    console.log("[CHECKOUT] Base amount:", baseAmount);
+    console.log("[CHECKOUT] Amount before fee:", amountBeforeFee);
+
     const amountToPay = amountBeforeFee + platformFee / 100; // Convert pence to pounds
 
+    console.log("[CHECKOUT] Amount to pay (with fee):", amountToPay);
+
     const unit_amount = toMinorUnits(amountToPay);
+    console.log("[CHECKOUT] Unit amount (pence):", unit_amount);
+
     if (unit_amount < 1)
       return res.status(400).json({ error: "Invalid amount" });
 
@@ -688,6 +720,7 @@ r.post("/create-session", async (req, res, next) => {
         appointmentId: String(appt._id),
         specialistId: String(appt.specialistId),
         type: isDeposit ? "deposit" : "full",
+        ...(isDeposit ? { depositPercentage: String(depositPct) } : {}),
       },
       line_items: [
         {
@@ -740,9 +773,9 @@ r.post("/create-session", async (req, res, next) => {
     // Use platform account and transfer to specialist after taking platform fee
     if (useConnect) {
       sessionConfig.payment_intent_data = {
-        application_fee_amount: platformFee, // £0.50 to platform
+        application_fee_amount: platformFee, // £0.99 to platform
         transfer_data: {
-          destination: Specialist.stripeAccountId,
+          destination: specialist.stripeAccountId,
         },
         metadata: {
           appointmentId: String(appt._id),
@@ -753,7 +786,7 @@ r.post("/create-session", async (req, res, next) => {
       };
       console.log(
         "[CHECKOUT] Creating DIRECT CHARGE on connected account:",
-        Specialist.stripeAccountId,
+        specialist.stripeAccountId,
         "Platform fee:",
         platformFee
       );

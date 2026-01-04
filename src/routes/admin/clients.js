@@ -8,10 +8,11 @@ const router = express.Router();
  * GET /api/admin/clients
  * Get all clients for the current tenant
  * Access: Admin only, tenant-scoped
+ * For specialists: Only shows clients who have booked with them
  */
 router.get("/", requireAdmin, async (req, res) => {
   try {
-    const { tenantId } = req.admin;
+    const { tenantId, role, specialistId } = req.admin;
     const { status, search, sortBy, order, limit, skip } = req.query;
 
     const result = await ClientService.getClientsForTenant(tenantId, {
@@ -21,6 +22,7 @@ router.get("/", requireAdmin, async (req, res) => {
       order: order || "desc",
       limit: parseInt(limit) || 100,
       skip: parseInt(skip) || 0,
+      specialistId: role === "specialist" ? specialistId : null, // Filter by specialist if role is specialist
     });
 
     res.json({
@@ -237,12 +239,15 @@ router.post("/:clientId/unblock", requireAdmin, async (req, res) => {
  * GET /api/admin/clients/segments/all
  * Get client segments (VIP, at-risk, new, active)
  * Access: Admin only, tenant-scoped
+ * For specialists: Only shows segments for their clients
  */
 router.get("/segments/all", requireAdmin, async (req, res) => {
   try {
-    const { tenantId } = req.admin;
+    const { tenantId, role, specialistId } = req.admin;
 
-    const segments = await ClientService.segmentClients(tenantId);
+    const segments = await ClientService.segmentClients(tenantId, {
+      specialistId: role === "specialist" ? specialistId : null,
+    });
 
     res.json({
       success: true,

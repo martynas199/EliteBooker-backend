@@ -84,6 +84,10 @@ export const listSpecialistsQuerySchema = z.object({
     .string()
     .regex(/^[0-9a-fA-F]{24}$/)
     .optional(),
+  tenantId: z
+    .string()
+    .regex(/^[0-9a-fA-F]{24}$/)
+    .optional(),
   limit: z.string().regex(/^\d+$/).transform(Number).optional(),
   skip: z.string().regex(/^\d+$/).transform(Number).optional(),
 });

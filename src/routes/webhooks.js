@@ -1,5 +1,6 @@
 import { Router } from "express";
 import Stripe from "stripe";
+import mongoose from "mongoose";
 import Appointment from "../models/Appointment.js";
 import Specialist from "../models/Specialist.js";
 import Order from "../models/Order.js";
@@ -70,6 +71,10 @@ r.post("/stripe", async (req, res) => {
         // Handle appointment confirmation
         if (apptId) {
           try {
+            // Determine payment mode from session metadata
+            const isDepositPayment = session.metadata?.type === "deposit";
+            const paymentMode = isDepositPayment ? "deposit" : "pay_now";
+
             const appointment = await Appointment.findByIdAndUpdate(
               apptId,
               {
@@ -77,10 +82,17 @@ r.post("/stripe", async (req, res) => {
                   status: "confirmed",
                   "payment.status": "succeeded",
                   "payment.provider": "stripe",
-                  "payment.mode": "pay_now",
+                  "payment.mode": paymentMode,
                   "payment.sessionId": session.id,
                   ...(session.amount_total != null
                     ? { "payment.amountTotal": Number(session.amount_total) }
+                    : {}),
+                  ...(isDepositPayment && session.metadata?.depositPercentage
+                    ? {
+                        "payment.depositPercentage": Number(
+                          session.metadata.depositPercentage
+                        ),
+                      }
                     : {}),
                 },
                 $push: {
@@ -94,7 +106,7 @@ r.post("/stripe", async (req, res) => {
               { new: true }
             )
               .populate("serviceId")
-              .populate("specialistId");
+              .populate("specialistId", "name email subscription");
 
             console.log(
               "[WEBHOOK] Appointment",
@@ -130,24 +142,38 @@ r.post("/stripe", async (req, res) => {
                   phone: appointment.client.phone,
                 });
 
-                smsService
-                  .sendBookingConfirmation({
-                    services: appointment.services,
-                    serviceName:
-                      appointment.serviceId?.name || appointment.serviceName,
-                    date: appointment.start,
-                    specialistName: appointment.specialistId?.name,
-                    customerPhone: appointment.client.phone,
-                  })
-                  .then(() =>
-                    console.log(
-                      "[WEBHOOK] SMS confirmation sent to:",
-                      appointment.client.phone
-                    )
-                  )
-                  .catch((err) =>
-                    console.error("[WEBHOOK] SMS failed:", err.message)
+                // Check if SMS confirmations feature is enabled in tenant settings
+                const Tenant = mongoose.model("Tenant");
+                const tenant = await Tenant.findById(
+                  appointment.tenantId
+                ).select("features");
+                const smsConfirmationsEnabled =
+                  tenant?.features?.smsConfirmations === true;
+
+                if (!smsConfirmationsEnabled) {
+                  console.log(
+                    "[WEBHOOK] SMS Confirmations feature is disabled, skipping SMS"
                   );
+                } else {
+                  smsService
+                    .sendBookingConfirmation({
+                      services: appointment.services,
+                      serviceName:
+                        appointment.serviceId?.name || appointment.serviceName,
+                      date: appointment.start,
+                      specialistName: appointment.specialistId?.name,
+                      customerPhone: appointment.client.phone,
+                    })
+                    .then(() =>
+                      console.log(
+                        "[WEBHOOK] SMS confirmation sent to:",
+                        appointment.client.phone
+                      )
+                    )
+                    .catch((err) =>
+                      console.error("[WEBHOOK] SMS failed:", err.message)
+                    );
+                }
               } else {
                 console.log("[WEBHOOK] No phone number, skipping SMS");
               }
@@ -319,25 +345,8 @@ r.post("/stripe", async (req, res) => {
               "updated to confirmed via PI"
             );
 
-            // Send confirmation email
-            if (appointment) {
-              try {
-                await sendConfirmationEmail({
-                  appointment,
-                  service: appointment.serviceId,
-                  specialist: appointment.specialistId,
-                });
-                console.log(
-                  "[WEBHOOK] Confirmation email sent for appointment",
-                  apptId
-                );
-              } catch (emailErr) {
-                console.error(
-                  "[WEBHOOK] Failed to send confirmation email:",
-                  emailErr
-                );
-              }
-            }
+            // Note: Confirmation email is sent in checkout.session.completed
+            // We don't send it here to avoid duplicates
           } catch (e) {
             console.error("[WEBHOOK] update err", e);
           }
@@ -692,9 +701,18 @@ r.post("/stripe", async (req, res) => {
         );
 
         try {
-          // Find specialist by subscription ID first
+          // Find specialist by subscription ID - check both noFeeBookings and smsConfirmations
           let specialist = await Specialist.findOne({
-            "subscription.noFeeBookings.stripeSubscriptionId": subscription.id,
+            $or: [
+              {
+                "subscription.noFeeBookings.stripeSubscriptionId":
+                  subscription.id,
+              },
+              {
+                "subscription.smsConfirmations.stripeSubscriptionId":
+                  subscription.id,
+              },
+            ],
           });
 
           // FALLBACK: If not found by subscription ID, try by customer ID (for race conditions)
@@ -727,35 +745,94 @@ r.post("/stripe", async (req, res) => {
             break;
           }
 
-          // Update subscription status
-          specialist.subscription.noFeeBookings.status = subscription.status;
-          specialist.subscription.noFeeBookings.enabled =
-            subscription.status === "active" ||
-            subscription.status === "trialing";
-          specialist.subscription.noFeeBookings.stripeSubscriptionId =
-            subscription.id;
-          specialist.subscription.noFeeBookings.stripePriceId =
-            subscription.items.data[0].price.id;
-          specialist.subscription.noFeeBookings.currentPeriodStart = new Date(
-            subscription.current_period_start * 1000
-          );
-          specialist.subscription.noFeeBookings.currentPeriodEnd = new Date(
-            subscription.current_period_end * 1000
+          // Determine which subscription this is by checking the price ID
+          const priceId = subscription.items.data[0].price.id;
+          const noFeePriceId = process.env.NO_FEE_BOOKINGS_PRICE_ID;
+          const smsPriceId = process.env.SMS_CONFIRMATIONS_PRICE_ID;
+
+          let subscriptionType = "unknown";
+          if (priceId === noFeePriceId) {
+            subscriptionType = "noFeeBookings";
+          } else if (priceId === smsPriceId) {
+            subscriptionType = "smsConfirmations";
+          }
+
+          console.log(
+            "[WEBHOOK] Detected subscription type:",
+            subscriptionType,
+            "for price:",
+            priceId
           );
 
-          // If subscription is being canceled at period end
-          if (subscription.cancel_at_period_end) {
-            specialist.subscription.noFeeBookings.enabled = false;
+          // Update the appropriate subscription
+          if (subscriptionType === "noFeeBookings") {
+            specialist.subscription.noFeeBookings.status = subscription.status;
+            specialist.subscription.noFeeBookings.enabled =
+              subscription.status === "active" ||
+              subscription.status === "trialing";
+            specialist.subscription.noFeeBookings.stripeSubscriptionId =
+              subscription.id;
+            specialist.subscription.noFeeBookings.stripePriceId = priceId;
+            specialist.subscription.noFeeBookings.currentPeriodStart = new Date(
+              subscription.current_period_start * 1000
+            );
+            specialist.subscription.noFeeBookings.currentPeriodEnd = new Date(
+              subscription.current_period_end * 1000
+            );
+
+            if (subscription.cancel_at_period_end) {
+              specialist.subscription.noFeeBookings.enabled = false;
+            }
+          } else if (subscriptionType === "smsConfirmations") {
+            const isActive =
+              subscription.status === "active" ||
+              subscription.status === "trialing";
+
+            specialist.subscription.smsConfirmations.status =
+              subscription.status;
+            specialist.subscription.smsConfirmations.enabled = isActive;
+            specialist.subscription.smsConfirmations.stripeSubscriptionId =
+              subscription.id;
+            specialist.subscription.smsConfirmations.stripePriceId = priceId;
+            specialist.subscription.smsConfirmations.currentPeriodStart =
+              new Date(subscription.current_period_start * 1000);
+            specialist.subscription.smsConfirmations.currentPeriodEnd =
+              new Date(subscription.current_period_end * 1000);
+
+            if (subscription.cancel_at_period_end) {
+              specialist.subscription.smsConfirmations.enabled = false;
+            }
+
+            // Automatically set feature flags when subscription is activated
+            if (isActive && !subscription.cancel_at_period_end) {
+              // Get tenant to update feature flags
+              const Tenant = mongoose.model("Tenant");
+              const tenant = await Tenant.findById(specialist.tenantId);
+              if (tenant) {
+                // Initialize features if it doesn't exist
+                if (!tenant.features) {
+                  tenant.features = {};
+                }
+                // Enable SMS features
+                tenant.features.smsConfirmations = true;
+                tenant.features.smsReminders = true;
+                await tenant.save();
+                console.log(
+                  "[WEBHOOK] Auto-enabled SMS features for tenant:",
+                  tenant._id
+                );
+              }
+            }
           }
 
           await specialist.save();
           console.log(
             "[WEBHOOK] Subscription updated for specialist:",
             specialist._id,
+            "type:",
+            subscriptionType,
             "status:",
-            subscription.status,
-            "enabled:",
-            specialist.subscription.noFeeBookings.enabled
+            subscription.status
           );
         } catch (err) {
           console.error("[WEBHOOK] subscription update error:", err);
@@ -772,9 +849,18 @@ r.post("/stripe", async (req, res) => {
         );
 
         try {
-          // Find specialist by subscription ID first
+          // Find specialist by subscription ID - check both subscription types
           let specialist = await Specialist.findOne({
-            "subscription.noFeeBookings.stripeSubscriptionId": subscription.id,
+            $or: [
+              {
+                "subscription.noFeeBookings.stripeSubscriptionId":
+                  subscription.id,
+              },
+              {
+                "subscription.smsConfirmations.stripeSubscriptionId":
+                  subscription.id,
+              },
+            ],
           });
 
           // FALLBACK: Try by customer ID
@@ -796,15 +882,41 @@ r.post("/stripe", async (req, res) => {
             break;
           }
 
-          // Disable feature
-          specialist.subscription.noFeeBookings.enabled = false;
-          specialist.subscription.noFeeBookings.status = "canceled";
+          // Determine which subscription this is
+          const priceId = subscription.items.data[0].price.id;
+          const noFeePriceId = process.env.NO_FEE_BOOKINGS_PRICE_ID;
+          const smsPriceId = process.env.SMS_CONFIRMATIONS_PRICE_ID;
+
+          if (priceId === noFeePriceId) {
+            specialist.subscription.noFeeBookings.enabled = false;
+            specialist.subscription.noFeeBookings.status = "canceled";
+            console.log(
+              "[WEBHOOK] No Fee Bookings subscription ended for specialist:",
+              specialist._id
+            );
+          } else if (priceId === smsPriceId) {
+            specialist.subscription.smsConfirmations.enabled = false;
+            specialist.subscription.smsConfirmations.status = "canceled";
+            console.log(
+              "[WEBHOOK] SMS Confirmations subscription ended for specialist:",
+              specialist._id
+            );
+
+            // Automatically disable feature flags when subscription is cancelled
+            const Tenant = mongoose.model("Tenant");
+            const tenant = await Tenant.findById(specialist.tenantId);
+            if (tenant && tenant.features) {
+              tenant.features.smsConfirmations = false;
+              tenant.features.smsReminders = false;
+              await tenant.save();
+              console.log(
+                "[WEBHOOK] Auto-disabled SMS features for tenant:",
+                tenant._id
+              );
+            }
+          }
 
           await specialist.save();
-          console.log(
-            "[WEBHOOK] Subscription ended for specialist:",
-            specialist._id
-          );
         } catch (err) {
           console.error("[WEBHOOK] subscription deletion error:", err);
         }

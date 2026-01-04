@@ -1,8 +1,10 @@
 import { Router } from "express";
+import mongoose from "mongoose";
 import Specialist from "../models/Specialist.js";
 import Service from "../models/Service.js";
 import Admin from "../models/Admin.js";
 import Location from "../models/Location.js";
+import Tenant from "../models/Tenant.js";
 import jwt from "jsonwebtoken";
 import {
   validateCreateSpecialist,
@@ -16,6 +18,7 @@ import { attachTenantToModels } from "../middleware/multiTenantPlugin.js";
 import multer from "multer";
 import { uploadImage, deleteImage } from "../utils/cloudinary.js";
 import fs from "fs";
+import { sendSpecialistCredentialsEmail } from "../emails/mailer.js";
 
 const r = Router();
 
@@ -47,7 +50,13 @@ r.get("/", optionalAuth, attachTenantToModels, async (req, res, next) => {
       });
     }
 
-    const { active, serviceId, limit = 20, skip = 0 } = queryValidation.data;
+    const {
+      active,
+      serviceId,
+      limit = 20,
+      skip = 0,
+      tenantId,
+    } = queryValidation.data;
 
     // Parse pagination params
     const page = Math.max(1, parseInt(req.query.page) || 1);
@@ -60,16 +69,41 @@ r.get("/", optionalAuth, attachTenantToModels, async (req, res, next) => {
     // Build query
     const query = {};
 
-    // TENANT FILTERING: REQUIRED - Multi-tenant app must always filter by tenant
-    if (!req.tenantId) {
-      console.log("[SpecialistS] ERROR: No tenantId found in request");
-      return res.status(400).json({
-        error: "Tenant context required. Please provide tenant information.",
-      });
+    // TENANT FILTERING
+    // If tenantId is provided in query params (for super_admin/support viewing other tenants)
+    if (tenantId) {
+      // Only allow super_admin or support to query other tenants
+      if (
+        req.admin &&
+        (req.admin.role === "super_admin" || req.admin.role === "support")
+      ) {
+        query.tenantId = new mongoose.Types.ObjectId(tenantId);
+        console.log(
+          "[SPECIALISTS] Super admin/support querying tenant:",
+          tenantId
+        );
+        console.log("[SPECIALISTS] Logged-in admin tenantId:", req.tenantId);
+        console.log(
+          "[SPECIALISTS] Query tenantId being used (as ObjectId):",
+          query.tenantId
+        );
+      } else {
+        return res.status(403).json({
+          error:
+            "Access denied. Only super admin or support can query other tenants.",
+        });
+      }
+    } else {
+      // Use the tenant from the logged-in admin's context
+      if (!req.tenantId) {
+        console.log("[SPECIALISTS] ERROR: No tenantId found in request");
+        return res.status(400).json({
+          error: "Tenant context required. Please provide tenant information.",
+        });
+      }
+      query.tenantId = req.tenantId;
+      console.log("[SPECIALISTS] Adding tenant filter:", req.tenantId);
     }
-
-    query.tenantId = req.tenantId;
-    console.log("[SpecialistS] Adding tenant filter:", req.tenantId);
 
     if (active && active !== "all") {
       query.active = active === "true";
@@ -90,14 +124,39 @@ r.get("/", optionalAuth, attachTenantToModels, async (req, res, next) => {
       query._id = { $in: SpecialistIds };
     }
 
+    console.log("[SPECIALISTS] Final query:", JSON.stringify(query));
+
+    // Prepare query options with tenantId for the multiTenantPlugin
+    const queryOptions = {};
+    if (
+      tenantId &&
+      req.admin &&
+      (req.admin.role === "super_admin" || req.admin.role === "support")
+    ) {
+      // Pass tenantId through options to override the plugin's automatic filtering
+      queryOptions.tenantId = new mongoose.Types.ObjectId(tenantId);
+    }
+
     // Get total count for pagination
-    const total = await Specialist.countDocuments(query);
+    const total = await Specialist.countDocuments(query).setOptions(
+      queryOptions
+    );
 
     const docs = await Specialist.find(query)
+      .setOptions(queryOptions)
       .limit(pageLimit)
       .skip(pageSkip)
       .sort({ name: 1 })
       .lean();
+
+    console.log("[SPECIALISTS] Found specialists:", docs.length);
+    if (docs.length > 0) {
+      console.log("[SPECIALISTS] First specialist:", {
+        name: docs[0].name,
+        email: docs[0].email,
+        tenantId: docs[0].tenantId,
+      });
+    }
 
     // Convert Map to plain object for customSchedule (if it's still a Map)
     docs.forEach((doc) => {
@@ -279,11 +338,23 @@ r.post("/", requireAdmin, async (req, res, next) => {
     }
 
     // Auto-create admin account for the specialist if email is provided
+    console.log("[Specialist Create] Checking if admin account needed for:", {
+      specialistId: created._id,
+      email: created.email,
+      hasEmail: !!created.email,
+    });
+
     if (created.email) {
       // Check if admin account already exists for this email
       const existingAdmin = await Admin.findOne({
         email: created.email,
         tenantId: created.tenantId,
+      });
+
+      console.log("[Specialist Create] Existing admin check:", {
+        email: created.email,
+        existingAdminId: existingAdmin?._id,
+        exists: !!existingAdmin,
       });
 
       if (!existingAdmin) {
@@ -296,6 +367,7 @@ r.post("/", requireAdmin, async (req, res, next) => {
           password: tempPassword, // Will be hashed by pre-save hook
           role: "specialist", // Limited admin role for specialists
           tenantId: created.tenantId,
+          specialistId: created._id, // Link admin to specialist for role-based filtering
           active: true,
         });
 
@@ -314,6 +386,27 @@ r.post("/", requireAdmin, async (req, res, next) => {
             tempPassword, // Log for initial setup (remove in production)
           }
         );
+
+        // Send credentials email to specialist
+        try {
+          const tenant = await Tenant.findById(created.tenantId);
+          await sendSpecialistCredentialsEmail({
+            specialistName: created.name,
+            email: created.email,
+            tempPassword,
+            tenantName: tenant?.name || tenant?.businessName,
+          });
+          console.log(
+            "[Specialist Create] Credentials email sent to:",
+            created.email
+          );
+        } catch (emailError) {
+          console.error(
+            "[Specialist Create] Failed to send credentials email:",
+            emailError
+          );
+          // Don't fail the request if email fails
+        }
       }
     }
 
@@ -406,6 +499,50 @@ r.delete("/:id", requireAdmin, async (req, res, next) => {
 
     if (!deleted) {
       return res.status(404).json({ error: "Specialist not found" });
+    }
+
+    // Delete associated admin account if it exists
+    if (deleted.adminId) {
+      try {
+        const deletedAdmin = await Admin.findByIdAndDelete(deleted.adminId);
+        if (deletedAdmin) {
+          console.log(`[Specialist Delete] Associated admin account deleted:`, {
+            specialistId: deleted._id,
+            adminId: deleted.adminId,
+            email: deletedAdmin.email,
+          });
+        }
+      } catch (adminDeleteError) {
+        console.error(
+          "[Specialist Delete] Failed to delete associated admin account:",
+          adminDeleteError
+        );
+        // Don't fail the request if admin deletion fails
+      }
+    } else if (deleted.email) {
+      // Also try to delete admin by email if adminId field doesn't exist
+      try {
+        const adminByEmail = await Admin.findOne({
+          email: deleted.email,
+          tenantId: deleted.tenantId,
+        });
+        if (adminByEmail) {
+          await Admin.findByIdAndDelete(adminByEmail._id);
+          console.log(
+            `[Specialist Delete] Associated admin account deleted by email:`,
+            {
+              specialistId: deleted._id,
+              adminId: adminByEmail._id,
+              email: adminByEmail.email,
+            }
+          );
+        }
+      } catch (adminDeleteError) {
+        console.error(
+          "[Specialist Delete] Failed to delete admin by email:",
+          adminDeleteError
+        );
+      }
     }
 
     res.json({ ok: true, message: "Specialist deleted successfully" });
@@ -571,6 +708,50 @@ r.post("/:id/stripe/onboard", requireAdmin, async (req, res, next) => {
     });
   } catch (err) {
     console.error("[STRIPE] Onboarding error:", err);
+    next(err);
+  }
+});
+
+/**
+ * GET /api/Specialists/:id/schedule
+ * Get specialist's working hours/schedule
+ */
+r.get("/:id/schedule", async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { tenantId } = req.query;
+
+    // Build query to support cross-tenant access for super_admin/support
+    let queryTenantId = req.tenantId;
+    if (tenantId) {
+      if (
+        req.admin &&
+        (req.admin.role === "super_admin" || req.admin.role === "support")
+      ) {
+        queryTenantId = new mongoose.Types.ObjectId(tenantId);
+      } else {
+        return res.status(403).json({
+          error:
+            "Access denied. Only super admin or support can query other tenants.",
+        });
+      }
+    }
+
+    const specialist = await Specialist.findById(id)
+      .setOptions({ tenantId: queryTenantId })
+      .lean();
+
+    if (!specialist) {
+      return res.status(404).json({ error: "Specialist not found" });
+    }
+
+    // Return working hours data
+    res.json({
+      workingHours: specialist.workingHours || [],
+      customSchedule: specialist.customSchedule || {},
+    });
+  } catch (err) {
+    console.error("[SCHEDULE] Error fetching schedule:", err);
     next(err);
   }
 });

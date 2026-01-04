@@ -1,4 +1,5 @@
 import { Router } from "express";
+import mongoose from "mongoose";
 import Service from "../models/Service.js";
 import {
   validateCreateService,
@@ -62,6 +63,7 @@ r.get("/", optionalAuth, attachTenantToModels, async (req, res, next) => {
       active,
       category,
       specialistId,
+      tenantId,
       limit = 20,
       skip = 0,
     } = queryValidation.data;
@@ -83,16 +85,37 @@ r.get("/", optionalAuth, attachTenantToModels, async (req, res, next) => {
       cookieKeys: Object.keys(req.cookies),
     });
 
-    // TENANT FILTERING: REQUIRED - Multi-tenant app must always filter by tenant
-    if (!req.tenantId) {
-      console.log("[SERVICES] ERROR: No tenantId found in request");
-      return res.status(400).json({
-        error: "Tenant context required. Please provide tenant information.",
-      });
+    // TENANT FILTERING
+    let queryTenantId;
+    if (tenantId) {
+      // Only allow super_admin or support to query other tenants
+      if (
+        req.admin &&
+        (req.admin.role === "super_admin" || req.admin.role === "support")
+      ) {
+        queryTenantId = new mongoose.Types.ObjectId(tenantId);
+        query.tenantId = queryTenantId;
+        console.log(
+          "[SERVICES] Super admin/support querying tenant:",
+          tenantId
+        );
+      } else {
+        return res.status(403).json({
+          error:
+            "Access denied. Only super admin or support can query other tenants.",
+        });
+      }
+    } else {
+      if (!req.tenantId) {
+        console.log("[SERVICES] ERROR: No tenantId found in request");
+        return res.status(400).json({
+          error: "Tenant context required. Please provide tenant information.",
+        });
+      }
+      queryTenantId = req.tenantId;
+      query.tenantId = req.tenantId;
+      console.log("[SERVICES] Adding tenant filter:", req.tenantId);
     }
-
-    query.tenantId = req.tenantId;
-    console.log("[SERVICES] Adding tenant filter:", req.tenantId);
 
     if (active && active !== "all") {
       query.active = active === "true";
@@ -114,8 +137,21 @@ r.get("/", optionalAuth, attachTenantToModels, async (req, res, next) => {
     // ROLE-BASED FILTERING: Apply access control if authenticated
     // req.admin is set by optionalAuth middleware if token is valid
     if (req.admin) {
-      // BEAUTICIAN role: Only see services assigned to their specialistId
-      if (req.admin.role === "admin" && req.admin.specialistId) {
+      // SPECIALIST role: Only see services assigned to them
+      if (req.admin.role === "specialist" && req.admin.specialistId) {
+        console.log(
+          `[SERVICES] Filtering for SPECIALIST: ${req.admin.specialistId}`
+        );
+        // Override any existing $or filter to enforce role-based access
+        query.$or = [
+          { primaryBeauticianId: req.admin.specialistId },
+          { additionalBeauticianIds: req.admin.specialistId },
+          { specialistId: req.admin.specialistId }, // Legacy field
+          { beauticianIds: req.admin.specialistId }, // Legacy field
+        ];
+      }
+      // BEAUTICIAN role (legacy): Only see services assigned to their specialistId
+      else if (req.admin.role === "admin" && req.admin.specialistId) {
         console.log(
           `[SERVICES] Filtering for BEAUTICIAN admin: ${req.admin.specialistId}`
         );
@@ -135,12 +171,29 @@ r.get("/", optionalAuth, attachTenantToModels, async (req, res, next) => {
 
     console.log("[SERVICES] Final query:", JSON.stringify(query, null, 2));
 
+    // Prepare query options for multiTenantPlugin
+    const queryOptions = {};
+    if (
+      tenantId &&
+      req.admin &&
+      (req.admin.role === "super_admin" || req.admin.role === "support")
+    ) {
+      queryOptions.tenantId = queryTenantId;
+    }
+
     // Get total count for pagination (uses indexed fields)
-    const total = await Service.countDocuments(query);
+    const total = await Service.countDocuments(query).setOptions(queryOptions);
 
     const docs = await Service.find(query)
-      .populate({ path: "primaryBeauticianId", select: "name email" })
-      .populate({ path: "additionalBeauticianIds", select: "name email" })
+      .setOptions(queryOptions)
+      .populate({
+        path: "primaryBeauticianId",
+        select: "name email stripeStatus subscription",
+      })
+      .populate({
+        path: "additionalBeauticianIds",
+        select: "name email stripeStatus subscription",
+      })
       .limit(pageLimit)
       .skip(pageSkip)
       .sort({ name: 1 })
@@ -183,8 +236,14 @@ r.get("/:id", async (req, res, next) => {
     }
 
     const service = await Service.findById(req.params.id)
-      .populate({ path: "primaryBeauticianId", select: "name email" })
-      .populate({ path: "additionalBeauticianIds", select: "name email" })
+      .populate({
+        path: "primaryBeauticianId",
+        select: "name email stripeStatus subscription",
+      })
+      .populate({
+        path: "additionalBeauticianIds",
+        select: "name email stripeStatus subscription",
+      })
       .lean();
 
     if (!service) {
@@ -260,8 +319,14 @@ r.post("/", requireAdmin, async (req, res, next) => {
 
     console.log("[SERVICE CREATE] Populating service data...");
     const populated = await Service.findById(created._id)
-      .populate({ path: "primaryBeauticianId", select: "name email" })
-      .populate({ path: "additionalBeauticianIds", select: "name email" })
+      .populate({
+        path: "primaryBeauticianId",
+        select: "name email stripeStatus subscription",
+      })
+      .populate({
+        path: "additionalBeauticianIds",
+        select: "name email stripeStatus subscription",
+      })
       .lean();
 
     console.log(
@@ -317,8 +382,14 @@ r.patch(
         { $set: validation.data },
         { new: true, runValidators: true }
       )
-        .populate({ path: "primaryBeauticianId", select: "name email" })
-        .populate({ path: "additionalBeauticianIds", select: "name email" })
+        .populate({
+          path: "primaryBeauticianId",
+          select: "name email stripeStatus subscription",
+        })
+        .populate({
+          path: "additionalBeauticianIds",
+          select: "name email stripeStatus subscription",
+        })
         .lean();
 
       if (!updated) {

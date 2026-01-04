@@ -174,10 +174,32 @@ class ClientService {
       order = "desc",
       limit = 100,
       skip = 0,
+      specialistId = null,
     } = options;
 
     const filter = { tenantId };
     if (status) filter.status = status;
+
+    // If specialistId is provided (specialist role), only show clients who have booked with them
+    if (specialistId) {
+      // Find all appointments for this specialist
+      const appointments = await Appointment.find({
+        tenantId,
+        specialistId: specialistId,
+      }).distinct("clientId");
+
+      if (appointments.length === 0) {
+        // No clients for this specialist
+        return {
+          clients: [],
+          total: 0,
+          hasMore: false,
+        };
+      }
+
+      // Filter to only these clients
+      filter.clientId = { $in: appointments };
+    }
 
     let query = TenantClient.find(filter)
       .populate("clientId", "name email phone memberSince isActive")
@@ -195,7 +217,19 @@ class ClientService {
         ],
       });
       const clientIds = clients.map((c) => c._id);
-      query = query.where("clientId").in(clientIds);
+
+      // If specialist filter is active, combine with search filter
+      if (filter.clientId && filter.clientId.$in) {
+        query = query
+          .where("clientId")
+          .in(
+            clientIds.filter((id) =>
+              filter.clientId.$in.some((fid) => fid.equals(id))
+            )
+          );
+      } else {
+        query = query.where("clientId").in(clientIds);
+      }
     }
 
     const tenantClients = await query;
@@ -515,15 +549,38 @@ class ClientService {
   /**
    * Client segmentation for a tenant
    */
-  static async segmentClients(tenantId) {
+  static async segmentClients(tenantId, options = {}) {
+    const { specialistId = null } = options;
     const now = new Date();
     const ninetyDaysAgo = new Date(now - 90 * 24 * 60 * 60 * 1000);
+
+    // If specialistId is provided, get list of their clients first
+    let clientIdsFilter = null;
+    if (specialistId) {
+      const appointments = await Appointment.find({
+        tenantId,
+        specialistId: specialistId,
+      }).distinct("clientId");
+
+      if (appointments.length === 0) {
+        // No clients for this specialist
+        return {
+          vip: [],
+          atRisk: [],
+          new: [],
+          active: [],
+        };
+      }
+
+      clientIdsFilter = { $in: appointments };
+    }
 
     const [vipClients, atRiskClients, newClients, activeClients] =
       await Promise.all([
         // VIP: High spend and frequent visits
         TenantClient.find({
           tenantId,
+          ...(clientIdsFilter && { clientId: clientIdsFilter }),
           totalSpend: { $gte: 500 },
           totalVisits: { $gte: 10 },
         }).populate("clientId"),
@@ -531,6 +588,7 @@ class ClientService {
         // At Risk: Haven't visited in 90+ days but have history
         TenantClient.find({
           tenantId,
+          ...(clientIdsFilter && { clientId: clientIdsFilter }),
           lastVisit: { $lte: ninetyDaysAgo },
           totalVisits: { $gte: 3 },
         }).populate("clientId"),
@@ -538,12 +596,14 @@ class ClientService {
         // New: 1 visit or less
         TenantClient.find({
           tenantId,
+          ...(clientIdsFilter && { clientId: clientIdsFilter }),
           totalVisits: { $lte: 1 },
         }).populate("clientId"),
 
         // Active: Visited in last 90 days
         TenantClient.find({
           tenantId,
+          ...(clientIdsFilter && { clientId: clientIdsFilter }),
           lastVisit: { $gte: ninetyDaysAgo },
         }).populate("clientId"),
       ]);

@@ -1793,6 +1793,132 @@ Phone: +44 7928 775746`;
   }
 }
 
+/**
+ * Send specialist account credentials email
+ */
+export async function sendSpecialistCredentialsEmail({
+  specialistName,
+  email,
+  tempPassword,
+  tenantName,
+}) {
+  const tx = getTransport();
+  if (!tx) {
+    console.log(
+      "[MAILER] No SMTP configured, skipping specialist credentials email"
+    );
+    return;
+  }
+
+  const from = process.env.SMTP_FROM || process.env.SMTP_USER;
+  const loginUrl = process.env.FRONTEND_URL
+    ? `${process.env.FRONTEND_URL}/admin/login`
+    : "https://yourdomain.com/admin/login";
+
+  const subject = `Welcome to ${
+    tenantName || "Our Platform"
+  } - Admin Account Created`;
+
+  const textContent = `Hi ${specialistName},
+
+Welcome to ${tenantName || "our platform"}!
+
+Your admin account has been created. You can now log in to manage your schedule, view appointments, and update your services.
+
+Login Credentials:
+- Email: ${email}
+- Temporary Password: ${tempPassword}
+
+Login URL: ${loginUrl}
+
+⚠️ IMPORTANT: Please change your password immediately after your first login for security purposes.
+
+To change your password:
+1. Log in using the credentials above
+2. Go to your account settings
+3. Update your password to something secure and memorable
+
+If you have any questions or need assistance, please contact your administrator.
+
+Best regards,
+${tenantName || "The Team"}`;
+
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
+        .credentials { background: white; padding: 20px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #667eea; }
+        .warning { background: #fff3cd; border: 1px solid #ffc107; padding: 15px; border-radius: 6px; margin: 20px 0; }
+        .button { display: inline-block; padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 6px; margin: 20px 0; }
+        .footer { text-align: center; color: #666; font-size: 12px; margin-top: 30px; }
+        .code { background: #f4f4f4; padding: 8px 12px; border-radius: 4px; font-family: monospace; font-size: 14px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Welcome to ${tenantName || "Our Platform"}!</h1>
+        </div>
+        <div class="content">
+          <p>Hi <strong>${specialistName}</strong>,</p>
+          
+          <p>Your admin account has been created. You can now log in to manage your schedule, view appointments, and update your services.</p>
+          
+          <div class="credentials">
+            <h3>Login Credentials</h3>
+            <p><strong>Email:</strong> ${email}</p>
+            <p><strong>Temporary Password:</strong> <span class="code">${tempPassword}</span></p>
+          </div>
+          
+          <div style="text-align: center;">
+            <a href="${loginUrl}" class="button">Login to Your Account</a>
+          </div>
+          
+          <div class="warning">
+            <strong>⚠️ IMPORTANT:</strong> Please change your password immediately after your first login for security purposes.
+          </div>
+          
+          <h3>To change your password:</h3>
+          <ol>
+            <li>Log in using the credentials above</li>
+            <li>Go to your account settings</li>
+            <li>Update your password to something secure and memorable</li>
+          </ol>
+          
+          <p>If you have any questions or need assistance, please contact your administrator.</p>
+          
+          <div class="footer">
+            <p>Best regards,<br>${tenantName || "The Team"}</p>
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  try {
+    await tx.sendMail({
+      from,
+      to: email,
+      subject,
+      text: textContent,
+      html: htmlContent,
+    });
+    console.log(`[MAILER] ✓ Specialist credentials email sent to ${email}`);
+  } catch (error) {
+    console.error(
+      `[MAILER] ✗ Failed to send specialist credentials email to ${email}:`,
+      error
+    );
+    // Don't throw - we don't want to fail specialist creation if email fails
+  }
+}
+
 export default {
   sendCancellationEmails,
   sendConfirmationEmail,
@@ -1800,4 +1926,5 @@ export default {
   sendAdminOrderNotification,
   sendBeauticianProductOrderNotification,
   sendOrderReadyForCollectionEmail,
+  sendSpecialistCredentialsEmail,
 };

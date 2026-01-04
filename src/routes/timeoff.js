@@ -1,4 +1,5 @@
 import express from "express";
+import mongoose from "mongoose";
 import Specialist from "../models/Specialist.js";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc.js";
@@ -14,10 +15,52 @@ const router = express.Router();
 /**
  * GET /api/timeoff
  * Get all time-off periods for all specialists
+ * Query params: specialistId, tenantId
+ * For specialists: Only shows their own time off
  */
 router.get("/", async (req, res) => {
   try {
-    const specialists = await Specialist.find({}, "name timeOff").lean();
+    const { specialistId, tenantId } = req.query;
+
+    // Build query
+    const query = {};
+
+    // Handle tenantId for super_admin/support viewing other tenants
+    let queryTenantId = req.tenantId;
+    if (tenantId) {
+      if (
+        req.admin &&
+        (req.admin.role === "super_admin" || req.admin.role === "support")
+      ) {
+        queryTenantId = new mongoose.Types.ObjectId(tenantId);
+      } else {
+        return res.status(403).json({
+          error:
+            "Access denied. Only super admin or support can query other tenants.",
+        });
+      }
+    }
+
+    // Role-based filtering: specialists only see their own time off
+    if (
+      req.admin &&
+      req.admin.role === "specialist" &&
+      req.admin.specialistId
+    ) {
+      query._id = req.admin.specialistId;
+      console.log(
+        "[TIMEOFF] Filtering for specialist:",
+        req.admin.specialistId
+      );
+    }
+    // Filter by specialist if provided (and user has permission)
+    else if (specialistId) {
+      query._id = specialistId;
+    }
+
+    const specialists = await Specialist.find(query, "name timeOff")
+      .setOptions({ tenantId: queryTenantId })
+      .lean();
 
     // Flatten time-off with specialist info
     const allTimeOff = [];

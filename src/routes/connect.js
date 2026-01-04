@@ -36,7 +36,7 @@ router.post("/onboard", async (req, res) => {
       return res.status(404).json({ error: "Specialist not found" });
     }
 
-    let stripeAccountId = Specialist.stripeAccountId;
+    let stripeAccountId = specialist.stripeAccountId;
 
     const stripe = getStripe();
 
@@ -50,10 +50,10 @@ router.post("/onboard", async (req, res) => {
           `Clearing invalid Stripe account ID for specialist ${specialistId}`
         );
         stripeAccountId = null;
-        Specialist.stripeAccountId = null;
-        Specialist.stripeStatus = "not_connected";
-        Specialist.stripeOnboardingCompleted = false;
-        await Specialist.save();
+        specialist.stripeAccountId = null;
+        specialist.stripeStatus = "not_connected";
+        specialist.stripeOnboardingCompleted = false;
+        await specialist.save();
       }
     }
 
@@ -77,10 +77,10 @@ router.post("/onboard", async (req, res) => {
       stripeAccountId = account.id;
 
       // Save Stripe account ID and type to database
-      Specialist.stripeAccountId = stripeAccountId;
-      Specialist.stripeAccountType = "standard";
-      Specialist.stripeStatus = "pending";
-      await Specialist.save();
+      specialist.stripeAccountId = stripeAccountId;
+      specialist.stripeAccountType = "standard";
+      specialist.stripeStatus = "pending";
+      await specialist.save();
 
       console.log(`[CONNECT] Created Standard account: ${stripeAccountId}`);
     }
@@ -124,7 +124,7 @@ router.get("/status/:specialistId", async (req, res) => {
       return res.status(404).json({ error: "Specialist not found" });
     }
 
-    if (!Specialist.stripeAccountId) {
+    if (!specialist.stripeAccountId) {
       return res.json({
         status: "not_connected",
         connected: false,
@@ -138,16 +138,16 @@ router.get("/status/:specialistId", async (req, res) => {
     // Fetch account details from Stripe
     let account;
     try {
-      account = await stripe.accounts.retrieve(Specialist.stripeAccountId);
+      account = await stripe.accounts.retrieve(specialist.stripeAccountId);
     } catch (error) {
       // Account doesn't exist (likely test account with live keys)
       console.log(
         `Invalid Stripe account ID for specialist ${specialistId}, clearing...`
       );
-      Specialist.stripeAccountId = null;
-      Specialist.stripeStatus = "not_connected";
-      Specialist.stripeOnboardingCompleted = false;
-      await Specialist.save();
+      specialist.stripeAccountId = null;
+      specialist.stripeStatus = "not_connected";
+      specialist.stripeOnboardingCompleted = false;
+      await specialist.save();
 
       return res.json({
         status: "not_connected",
@@ -163,21 +163,21 @@ router.get("/status/:specialistId", async (req, res) => {
     const isComplete = account.details_submitted && account.charges_enabled;
 
     // Update specialist status in database
-    if (isComplete && Specialist.stripeStatus !== "connected") {
-      Specialist.stripeStatus = "connected";
-      Specialist.stripeOnboardingCompleted = true;
-      Specialist.stripePayoutsEnabled = account.payouts_enabled || false;
-      await Specialist.save();
-    } else if (!isComplete && Specialist.stripeStatus === "connected") {
-      Specialist.stripeStatus = "pending";
-      Specialist.stripeOnboardingCompleted = false;
-      await Specialist.save();
+    if (isComplete && specialist.stripeStatus !== "connected") {
+      specialist.stripeStatus = "connected";
+      specialist.stripeOnboardingCompleted = true;
+      specialist.stripePayoutsEnabled = account.payouts_enabled || false;
+      await specialist.save();
+    } else if (!isComplete && specialist.stripeStatus === "connected") {
+      specialist.stripeStatus = "pending";
+      specialist.stripeOnboardingCompleted = false;
+      await specialist.save();
     }
 
     res.json({
-      status: Specialist.stripeStatus,
+      status: specialist.stripeStatus,
       connected: isComplete,
-      stripeAccountId: Specialist.stripeAccountId,
+      stripeAccountId: specialist.stripeAccountId,
       accountType: "standard",
       chargesEnabled: account.charges_enabled,
       detailsSubmitted: account.details_submitted,
@@ -195,27 +195,43 @@ router.get("/status/:specialistId", async (req, res) => {
 
 /**
  * POST /api/connect/dashboard-link/:specialistId
- * Generate a login link for specialist to access their Stripe Express dashboard
+ * Generate a login link for specialist to access their Stripe dashboard
+ * For Standard accounts, returns the Stripe dashboard URL
  */
 router.post("/dashboard-link/:specialistId", async (req, res) => {
   try {
     const { specialistId } = req.params;
 
     const specialist = await Specialist.findById(specialistId);
-    if (!specialist || !Specialist.stripeAccountId) {
+    if (!specialist || !specialist.stripeAccountId) {
       return res.status(404).json({
         error: "Specialist not found or Stripe account not connected",
       });
     }
 
+    const accountType = specialist.stripeAccountType || "standard";
+
+    // For Standard accounts, users log in directly to Stripe's dashboard
+    if (accountType === "standard") {
+      res.json({
+        success: true,
+        url: "https://dashboard.stripe.com",
+        accountType: "standard",
+        message: "Please log in with your Stripe account credentials",
+      });
+      return;
+    }
+
+    // For Express/Custom accounts, generate a login link
     const stripe = getStripe();
     const loginLink = await stripe.accounts.createLoginLink(
-      Specialist.stripeAccountId
+      specialist.stripeAccountId
     );
 
     res.json({
       success: true,
       url: loginLink.url,
+      accountType: accountType,
     });
   } catch (error) {
     console.error("Stripe dashboard link error:", error);
@@ -239,15 +255,15 @@ router.delete("/disconnect/:specialistId", async (req, res) => {
       return res.status(404).json({ error: "Specialist not found" });
     }
 
-    if (Specialist.stripeAccountId) {
+    if (specialist.stripeAccountId) {
       // Optionally delete the account from Stripe
-      // await stripe.accounts.del(Specialist.stripeAccountId);
+      // await stripe.accounts.del(specialist.stripeAccountId);
 
       // Clear Stripe fields from database
-      Specialist.stripeAccountId = null;
-      Specialist.stripeStatus = "not_connected";
-      Specialist.stripeOnboardingCompleted = false;
-      await Specialist.save();
+      specialist.stripeAccountId = null;
+      specialist.stripeStatus = "not_connected";
+      specialist.stripeOnboardingCompleted = false;
+      await specialist.save();
     }
 
     res.json({

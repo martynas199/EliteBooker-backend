@@ -1,4 +1,5 @@
 import { Router } from "express";
+import mongoose from "mongoose";
 import Specialist from "../models/Specialist.js";
 import Service from "../models/Service.js";
 import Admin from "../models/Admin.js";
@@ -46,7 +47,13 @@ r.get("/", optionalAuth, attachTenantToModels, async (req, res, next) => {
       });
     }
 
-    const { active, serviceId, limit = 20, skip = 0 } = queryValidation.data;
+    const {
+      active,
+      serviceId,
+      limit = 20,
+      skip = 0,
+      tenantId,
+    } = queryValidation.data;
 
     // Parse pagination params
     const page = Math.max(1, parseInt(req.query.page) || 1);
@@ -59,16 +66,41 @@ r.get("/", optionalAuth, attachTenantToModels, async (req, res, next) => {
     // Build query
     const query = {};
 
-    // TENANT FILTERING: REQUIRED - Multi-tenant app must always filter by tenant
-    if (!req.tenantId) {
-      console.log("[BEAUTICIANS] ERROR: No tenantId found in request");
-      return res.status(400).json({
-        error: "Tenant context required. Please provide tenant information.",
-      });
+    // TENANT FILTERING
+    // If tenantId is provided in query params (for super_admin/support viewing other tenants)
+    if (tenantId) {
+      // Only allow super_admin or support to query other tenants
+      if (
+        req.admin &&
+        (req.admin.role === "super_admin" || req.admin.role === "support")
+      ) {
+        query.tenantId = new mongoose.Types.ObjectId(tenantId);
+        console.log(
+          "[BEAUTICIANS] Super admin/support querying tenant:",
+          tenantId
+        );
+        console.log("[BEAUTICIANS] Logged-in admin tenantId:", req.tenantId);
+        console.log(
+          "[BEAUTICIANS] Query tenantId being used (as ObjectId):",
+          query.tenantId
+        );
+      } else {
+        return res.status(403).json({
+          error:
+            "Access denied. Only super admin or support can query other tenants.",
+        });
+      }
+    } else {
+      // Use the tenant from the logged-in admin's context
+      if (!req.tenantId) {
+        console.log("[BEAUTICIANS] ERROR: No tenantId found in request");
+        return res.status(400).json({
+          error: "Tenant context required. Please provide tenant information.",
+        });
+      }
+      query.tenantId = req.tenantId;
+      console.log("[BEAUTICIANS] Adding tenant filter:", req.tenantId);
     }
-
-    query.tenantId = req.tenantId;
-    console.log("[BEAUTICIANS] Adding tenant filter:", req.tenantId);
 
     if (active && active !== "all") {
       query.active = active === "true";
@@ -89,14 +121,39 @@ r.get("/", optionalAuth, attachTenantToModels, async (req, res, next) => {
       query._id = { $in: beauticianIds };
     }
 
+    console.log("[BEAUTICIANS] Final query:", JSON.stringify(query));
+
+    // Prepare query options with tenantId for the multiTenantPlugin
+    const queryOptions = {};
+    if (
+      tenantId &&
+      req.admin &&
+      (req.admin.role === "super_admin" || req.admin.role === "support")
+    ) {
+      // Pass tenantId through options to override the plugin's automatic filtering
+      queryOptions.tenantId = new mongoose.Types.ObjectId(tenantId);
+    }
+
     // Get total count for pagination
-    const total = await Specialist.countDocuments(query);
+    const total = await Specialist.countDocuments(query).setOptions(
+      queryOptions
+    );
 
     const docs = await Specialist.find(query)
+      .setOptions(queryOptions)
       .limit(pageLimit)
       .skip(pageSkip)
       .sort({ name: 1 })
       .lean();
+
+    console.log("[BEAUTICIANS] Found specialists:", docs.length);
+    if (docs.length > 0) {
+      console.log("[BEAUTICIANS] First specialist:", {
+        name: docs[0].name,
+        email: docs[0].email,
+        tenantId: docs[0].tenantId,
+      });
+    }
 
     // Convert Map to plain object for customSchedule (if it's still a Map)
     docs.forEach((doc) => {

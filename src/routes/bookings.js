@@ -4,6 +4,7 @@
  */
 
 const express = require("express");
+const mongoose = require("mongoose");
 const { getLockService } = require("../services/lockService");
 const Appointment = require("../models/Appointment");
 const Specialist = require("../models/Specialist");
@@ -265,10 +266,22 @@ router.post("/create", async (req, res) => {
 
     // Step 7: Send confirmation SMS (async, don't wait)
     if (customerPhone) {
-      smsService
-        .sendBookingConfirmation(appointment)
-        .then(() => console.log("[Bookings] SMS confirmation sent"))
-        .catch((err) => console.error("[Bookings] SMS failed:", err.message));
+      // Check if SMS confirmations feature is enabled in tenant settings
+      const Tenant = mongoose.model("Tenant");
+      const tenantForSms = await Tenant.findById(tenantId).select("features");
+      const smsConfirmationsEnabled =
+        tenantForSms?.features?.smsConfirmations === true;
+
+      if (!smsConfirmationsEnabled) {
+        console.log(
+          "[Bookings] SMS Confirmations feature is disabled, skipping SMS"
+        );
+      } else {
+        smsService
+          .sendBookingConfirmation(appointment)
+          .then(() => console.log("[Bookings] SMS confirmation sent"))
+          .catch((err) => console.error("[Bookings] SMS failed:", err.message));
+      }
     }
   } catch (error) {
     console.error("[Bookings] Error creating booking:", error);

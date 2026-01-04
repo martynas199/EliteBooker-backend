@@ -6,6 +6,7 @@
 
 import { Router } from "express";
 import { z } from "zod";
+import mongoose from "mongoose";
 import Tenant from "../models/Tenant.js";
 import Admin from "../models/Admin.js";
 import Settings from "../models/Settings.js";
@@ -225,6 +226,15 @@ router.post("/create", async (req, res) => {
 
     console.log(
       "[Tenant Create] Default specialist created:",
+      defaultSpecialist._id
+    );
+
+    // Link the admin account to the specialist
+    admin.specialistId = defaultSpecialist._id;
+    await admin.save();
+
+    console.log(
+      "[Tenant Create] Admin linked to specialist:",
       defaultSpecialist._id
     );
 
@@ -448,15 +458,16 @@ router.get("/public", async (req, res) => {
 /**
  * GET /api/tenants/:id
  * Get tenant details
- * Super admin can view any tenant, salon admin can view their own
+ * Super admin and support can view any tenant, salon admin can view their own
  */
 router.get("/:id", requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Check permissions
+    // Check permissions - allow super_admin and support to view any tenant
     if (
       req.admin.role !== "super_admin" &&
+      req.admin.role !== "support" &&
       req.admin.tenantId?.toString() !== id
     ) {
       return res.status(403).json({
@@ -473,7 +484,7 @@ router.get("/:id", requireAdmin, async (req, res) => {
       });
     }
 
-    res.json({ tenant });
+    res.json(tenant);
   } catch (error) {
     console.error("Get tenant error:", error);
     res.status(500).json({
@@ -654,7 +665,7 @@ router.delete("/:id", requireAdmin, requireSuperAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
-    const tenant = await Tenant.findByIdAndDelete(id);
+    const tenant = await Tenant.findById(id);
 
     if (!tenant) {
       return res.status(404).json({
@@ -662,12 +673,145 @@ router.delete("/:id", requireAdmin, requireSuperAdmin, async (req, res) => {
       });
     }
 
-    clearTenantCache(id);
+    // Start a session for transaction to ensure all data is deleted together
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-    res.json({
-      success: true,
-      message: "Tenant deleted successfully",
-    });
+    try {
+      // Import all models that have tenant data
+      const Service = mongoose.model("Service");
+      const Appointment = mongoose.model("Appointment");
+      const Order = mongoose.model("Order");
+      const Product = mongoose.model("Product");
+      const BlogPost = mongoose.model("BlogPost");
+      const GiftCard = mongoose.model("GiftCard");
+
+      // Delete all tenant-related data
+      console.log(
+        `[Tenant Delete] Deleting all data for tenant: ${tenant.slug} (${id})`
+      );
+
+      // Delete specialists (staff)
+      const deletedSpecialists = await Specialist.deleteMany({
+        tenantId: id,
+      }).session(session);
+      console.log(
+        `[Tenant Delete] Deleted ${deletedSpecialists.deletedCount} specialists`
+      );
+
+      // Delete services
+      const deletedServices = await Service.deleteMany({
+        tenantId: id,
+      }).session(session);
+      console.log(
+        `[Tenant Delete] Deleted ${deletedServices.deletedCount} services`
+      );
+
+      // Delete appointments
+      const deletedAppointments = await Appointment.deleteMany({
+        tenantId: id,
+      }).session(session);
+      console.log(
+        `[Tenant Delete] Deleted ${deletedAppointments.deletedCount} appointments`
+      );
+
+      // Delete orders
+      const deletedOrders = await Order.deleteMany({ tenantId: id }).session(
+        session
+      );
+      console.log(
+        `[Tenant Delete] Deleted ${deletedOrders.deletedCount} orders`
+      );
+
+      // Delete products
+      const deletedProducts = await Product.deleteMany({
+        tenantId: id,
+      }).session(session);
+      console.log(
+        `[Tenant Delete] Deleted ${deletedProducts.deletedCount} products`
+      );
+
+      // Delete locations
+      const deletedLocations = await Location.deleteMany({
+        tenantId: id,
+      }).session(session);
+      console.log(
+        `[Tenant Delete] Deleted ${deletedLocations.deletedCount} locations`
+      );
+
+      // Delete settings
+      const deletedSettings = await Settings.deleteMany({
+        tenantId: id,
+      }).session(session);
+      console.log(
+        `[Tenant Delete] Deleted ${deletedSettings.deletedCount} settings`
+      );
+
+      // Delete hero sections
+      const deletedHeroSections = await HeroSection.deleteMany({
+        tenantId: id,
+      }).session(session);
+      console.log(
+        `[Tenant Delete] Deleted ${deletedHeroSections.deletedCount} hero sections`
+      );
+
+      // Delete blog posts
+      const deletedBlogPosts = await BlogPost.deleteMany({
+        tenantId: id,
+      }).session(session);
+      console.log(
+        `[Tenant Delete] Deleted ${deletedBlogPosts.deletedCount} blog posts`
+      );
+
+      // Delete gift cards
+      const deletedGiftCards = await GiftCard.deleteMany({
+        tenantId: id,
+      }).session(session);
+      console.log(
+        `[Tenant Delete] Deleted ${deletedGiftCards.deletedCount} gift cards`
+      );
+
+      // Delete admins associated with this tenant
+      const deletedAdmins = await Admin.deleteMany({ tenantId: id }).session(
+        session
+      );
+      console.log(
+        `[Tenant Delete] Deleted ${deletedAdmins.deletedCount} admin accounts`
+      );
+
+      // Finally delete the tenant itself
+      await Tenant.findByIdAndDelete(id).session(session);
+      console.log(`[Tenant Delete] Deleted tenant: ${tenant.slug}`);
+
+      // Commit the transaction
+      await session.commitTransaction();
+      session.endSession();
+
+      clearTenantCache(id);
+
+      res.json({
+        success: true,
+        message: "Tenant and all associated data deleted successfully",
+        deletedData: {
+          specialists: deletedSpecialists.deletedCount,
+          services: deletedServices.deletedCount,
+          appointments: deletedAppointments.deletedCount,
+          orders: deletedOrders.deletedCount,
+          products: deletedProducts.deletedCount,
+          locations: deletedLocations.deletedCount,
+          settings: deletedSettings.deletedCount,
+          heroSections: deletedHeroSections.deletedCount,
+          blogPosts: deletedBlogPosts.deletedCount,
+          giftCards: deletedGiftCards.deletedCount,
+          admins: deletedAdmins.deletedCount,
+        },
+      });
+    } catch (error) {
+      // Rollback transaction on error
+      await session.abortTransaction();
+      session.endSession();
+      throw error;
+    }
   } catch (error) {
     console.error("Delete tenant error:", error);
     res.status(500).json({

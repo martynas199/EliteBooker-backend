@@ -1,4 +1,5 @@
 import cron from "node-cron";
+import mongoose from "mongoose";
 import Appointment from "../models/Appointment.js";
 import smsService from "./smsService.js";
 import { sendReminderEmail } from "../emails/mailer.js";
@@ -170,7 +171,7 @@ async function processReminders() {
       },
     })
       .populate("serviceId", "name")
-      .populate("specialistId", "name")
+      .populate("specialistId", "name subscription")
       .populate("services.serviceId", "name");
 
     console.log(
@@ -192,17 +193,32 @@ async function processReminders() {
 
       // Try to send SMS
       if (appointment.client?.phone) {
-        smsResult = await sendSMSReminder(appointment);
-        if (smsResult.success) {
-          reminderTypes.push("sms");
+        // Get tenant to check feature flag
+        const Tenant = mongoose.model("Tenant");
+        const tenant = await Tenant.findById(appointment.tenantId).select(
+          "features"
+        );
+
+        // Check if SMS reminders feature is enabled
+        const smsRemindersEnabled = tenant?.features?.smsReminders === true;
+
+        if (!smsRemindersEnabled) {
           console.log(
-            `[Reminder] ✓ SMS sent for appointment ${appointment._id}`
+            `[Reminder] SMS Reminders feature is disabled, skipping SMS for appointment ${appointment._id}`
           );
         } else {
-          console.log(
-            `[Reminder] ✗ SMS failed for appointment ${appointment._id}:`,
-            smsResult.reason || smsResult.error
-          );
+          smsResult = await sendSMSReminder(appointment);
+          if (smsResult.success) {
+            reminderTypes.push("sms");
+            console.log(
+              `[Reminder] ✓ SMS sent for appointment ${appointment._id}`
+            );
+          } else {
+            console.log(
+              `[Reminder] ✗ SMS failed for appointment ${appointment._id}:`,
+              smsResult.reason || smsResult.error
+            );
+          }
         }
       } else {
         console.log(

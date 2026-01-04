@@ -218,7 +218,7 @@ r.post("/", async (req, res) => {
       const depositPercentage = Number(req.body.depositAmount) || 30;
       const depositAmount =
         Number(variant.price || 0) * (depositPercentage / 100);
-      const platformFee = 0.5; // £0.50 booking fee
+      const platformFee = 0.99; // £0.99 booking fee
       const totalAmount = depositAmount + platformFee;
 
       // Create Stripe Checkout Session

@@ -119,11 +119,12 @@ export function requireSuperAdmin(req, res, next) {
     });
   }
 
-  // Check if admin has super_admin role
-  if (req.admin.role !== "super_admin") {
+  // Check if admin has super_admin or support role
+  if (req.admin.role !== "super_admin" && req.admin.role !== "support") {
     return res.status(403).json({
-      error: "Access denied. Super admin privileges required.",
-      message: "Only super administrators can perform this action.",
+      error: "Access denied. Super admin or support privileges required.",
+      message:
+        "Only super administrators and support team can perform this action.",
     });
   }
 

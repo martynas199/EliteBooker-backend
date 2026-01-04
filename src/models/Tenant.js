@@ -184,8 +184,6 @@ const TenantSchema = new mongoose.Schema(
       acceptOnlinePayments: { type: Boolean, default: true },
       acceptCash: { type: Boolean, default: true },
       acceptCardInSalon: { type: Boolean, default: true },
-      platformFeePerBooking: { type: Number, default: 50 }, // £0.50 in pence
-      platformFeePerProduct: { type: Number, default: 50 }, // £0.50 in pence
     },
     // Status
     status: {

@@ -576,7 +576,7 @@ router.post("/checkout", async (req, res) => {
     const tenant = req.tenant;
     const platformFee =
       tenant?.paymentSettings?.platformFeePerProduct ||
-      Number(process.env.STRIPE_PLATFORM_FEE || 50); // £0.50 in pence
+      Number(process.env.STRIPE_PLATFORM_FEE || 99); // £0.99 in pence
 
     // For product orders: Use platform account with transfers and application fee
     if (

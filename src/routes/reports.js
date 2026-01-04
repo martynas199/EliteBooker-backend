@@ -253,7 +253,7 @@ router.get("/specialist-earnings/:specialistId", async (req, res) => {
     const bookingTotal = bookings.reduce((sum, b) => sum + (b.price || 0), 0);
     const platformFees =
       bookings.reduce(
-        (sum, b) => sum + (b.payment?.stripe?.platformFee || 50),
+        (sum, b) => sum + (b.payment?.stripe?.platformFee || 99),
         0
       ) / 100; // Convert pence to pounds
     const bookingEarnings = bookingTotal - platformFees;
