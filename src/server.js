@@ -48,6 +48,7 @@ import favoritesRouter from "./routes/favorites.js";
 import giftCardsRouter from "./routes/giftCards.js";
 import paymentsRouter from "./routes/payments.js";
 import supportRouter from "./routes/support.js";
+import demoRouter from "./routes/demo.js";
 import { startReminderCron } from "./services/reminderService.js";
 import {
   apiLimiter,
@@ -246,6 +247,9 @@ app.use("/api", apiLimiter);
 
 // Support routes (protected - requires authentication)
 app.use("/api/support", supportRouter);
+
+// Demo request routes (public)
+app.use("/api/demo-request", demoRouter);
 
 // Booking with rate limiting to prevent spam
 app.use("/api/checkout", bookingLimiter, checkoutRouter);
