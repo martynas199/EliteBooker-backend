@@ -41,7 +41,7 @@
     "stripe": "^19.1.0",
     "uuid": "^13.0.0",
     "ws": "^8.18.3",
-    "zod": "^3.23.8"
+    "zod": "^4.1.13"
   },
   "devDependencies": {
     "@jest/globals": "^29.7.0",
