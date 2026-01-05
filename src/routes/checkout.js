@@ -281,13 +281,30 @@ r.get("/confirm", async (req, res, next) => {
           phone: confirmedAppt.client.phone,
         });
 
-        // Check if SMS confirmations feature is enabled in tenant settings
-        const smsConfirmationsEnabled =
-          tenantForFlags?.features?.smsConfirmations === true;
+        // Check if specialist has active SMS subscription AND tenant has SMS enabled
+        const Specialist = mongoose.model("Specialist");
+        const specialist = await Specialist.findById(
+          confirmedAppt.specialistId
+        ).select("subscription");
 
-        if (!smsConfirmationsEnabled) {
+        const Tenant = mongoose.model("Tenant");
+        const tenant = await Tenant.findById(confirmedAppt.tenantId).select(
+          "features"
+        );
+
+        const hasActiveSmsSubscription =
+          specialist?.subscription?.smsConfirmations?.enabled === true;
+        const tenantSmsEnabled = tenant?.features?.smsConfirmations === true;
+
+        if (!hasActiveSmsSubscription) {
           console.log(
-            "[CHECKOUT CONFIRM] SMS Confirmations feature is disabled, skipping SMS"
+            "[CHECKOUT CONFIRM] Specialist does not have active SMS subscription (enabled=" +
+              specialist?.subscription?.smsConfirmations?.enabled +
+              "), skipping SMS"
+          );
+        } else if (!tenantSmsEnabled) {
+          console.log(
+            "[CHECKOUT CONFIRM] Tenant SMS feature is disabled, skipping SMS"
           );
         } else {
           smsService

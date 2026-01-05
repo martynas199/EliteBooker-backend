@@ -28,8 +28,8 @@ const PolicySchema = new mongoose.Schema(
     partialRefund: { type: PartialRefundSchema, default: undefined },
     appliesTo: {
       type: String,
-      enum: ["full", "deposit_only"],
-      default: "deposit_only",
+      enum: ["auto", "full", "deposit_only"],
+      default: "auto",
     },
     rescheduleAllowedHours: { type: Number, default: 2 },
     graceMinutes: { type: Number, default: 15 },

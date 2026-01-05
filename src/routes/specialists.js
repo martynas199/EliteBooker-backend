@@ -267,7 +267,7 @@ r.patch("/me/working-hours", async (req, res, next) => {
  * GET /api/Specialists/:id
  * Get single Specialist by ID
  */
-r.get("/:id", async (req, res, next) => {
+r.get("/:id", optionalAuth, attachTenantToModels, async (req, res, next) => {
   try {
     // Validate ID
     const idValidation = specialistIdSchema.safeParse(req.params);

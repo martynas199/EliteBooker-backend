@@ -43,6 +43,7 @@ import featuresRouter from "./routes/features.js";
 import seminarRoutes from "./routes/seminarRoutes.js";
 import adminClientsRouter from "./routes/admin/clients.js";
 import clientRouter from "./routes/client.js";
+import cancellationPolicyRouter from "./routes/cancellationPolicy.js";
 import favoritesRouter from "./routes/favorites.js";
 import giftCardsRouter from "./routes/giftCards.js";
 import paymentsRouter from "./routes/payments.js";
@@ -268,6 +269,7 @@ app.use("/api/features", featuresRouter); // Premium features subscription route
 app.use("/api/client", clientRouter); // Client profile, bookings, GDPR
 app.use("/api/favorites", favoritesRouter); // Client favorites
 app.use("/api/gift-cards", giftCardsRouter); // Gift cards
+app.use("/api/cancellation-policy", cancellationPolicyRouter); // Cancellation policies
 
 // Error handling
 app.use((err, req, res, next) => {

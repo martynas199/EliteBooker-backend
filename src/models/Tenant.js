@@ -176,6 +176,8 @@ const TenantSchema = new mongoose.Schema(
       maxAdvanceBookingDays: { type: Number, default: 60 },
       minAdvanceBookingHours: { type: Number, default: 2 },
       cancellationPolicyHours: { type: Number, default: 24 },
+      rescheduleMinHours: { type: Number, default: 24 }, // Minimum hours notice required to reschedule
+      allowClientRescheduling: { type: Boolean, default: true }, // Allow clients to reschedule online
       showBeauticianPhotos: { type: Boolean, default: true },
       allowBeauticianSelection: { type: Boolean, default: true },
     },

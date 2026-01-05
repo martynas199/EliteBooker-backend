@@ -142,17 +142,31 @@ r.post("/stripe", async (req, res) => {
                   phone: appointment.client.phone,
                 });
 
-                // Check if SMS confirmations feature is enabled in tenant settings
+                // Check if specialist has active SMS subscription AND tenant has SMS enabled
+                const Specialist = mongoose.model("Specialist");
+                const specialist = await Specialist.findById(
+                  appointment.specialistId
+                ).select("subscription");
+
                 const Tenant = mongoose.model("Tenant");
                 const tenant = await Tenant.findById(
                   appointment.tenantId
                 ).select("features");
-                const smsConfirmationsEnabled =
+
+                const hasActiveSmsSubscription =
+                  specialist?.subscription?.smsConfirmations?.enabled === true;
+                const tenantSmsEnabled =
                   tenant?.features?.smsConfirmations === true;
 
-                if (!smsConfirmationsEnabled) {
+                if (!hasActiveSmsSubscription) {
                   console.log(
-                    "[WEBHOOK] SMS Confirmations feature is disabled, skipping SMS"
+                    "[WEBHOOK] Specialist does not have active SMS subscription (enabled=" +
+                      specialist?.subscription?.smsConfirmations?.enabled +
+                      "), skipping SMS"
+                  );
+                } else if (!tenantSmsEnabled) {
+                  console.log(
+                    "[WEBHOOK] Tenant SMS feature is disabled, skipping SMS"
                   );
                 } else {
                   smsService

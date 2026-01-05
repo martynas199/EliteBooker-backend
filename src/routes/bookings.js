@@ -266,16 +266,27 @@ router.post("/create", async (req, res) => {
 
     // Step 7: Send confirmation SMS (async, don't wait)
     if (customerPhone) {
-      // Check if SMS confirmations feature is enabled in tenant settings
-      const Tenant = mongoose.model("Tenant");
-      const tenantForSms = await Tenant.findById(tenantId).select("features");
-      const smsConfirmationsEnabled =
-        tenantForSms?.features?.smsConfirmations === true;
+      // Check if specialist has active SMS subscription AND tenant has SMS enabled
+      const Specialist = mongoose.model("Specialist");
+      const specialist = await Specialist.findById(specialistId).select(
+        "subscription"
+      );
 
-      if (!smsConfirmationsEnabled) {
+      const Tenant = mongoose.model("Tenant");
+      const tenant = await Tenant.findById(tenantId).select("features");
+
+      const hasActiveSmsSubscription =
+        specialist?.subscription?.smsConfirmations?.enabled === true;
+      const tenantSmsEnabled = tenant?.features?.smsConfirmations === true;
+
+      if (!hasActiveSmsSubscription) {
         console.log(
-          "[Bookings] SMS Confirmations feature is disabled, skipping SMS"
+          "[Bookings] Specialist does not have active SMS subscription (enabled=" +
+            specialist?.subscription?.smsConfirmations?.enabled +
+            "), skipping SMS"
         );
+      } else if (!tenantSmsEnabled) {
+        console.log("[Bookings] Tenant SMS feature is disabled, skipping SMS");
       } else {
         smsService
           .sendBookingConfirmation(appointment)
