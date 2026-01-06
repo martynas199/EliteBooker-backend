@@ -9,7 +9,35 @@ import requireAdmin from "../middleware/requireAdmin.js";
 
 const router = express.Router();
 
-// Apply authentication to all payment routes
+// ==================== PUBLIC ENDPOINTS ====================
+
+/**
+ * GET /api/payments/config
+ *
+ * Get Stripe publishable key for client-side SDK initialization
+ * PUBLIC - No authentication required
+ *
+ * Required for: Apple Pay, Google Pay, Payment Element
+ */
+router.get("/config", async (req, res) => {
+  try {
+    res.json({
+      success: true,
+      publishableKey:
+        process.env.STRIPE_PUBLISHABLE_KEY || process.env.STRIPE_PUBLISHABLE,
+    });
+  } catch (error) {
+    console.error("[Config Error]:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get Stripe config",
+    });
+  }
+});
+
+// ==================== AUTHENTICATED ENDPOINTS ====================
+
+// Apply authentication to all routes below this point
 router.use(requireAdmin);
 
 // Initialize Stripe
@@ -62,10 +90,7 @@ const createPaymentIntentSchema = z.object({
     .optional()
     .default(0),
   currency: z.enum(["gbp", "usd", "eur"]).optional().default("gbp"),
-  captureMethod: z
-    .enum(["automatic", "manual"])
-    .optional()
-    .default("manual"), // Stripe Terminal requires manual capture to prevent timeouts
+  captureMethod: z.enum(["automatic", "manual"]).optional().default("manual"), // Stripe Terminal requires manual capture to prevent timeouts
   metadata: z.record(z.string()).optional().default({}),
 });
 
@@ -135,18 +160,15 @@ router.post("/connection-token", async (req, res) => {
     let stripeAccount = null;
     if (req.admin.specialistId) {
       const Specialist = (await import("../models/Specialist.js")).default;
-      const specialist = await Specialist.findById(req.admin.specialistId).select(
-        "stripeAccountId"
-      );
+      const specialist = await Specialist.findById(
+        req.admin.specialistId
+      ).select("stripeAccountId");
       stripeAccount = specialist?.stripeAccountId;
     }
 
     // Create connection token with or without connected account
     const connectionToken = stripeAccount
-      ? await stripe.terminal.connectionTokens.create(
-          {},
-          { stripeAccount }
-        )
+      ? await stripe.terminal.connectionTokens.create({}, { stripeAccount })
       : await stripe.terminal.connectionTokens.create({});
 
     res.json({
@@ -159,30 +181,6 @@ router.post("/connection-token", async (req, res) => {
       success: false,
       message: "Failed to create connection token",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
-    });
-  }
-});
-
-// ==================== GET STRIPE CONFIG ====================
-
-/**
- * GET /api/payments/config
- *
- * Get Stripe publishable key for client-side SDK initialization
- *
- * Required for: Apple Pay, Google Pay, Payment Element
- */
-router.get("/config", async (req, res) => {
-  try {
-    res.json({
-      success: true,
-      publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || process.env.STRIPE_PUBLISHABLE,
-    });
-  } catch (error) {
-    console.error("[Config Error]:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to get Stripe config",
     });
   }
 });
@@ -288,7 +286,8 @@ router.post("/intents", async (req, res) => {
     if (!req.admin.specialistId) {
       return res.status(400).json({
         success: false,
-        message: "Admin must be linked to a specialist account. Please link your account in Admin Management.",
+        message:
+          "Admin must be linked to a specialist account. Please link your account in Admin Management.",
       });
     }
 
@@ -318,7 +317,8 @@ router.post("/intents", async (req, res) => {
     if (!useConnectAccount && !isDevelopment) {
       return res.status(400).json({
         success: false,
-        message: "Stripe Connect not configured. Please complete Stripe onboarding at /admin/stripe-connect",
+        message:
+          "Stripe Connect not configured. Please complete Stripe onboarding at /admin/stripe-connect",
       });
     }
 
