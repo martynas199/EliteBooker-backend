@@ -163,6 +163,30 @@ router.post("/connection-token", async (req, res) => {
   }
 });
 
+// ==================== GET STRIPE CONFIG ====================
+
+/**
+ * GET /api/payments/config
+ *
+ * Get Stripe publishable key for client-side SDK initialization
+ *
+ * Required for: Apple Pay, Google Pay, Payment Element
+ */
+router.get("/config", async (req, res) => {
+  try {
+    res.json({
+      success: true,
+      publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || process.env.STRIPE_PUBLISHABLE,
+    });
+  } catch (error) {
+    console.error("[Config Error]:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get Stripe config",
+    });
+  }
+});
+
 // ==================== CREATE PAYMENT INTENT ====================
 
 /**
