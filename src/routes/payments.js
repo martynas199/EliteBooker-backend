@@ -206,44 +206,52 @@ router.post("/intents", async (req, res) => {
       }
     }
 
-    // Get Stripe Connect account
-    // Priority: 1) Staff's linked specialist 2) Tenant's Stripe account
+    // Get Stripe Connect account - MUST use Specialist model like Stripe Connect settings does
+    // Admin users must be linked to a specialist to take payments
     const staff = await User.findById(staffId).select("specialistId role");
-    
-    let useConnectAccount = null;
-    let specialist = null;
 
-    // Try to get Stripe account from specialist link first
-    if (staff?.specialistId) {
-      const Specialist = (await import("../models/Specialist.js")).default;
-      specialist = await Specialist.findById(staff.specialistId).select(
-        "stripeAccountId stripeStatus"
-      );
-      useConnectAccount = specialist?.stripeAccountId;
+    if (!staff) {
+      return res.status(400).json({
+        success: false,
+        message: "Staff member not found",
+      });
     }
 
-    // If no specialist link, get tenant's Stripe account
-    if (!useConnectAccount) {
-      const tenant = await Tenant.findById(tenantId).select("stripeAccountId");
-      useConnectAccount = tenant?.stripeAccountId;
+    // Admin must be linked to a specialist (same requirement as Stripe Connect onboarding)
+    if (!staff.specialistId) {
+      return res.status(400).json({
+        success: false,
+        message: "Admin must be linked to a specialist account. Please link your account in Admin Management.",
+      });
     }
 
-    // In development, allow testing without Stripe Connect
+    // Get specialist's Stripe account (same model/field used in /admin/stripe-connect)
+    const Specialist = (await import("../models/Specialist.js")).default;
+    const specialist = await Specialist.findById(staff.specialistId).select(
+      "stripeAccountId stripeStatus"
+    );
+
+    if (!specialist) {
+      return res.status(400).json({
+        success: false,
+        message: "Specialist account not found",
+      });
+    }
+
+    const useConnectAccount = specialist.stripeAccountId;
     const isDevelopment = process.env.NODE_ENV !== "production";
 
     // Log for debugging
     console.log("[Payment Intent] Staff ID:", staffId);
-    console.log("[Payment Intent] Staff Role:", staff?.role);
-    console.log("[Payment Intent] Specialist ID:", staff?.specialistId);
+    console.log("[Payment Intent] Specialist ID:", staff.specialistId);
     console.log("[Payment Intent] Stripe Account ID:", useConnectAccount);
-    console.log("[Payment Intent] Stripe Status:", specialist?.stripeStatus);
+    console.log("[Payment Intent] Stripe Status:", specialist.stripeStatus);
     console.log("[Payment Intent] Is Development:", isDevelopment);
-    console.log("[Payment Intent] NODE_ENV:", process.env.NODE_ENV);
 
     if (!useConnectAccount && !isDevelopment) {
       return res.status(400).json({
         success: false,
-        message: "Stripe Connect not configured. Please complete your Stripe onboarding in Settings.",
+        message: "Stripe Connect not configured. Please complete Stripe onboarding at /admin/stripe-connect",
       });
     }
 
