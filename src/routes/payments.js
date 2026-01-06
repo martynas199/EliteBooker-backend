@@ -206,28 +206,36 @@ router.post("/intents", async (req, res) => {
       }
     }
 
-    // Get staff member's Stripe Connect account (the person taking the payment)
-    const staff = await User.findById(staffId).select("specialistId");
-    if (!staff || !staff.specialistId) {
-      return res.status(400).json({
-        success: false,
-        message: "Staff member not linked to a specialist account",
-      });
+    // Get Stripe Connect account
+    // Priority: 1) Staff's linked specialist 2) Tenant's Stripe account
+    const staff = await User.findById(staffId).select("specialistId role");
+    
+    let useConnectAccount = null;
+    let specialist = null;
+
+    // Try to get Stripe account from specialist link first
+    if (staff?.specialistId) {
+      const Specialist = (await import("../models/Specialist.js")).default;
+      specialist = await Specialist.findById(staff.specialistId).select(
+        "stripeAccountId stripeStatus"
+      );
+      useConnectAccount = specialist?.stripeAccountId;
     }
 
-    const Specialist = (await import("../models/Specialist.js")).default;
-    const specialist = await Specialist.findById(staff.specialistId).select(
-      "stripeAccountId stripeStatus"
-    );
+    // If no specialist link, get tenant's Stripe account
+    if (!useConnectAccount) {
+      const tenant = await Tenant.findById(tenantId).select("stripeAccountId");
+      useConnectAccount = tenant?.stripeAccountId;
+    }
 
     // In development, allow testing without Stripe Connect
     const isDevelopment = process.env.NODE_ENV !== "production";
-    const useConnectAccount = specialist?.stripeAccountId;
 
     // Log for debugging
     console.log("[Payment Intent] Staff ID:", staffId);
-    console.log("[Payment Intent] Specialist ID:", staff.specialistId);
-    console.log("[Payment Intent] Stripe Connect ID:", useConnectAccount);
+    console.log("[Payment Intent] Staff Role:", staff?.role);
+    console.log("[Payment Intent] Specialist ID:", staff?.specialistId);
+    console.log("[Payment Intent] Stripe Account ID:", useConnectAccount);
     console.log("[Payment Intent] Stripe Status:", specialist?.stripeStatus);
     console.log("[Payment Intent] Is Development:", isDevelopment);
     console.log("[Payment Intent] NODE_ENV:", process.env.NODE_ENV);
