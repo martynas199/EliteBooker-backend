@@ -209,11 +209,17 @@ router.post("/intents", async (req, res) => {
     const tenant = await Tenant.findById(tenantId).select(
       "stripeConnectAccountId settings"
     );
-    
+
     // In development, allow testing without Stripe Connect
     const isDevelopment = process.env.NODE_ENV !== "production";
     const useConnectAccount = tenant?.stripeConnectAccountId;
-    
+
+    // Log for debugging
+    console.log("[Payment Intent] Tenant:", tenantId);
+    console.log("[Payment Intent] Stripe Connect ID:", useConnectAccount);
+    console.log("[Payment Intent] Is Development:", isDevelopment);
+    console.log("[Payment Intent] NODE_ENV:", process.env.NODE_ENV);
+
     if (!useConnectAccount && !isDevelopment) {
       return res.status(400).json({
         success: false,
@@ -227,7 +233,7 @@ router.post("/intents", async (req, res) => {
     // Platform fee calculation (configurable per tenant)
     const platformFeePercent = tenant.settings?.platformFeePercent || 0;
     const platformFee = Math.round((total * platformFeePercent) / 100);
-    
+
     // Estimate Stripe fee (2.9% + 30p for card present)
     const stripeFee = Math.round(total * 0.029 + 30);
     const totalFees = platformFee + stripeFee;
