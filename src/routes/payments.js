@@ -233,7 +233,7 @@ router.post("/intents", async (req, res) => {
 
     // Log for debugging
     console.log("[Payment Intent] Staff ID:", staffId);
-    console.log("[Payment Intent] Specialist ID:", staff.specialistId);
+    console.log("[Payment Intent] Specialist ID:", req.admin.specialistId);
     console.log("[Payment Intent] Stripe Account ID:", useConnectAccount);
     console.log("[Payment Intent] Stripe Status:", specialist.stripeStatus);
     console.log("[Payment Intent] Is Development:", isDevelopment);
