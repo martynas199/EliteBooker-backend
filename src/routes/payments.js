@@ -3,7 +3,6 @@ import Payment from "../models/Payment.js";
 import Appointment from "../models/Appointment.js";
 import Client from "../models/Client.js";
 import Tenant from "../models/Tenant.js";
-import User from "../models/User.js";
 import Stripe from "stripe";
 import { z } from "zod";
 import requireAdmin from "../middleware/requireAdmin.js";
@@ -208,17 +207,8 @@ router.post("/intents", async (req, res) => {
 
     // Get Stripe Connect account - MUST use Specialist model like Stripe Connect settings does
     // Admin users must be linked to a specialist to take payments
-    const staff = await User.findById(staffId).select("specialistId role");
-
-    if (!staff) {
-      return res.status(400).json({
-        success: false,
-        message: "Staff member not found",
-      });
-    }
-
-    // Admin must be linked to a specialist (same requirement as Stripe Connect onboarding)
-    if (!staff.specialistId) {
+    // req.admin is Admin model (from requireAdmin middleware) - has specialistId directly
+    if (!req.admin.specialistId) {
       return res.status(400).json({
         success: false,
         message: "Admin must be linked to a specialist account. Please link your account in Admin Management.",
@@ -227,7 +217,7 @@ router.post("/intents", async (req, res) => {
 
     // Get specialist's Stripe account (same model/field used in /admin/stripe-connect)
     const Specialist = (await import("../models/Specialist.js")).default;
-    const specialist = await Specialist.findById(staff.specialistId).select(
+    const specialist = await Specialist.findById(req.admin.specialistId).select(
       "stripeAccountId stripeStatus"
     );
 
