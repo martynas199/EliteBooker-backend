@@ -3,6 +3,90 @@ import utc from "dayjs/plugin/utc.js";
 import tz from "dayjs/plugin/timezone.js";
 dayjs.extend(utc);
 dayjs.extend(tz);
+/**
+ * Generate slots from fixed time slots
+ * Used when a service has specific times (e.g., 9:15, 11:30, 16:00)
+ * @param {Array<string>} fixedTimes - Array of time strings in HH:MM format
+ * @param {Object} specialist - Specialist object with timeOff
+ * @param {Object} variant - Service variant with duration
+ * @param {string} date - Date string (YYYY-MM-DD)
+ * @param {Array} appointments - Existing appointments
+ * @param {string} salonTz - Timezone
+ * @returns {Array} Available slots from fixed times
+ */
+export function generateFixedSlots({
+  fixedTimes,
+  specialist,
+  variant,
+  date,
+  appointments,
+  salonTz = "Europe/London",
+}) {
+  if (!fixedTimes || fixedTimes.length === 0 || !variant) return [];
+
+  const duration =
+    (variant.durationMin || 0) +
+    (variant.bufferBeforeMin || 0) +
+    (variant.bufferAfterMin || 0);
+
+  const baseDay = dayjs.tz(date, salonTz).startOf("day");
+  const slots = [];
+
+  // Pre-convert appointments to timestamp ranges and filter out cancelled
+  const taken = (appointments || [])
+    .filter((a) => a.status !== "cancelled")
+    .map((a) => ({
+      start: +new Date(a.start),
+      end: +new Date(a.end),
+    }))
+    .sort((a, b) => a.start - b.start);
+
+  // Pre-convert time-off periods to timestamp ranges
+  const timeOffRanges = (specialist.timeOff || [])
+    .map((off) => ({
+      start: +new Date(off.start),
+      end: +new Date(off.end),
+    }))
+    .sort((a, b) => a.start - b.start);
+
+  // Check each fixed time
+  for (const timeStr of fixedTimes) {
+    const minutes = hhmmToMinutes(timeStr);
+    const slotStart = baseDay.add(minutes, "minute").toDate();
+    const slotEnd = baseDay.add(minutes + duration, "minute").toDate();
+    const slotStartTime = +slotStart;
+    const slotEndTime = +slotEnd;
+
+    // Check if slot conflicts with time-off
+    let isTimeOff = false;
+    for (const off of timeOffRanges) {
+      if (slotStartTime < off.end && off.start < slotEndTime) {
+        isTimeOff = true;
+        break;
+      }
+    }
+    if (isTimeOff) continue;
+
+    // Check if slot conflicts with existing appointments
+    let hasOverlap = false;
+    for (const t of taken) {
+      if (slotStartTime < t.end && t.start < slotEndTime) {
+        hasOverlap = true;
+        break;
+      }
+    }
+    if (hasOverlap) continue;
+
+    // Slot is available
+    slots.push({
+      startISO: slotStart.toISOString(),
+      endISO: slotEnd.toISOString(),
+    });
+  }
+
+  return slots;
+}
+
 export function hhmmToMinutes(hhmm) {
   const [h, m] = hhmm.split(":").map(Number);
   return h * 60 + m;

@@ -61,6 +61,9 @@ const baseServiceSchema = z.object({
     .positive("Promo price must be positive")
     .nullable()
     .optional(),
+  fixedTimeSlots: z
+    .array(z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Invalid time format. Use HH:MM"))
+    .optional(),
 });
 
 // Create service schema (POST)

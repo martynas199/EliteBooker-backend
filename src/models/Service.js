@@ -65,6 +65,20 @@ const ServiceSchema = new mongoose.Schema(
       type: [{ type: mongoose.Schema.Types.ObjectId, ref: "Location" }],
       default: [],
     },
+
+    // Fixed Time Slots (optional) - array of time strings like ['09:15', '11:30', '16:00']
+    // When set, these exact times will be used instead of computed slots
+    fixedTimeSlots: {
+      type: [String],
+      default: undefined, // undefined means use computed slots, empty array [] means no slots
+      validate: {
+        validator: function (times) {
+          if (!times) return true;
+          return times.every((time) => /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(time));
+        },
+        message: 'Fixed time slots must be in HH:MM or H:MM format (e.g., "09:15", "14:30")',
+      },
+    },
   },
   { timestamps: true }
 );
