@@ -1,9 +1,11 @@
 # Fixed Time Slots Feature
 
 ## Overview
+
 This feature allows tenants to set specific, fixed appointment times for their services instead of using the automatic time slot generation. For example, if a service should only be available at 9:15, 11:30, and 4:00 PM, you can configure those exact times.
 
 ## How It Works
+
 - When a service has `fixedTimeSlots` defined, the system uses those exact times instead of computing slots
 - The system still respects:
   - Existing appointments (won't show a slot if already booked)
@@ -14,6 +16,7 @@ This feature allows tenants to set specific, fixed appointment times for their s
 ## Database Schema
 
 ### Service Model
+
 A new optional field `fixedTimeSlots` has been added to the Service model:
 
 ```javascript
@@ -33,6 +36,7 @@ A new optional field `fixedTimeSlots` has been added to the Service model:
 ```
 
 **Values:**
+
 - `undefined` (default): Use normal computed slots from the slot engine
 - `[]` (empty array): No slots available (service cannot be booked)
 - `['09:15', '11:30', '16:00']`: Only these exact times are available
@@ -46,10 +50,10 @@ Using MongoDB shell or a database tool:
 ```javascript
 db.services.updateOne(
   { _id: ObjectId("YOUR_SERVICE_ID") },
-  { 
-    $set: { 
-      fixedTimeSlots: ['09:15', '11:30', '14:00', '16:00'] 
-    } 
+  {
+    $set: {
+      fixedTimeSlots: ["09:15", "11:30", "14:00", "16:00"],
+    },
   }
 );
 ```
@@ -70,8 +74,8 @@ If you have an admin API endpoint to update services:
 ```javascript
 db.services.updateOne(
   { _id: ObjectId("YOUR_SERVICE_ID") },
-  { 
-    $unset: { fixedTimeSlots: "" } 
+  {
+    $unset: { fixedTimeSlots: "" },
   }
 );
 ```
@@ -81,8 +85,8 @@ db.services.updateOne(
 ```javascript
 db.services.updateOne(
   { _id: ObjectId("YOUR_SERVICE_ID") },
-  { 
-    $set: { fixedTimeSlots: [] } 
+  {
+    $set: { fixedTimeSlots: [] },
   }
 );
 ```
@@ -90,12 +94,14 @@ db.services.updateOne(
 ## Time Format
 
 **Accepted formats:**
+
 - `"9:15"` - Single digit hour
 - `"09:15"` - Two digit hour (recommended)
 - `"14:30"` - 24-hour format
 - `"23:45"` - Late evening
 
 **Invalid formats:**
+
 - `"9:15 AM"` - No AM/PM (use 24-hour)
 - `"24:00"` - Hours must be 0-23
 - `"14:60"` - Minutes must be 0-59
@@ -105,9 +111,11 @@ db.services.updateOne(
 ### Files Modified
 
 1. **`src/models/Service.js`**
+
    - Added `fixedTimeSlots` field with validation
 
 2. **`src/utils/slotEngine.js`**
+
    - Added `generateFixedSlots()` function
    - Converts fixed time strings to ISO timestamps
    - Checks for conflicts with appointments and time-off
@@ -141,11 +149,13 @@ const service = {
   _id: "...",
   name: "Yoga Class",
   fixedTimeSlots: ["09:00", "12:00", "17:00"],
-  variants: [{
-    durationMin: 60,
-    bufferBeforeMin: 0,
-    bufferAfterMin: 15
-  }]
+  variants: [
+    {
+      durationMin: 60,
+      bufferBeforeMin: 0,
+      bufferAfterMin: 15,
+    },
+  ],
 };
 
 // Expected: Only 9:00 AM, 12:00 PM, and 5:00 PM slots shown
@@ -173,6 +183,7 @@ const service = {
 ### Manual Test
 
 1. Update a service with fixed time slots:
+
 ```bash
 mongosh
 use your_database_name
@@ -183,6 +194,7 @@ db.services.updateOne(
 ```
 
 2. Query the slots API:
+
 ```bash
 GET /api/slots?serviceId=YOUR_SERVICE_ID&specialistId=YOUR_SPECIALIST_ID&date=2026-01-10&variantName=Standard
 ```
@@ -197,6 +209,7 @@ GET /api/slots?serviceId=YOUR_SERVICE_ID&specialistId=YOUR_SPECIALIST_ID&date=20
 ## Backward Compatibility
 
 ✅ **Fully backward compatible**
+
 - Existing services without `fixedTimeSlots` work exactly as before
 - Services with `fixedTimeSlots: undefined` use the normal slot engine
 - No changes to existing appointment logic
@@ -211,6 +224,7 @@ GET /api/slots?serviceId=YOUR_SERVICE_ID&specialistId=YOUR_SPECIALIST_ID&date=20
 ## Future Enhancements
 
 Possible future improvements:
+
 1. **Per-variant fixed slots**: Different fixed times for different service variants
 2. **Day-specific fixed slots**: Different times for different days of the week
 3. **Admin UI**: Frontend interface to set fixed times

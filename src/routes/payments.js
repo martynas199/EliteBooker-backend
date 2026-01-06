@@ -4,8 +4,13 @@ import Appointment from "../models/Appointment.js";
 import Client from "../models/Client.js";
 import Tenant from "../models/Tenant.js";
 import Stripe from "stripe";
+import { z } from "zod";
+import requireAdmin from "../middleware/requireAdmin.js";
 
 const router = express.Router();
+
+// Apply authentication to all payment routes
+router.use(requireAdmin);
 
 // Initialize Stripe
 const stripe = new Stripe(
@@ -18,7 +23,7 @@ const stripe = new Stripe(
 /**
  * TAP TO PAY API ROUTES
  *
- * Security: All routes require authentication and tenant isolation
+ * Security: All routes require authentication (requireAdmin middleware) and tenant isolation
  * Stripe Connect: All payments processed on connected accounts
  *
  * Flow:
@@ -29,6 +34,81 @@ const stripe = new Stripe(
  * 5. Webhook updates status
  * 6. Receipt sent to customer
  */
+
+// ==================== VALIDATION SCHEMAS ====================
+
+const createPaymentIntentSchema = z.object({
+  appointmentId: z
+    .string()
+    .regex(/^[0-9a-fA-F]{24}$/)
+    .optional()
+    .nullable(),
+  clientId: z
+    .string()
+    .regex(/^[0-9a-fA-F]{24}$/, "Invalid client ID")
+    .optional()
+    .nullable(),
+  amount: z
+    .number()
+    .int()
+    .positive()
+    .min(100, "Minimum payment is £1.00")
+    .max(1000000, "Maximum payment is £10,000"),
+  tip: z
+    .number()
+    .int()
+    .nonnegative()
+    .max(100000, "Maximum tip is £1,000")
+    .optional()
+    .default(0),
+  currency: z.enum(["gbp", "usd", "eur"]).optional().default("gbp"),
+  captureMethod: z
+    .enum(["automatic", "manual"])
+    .optional()
+    .default("automatic"),
+  metadata: z.record(z.string()).optional().default({}),
+});
+
+const confirmPaymentSchema = z.object({
+  paymentIntentId: z.string().min(1, "Payment Intent ID is required"),
+});
+
+const refundPaymentSchema = z.object({
+  paymentId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid payment ID"),
+  amount: z.number().int().positive().optional(),
+  reason: z.enum(["duplicate", "fraudulent", "requested_by_customer", "other"]),
+  notes: z.string().max(500).optional(),
+});
+
+const listPaymentsSchema = z.object({
+  page: z.string().regex(/^\d+$/).transform(Number).optional().default("1"),
+  limit: z.string().regex(/^\d+$/).transform(Number).optional().default("20"),
+  status: z
+    .enum([
+      "pending",
+      "processing",
+      "succeeded",
+      "failed",
+      "canceled",
+      "refunded",
+      "partially_refunded",
+    ])
+    .optional(),
+  staffId: z
+    .string()
+    .regex(/^[0-9a-fA-F]{24}$/)
+    .optional(),
+  clientId: z
+    .string()
+    .regex(/^[0-9a-fA-F]{24}$/)
+    .optional(),
+  appointmentId: z
+    .string()
+    .regex(/^[0-9a-fA-F]{24}$/)
+    .optional(),
+  startDate: z.string().datetime().optional(),
+  endDate: z.string().datetime().optional(),
+});
 
 // ==================== CREATE PAYMENT INTENT ====================
 
@@ -52,34 +132,50 @@ const stripe = new Stripe(
  */
 router.post("/intents", async (req, res) => {
   try {
+    // Authentication check
+    if (!req.admin || !req.tenantId) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
+    // Validate input
+    const validation = createPaymentIntentSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        errors: validation.error.errors.map((e) => ({
+          field: e.path.join("."),
+          message: e.message,
+        })),
+      });
+    }
+
     const {
       appointmentId,
       clientId,
       amount,
-      tip = 0,
-      currency = "gbp",
-      captureMethod = "automatic",
-      metadata = {},
-    } = req.body;
+      tip,
+      currency,
+      captureMethod,
+      metadata,
+    } = validation.data;
 
-    const tenantId = req.user.tenantId;
-    const staffId = req.user.userId;
+    const tenantId = req.tenantId;
+    const staffId = req.admin._id.toString();
 
-    // Validation
-    if (!clientId || !amount || amount <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Client ID and valid amount are required",
-      });
-    }
-
-    // Verify client exists and belongs to tenant
-    const client = await Client.findOne({ _id: clientId, tenant: tenantId });
-    if (!client) {
-      return res.status(404).json({
-        success: false,
-        message: "Client not found",
-      });
+    // Verify client exists and belongs to tenant (if provided)
+    let client = null;
+    if (clientId) {
+      client = await Client.findOne({ _id: clientId, tenant: tenantId });
+      if (!client) {
+        return res.status(404).json({
+          success: false,
+          message: "Client not found",
+        });
+      }
     }
 
     // If appointment provided, verify it exists and check permissions
@@ -99,7 +195,7 @@ router.post("/intents", async (req, res) => {
 
       // Permission check: Specialists can only process their own appointments
       if (
-        req.user.role === "specialist" &&
+        req.admin.role === "specialist" &&
         appointment.specialist?.toString() !== staffId
       ) {
         return res.status(403).json({
@@ -113,7 +209,12 @@ router.post("/intents", async (req, res) => {
     const tenant = await Tenant.findById(tenantId).select(
       "stripeConnectAccountId settings"
     );
-    if (!tenant?.stripeConnectAccountId) {
+    
+    // In development, allow testing without Stripe Connect
+    const isDevelopment = process.env.NODE_ENV !== "production";
+    const useConnectAccount = tenant?.stripeConnectAccountId;
+    
+    if (!useConnectAccount && !isDevelopment) {
       return res.status(400).json({
         success: false,
         message: "Stripe Connect not configured for this business",
@@ -126,12 +227,17 @@ router.post("/intents", async (req, res) => {
     // Platform fee calculation (configurable per tenant)
     const platformFeePercent = tenant.settings?.platformFeePercent || 0;
     const platformFee = Math.round((total * platformFeePercent) / 100);
+    
+    // Estimate Stripe fee (2.9% + 30p for card present)
+    const stripeFee = Math.round(total * 0.029 + 30);
+    const totalFees = platformFee + stripeFee;
+    const netAmount = total - totalFees;
 
     // Create Payment record in database
     const payment = new Payment({
       tenant: tenantId,
       appointment: appointmentId || null,
-      client: clientId,
+      client: clientId || null,
       staff: staffId,
       method: "tap_to_pay",
       amount,
@@ -139,11 +245,14 @@ router.post("/intents", async (req, res) => {
       tip,
       total,
       fees: {
+        stripe: stripeFee,
         platform: platformFee,
+        total: totalFees,
       },
+      netAmount,
       status: "pending",
       stripe: {
-        connectedAccountId: tenant.stripeConnectAccountId,
+        connectedAccountId: useConnectAccount || "dev_mode",
       },
       metadata: {
         ...metadata,
@@ -156,28 +265,34 @@ router.post("/intents", async (req, res) => {
       },
     });
 
-    // Create Stripe PaymentIntent on connected account
+    // Create Stripe PaymentIntent on connected account (or direct in development)
     try {
-      const paymentIntent = await stripe.paymentIntents.create(
-        {
-          amount: total,
-          currency: currency.toLowerCase(),
-          capture_method: captureMethod,
-          application_fee_amount: platformFee,
-          payment_method_types: ["card_present"], // Tap to Pay requires card_present
-          metadata: {
-            tenantId: tenantId.toString(),
-            appointmentId: appointmentId?.toString() || "custom",
-            clientId: clientId.toString(),
-            staffId: staffId.toString(),
-            paymentDbId: payment._id.toString(),
-            tip: tip.toString(),
-          },
+      const paymentIntentParams = {
+        amount: total,
+        currency: currency.toLowerCase(),
+        capture_method: captureMethod,
+        payment_method_types: ["card_present"], // Tap to Pay requires card_present
+        metadata: {
+          tenantId: tenantId.toString(),
+          appointmentId: appointmentId?.toString() || "custom",
+          clientId: clientId?.toString() || "walk-in",
+          staffId: staffId.toString(),
+          paymentDbId: payment._id.toString(),
+          tip: tip.toString(),
         },
-        {
-          stripeAccount: tenant.stripeConnectAccountId,
-        }
-      );
+      };
+
+      // Add application fee if using connected account
+      if (useConnectAccount) {
+        paymentIntentParams.application_fee_amount = platformFee;
+      }
+
+      // Create payment intent with or without connected account
+      const paymentIntent = useConnectAccount
+        ? await stripe.paymentIntents.create(paymentIntentParams, {
+            stripeAccount: useConnectAccount,
+          })
+        : await stripe.paymentIntents.create(paymentIntentParams);
 
       // Update payment with Stripe details
       payment.stripe.paymentIntentId = paymentIntent.id;
@@ -193,7 +308,9 @@ router.post("/intents", async (req, res) => {
           amount: total,
           currency,
           tip,
-          clientName: `${client.firstName} ${client.lastName}`,
+          clientName: client
+            ? `${client.firstName} ${client.lastName}`
+            : "Walk-in Customer",
           appointmentDetails: appointment
             ? {
                 id: appointment._id,
@@ -251,15 +368,26 @@ router.post("/intents", async (req, res) => {
  */
 router.post("/confirm", async (req, res) => {
   try {
-    const { paymentIntentId } = req.body;
-    const tenantId = req.user.tenantId;
-
-    if (!paymentIntentId) {
-      return res.status(400).json({
+    // Authentication check
+    if (!req.admin || !req.tenantId) {
+      return res.status(401).json({
         success: false,
-        message: "Payment Intent ID is required",
+        message: "Authentication required",
       });
     }
+
+    // Validate input
+    const validation = confirmPaymentSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        errors: validation.error.errors,
+      });
+    }
+
+    const { paymentIntentId } = validation.data;
+    const tenantId = req.tenantId;
 
     // Find payment in database
     const payment = await Payment.findOne({
@@ -330,8 +458,16 @@ router.post("/confirm", async (req, res) => {
  */
 router.get("/status/:paymentIntentId", async (req, res) => {
   try {
+    // Authentication check
+    if (!req.admin || !req.tenantId) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
     const { paymentIntentId } = req.params;
-    const tenantId = req.user.tenantId;
+    const tenantId = req.tenantId;
 
     const payment = await Payment.findOne({
       "stripe.paymentIntentId": paymentIntentId,
@@ -396,25 +532,35 @@ router.get("/status/:paymentIntentId", async (req, res) => {
  */
 router.post("/refund", async (req, res) => {
   try {
-    const { paymentId, amount, reason, notes } = req.body;
-    const tenantId = req.user.tenantId;
-    const staffId = req.user.userId;
+    // Authentication check
+    if (!req.admin || !req.tenantId) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
 
     // Permission check: Only owners and managers can refund
-    if (!["owner", "manager"].includes(req.user.role)) {
+    if (!["owner", "manager", "salon-admin"].includes(req.admin.role)) {
       return res.status(403).json({
         success: false,
         message: "Only owners and managers can process refunds",
       });
     }
 
-    // Validation
-    if (!paymentId || !reason) {
+    // Validate input
+    const validation = refundPaymentSchema.safeParse(req.body);
+    if (!validation.success) {
       return res.status(400).json({
         success: false,
-        message: "Payment ID and reason are required",
+        message: "Validation failed",
+        errors: validation.error.errors,
       });
     }
+
+    const { paymentId, amount, reason, notes } = validation.data;
+    const tenantId = req.tenantId;
+    const staffId = req.admin._id.toString();
 
     // Find payment
     const payment = await Payment.findOne({
@@ -541,17 +687,35 @@ router.post("/refund", async (req, res) => {
  */
 router.get("/", async (req, res) => {
   try {
-    const tenantId = req.user.tenantId;
+    // Authentication check
+    if (!req.admin || !req.tenantId) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
+    // Validate query params
+    const validation = listPaymentsSchema.safeParse(req.query);
+    if (!validation.success) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid query parameters",
+        errors: validation.error.errors,
+      });
+    }
+
+    const tenantId = req.tenantId;
     const {
-      page = 1,
-      limit = 20,
+      page,
+      limit,
       status,
       staffId,
       clientId,
       appointmentId,
       startDate,
       endDate,
-    } = req.query;
+    } = validation.data;
 
     // Build query
     const query = { tenant: tenantId };
@@ -568,8 +732,8 @@ router.get("/", async (req, res) => {
     }
 
     // Specialists can only see their own payments
-    if (req.user.role === "specialist") {
-      query.staff = req.user.userId;
+    if (req.admin.role === "specialist") {
+      query.staff = req.admin._id;
     }
 
     // Execute query with pagination
@@ -611,8 +775,16 @@ router.get("/", async (req, res) => {
  */
 router.get("/:id", async (req, res) => {
   try {
+    // Authentication check
+    if (!req.admin || !req.tenantId) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
     const { id } = req.params;
-    const tenantId = req.user.tenantId;
+    const tenantId = req.tenantId;
 
     const payment = await Payment.findOne({ _id: id, tenant: tenantId })
       .populate("client", "firstName lastName email phone")
@@ -629,8 +801,8 @@ router.get("/:id", async (req, res) => {
 
     // Specialists can only see their own payments
     if (
-      req.user.role === "specialist" &&
-      payment.staff._id.toString() !== req.user.userId
+      req.admin.role === "specialist" &&
+      payment.staff._id.toString() !== req.admin._id.toString()
     ) {
       return res.status(403).json({
         success: false,
@@ -662,8 +834,16 @@ router.get("/:id", async (req, res) => {
  */
 router.get("/appointments/today", async (req, res) => {
   try {
-    const tenantId = req.user.tenantId;
-    const staffId = req.user.userId;
+    // Authentication check
+    if (!req.admin || !req.tenantId) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
+    const tenantId = req.tenantId;
+    const staffId = req.admin._id.toString();
 
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
@@ -679,8 +859,8 @@ router.get("/appointments/today", async (req, res) => {
     };
 
     // Specialists only see their own appointments
-    if (req.user.role === "specialist") {
-      query.specialist = staffId;
+    if (req.admin.role === "specialist") {
+      query.specialist = req.admin._id;
     }
 
     const appointments = await Appointment.find(query)

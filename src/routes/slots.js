@@ -173,17 +173,18 @@ r.get("/fully-booked", async (req, res) => {
 
       // Check if specialist works this day (either regular hours OR custom schedule)
       const dayOfWeek = dateObj.day();
-      
+
       // Normalize custom schedule (convert Map to object if needed)
       const normalizedCustomSchedule =
         specialist.customSchedule instanceof Map
           ? Object.fromEntries(specialist.customSchedule)
           : specialist.customSchedule || {};
-      
-      const hasCustomSchedule = normalizedCustomSchedule[dateStr] && 
+
+      const hasCustomSchedule =
+        normalizedCustomSchedule[dateStr] &&
         Array.isArray(normalizedCustomSchedule[dateStr]) &&
         normalizedCustomSchedule[dateStr].length > 0;
-      
+
       const worksThisDay = specialist.workingHours?.some(
         (wh) =>
           wh && typeof wh.dayOfWeek === "number" && wh.dayOfWeek === dayOfWeek

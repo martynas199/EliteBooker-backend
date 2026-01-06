@@ -1,6 +1,6 @@
 /**
  * Test script for Fixed Time Slots feature
- * 
+ *
  * This script demonstrates how to set and test fixed time slots for services.
  * Run with: node test-fixed-slots.js
  */
@@ -76,7 +76,7 @@ async function testFixedSlots() {
     // Test 2: Fixed Slots with Appointment Conflict
     console.log("\n" + "=".repeat(60));
     console.log("\n=== Test 2: Fixed Slots with Appointment Conflict ===");
-    
+
     // Mock an appointment at 11:30
     const mockAppointments = [
       {
@@ -95,7 +95,11 @@ async function testFixedSlots() {
       salonTz: "Europe/London",
     });
 
-    console.log("\n✅ Generated", slotsWithConflict.length, "slots (11:30 is booked):");
+    console.log(
+      "\n✅ Generated",
+      slotsWithConflict.length,
+      "slots (11:30 is booked):"
+    );
     slotsWithConflict.forEach((slot) => {
       const start = new Date(slot.startISO);
       const end = new Date(slot.endISO);
@@ -117,7 +121,7 @@ async function testFixedSlots() {
     // Test 3: Fixed Slots with Time-Off
     console.log("\n" + "=".repeat(60));
     console.log("\n=== Test 3: Fixed Slots During Time-Off ===");
-    
+
     const specialistWithTimeOff = {
       ...mockSpecialist,
       timeOff: [
@@ -138,7 +142,11 @@ async function testFixedSlots() {
       salonTz: "Europe/London",
     });
 
-    console.log("\n✅ Generated", slotsWithTimeOff.length, "slots (14:00 is during time-off):");
+    console.log(
+      "\n✅ Generated",
+      slotsWithTimeOff.length,
+      "slots (14:00 is during time-off):"
+    );
     slotsWithTimeOff.forEach((slot) => {
       const start = new Date(slot.startISO);
       const end = new Date(slot.endISO);
@@ -198,16 +206,20 @@ async function testFixedSlots() {
     console.log("  ✅ Test 2: Appointment conflicts - PASSED");
     console.log("  ✅ Test 3: Time-off conflicts - PASSED");
     console.log("  ✅ Test 4: Custom schedules - PASSED");
-    
+
     console.log("\n💡 How to use in your database:");
     console.log("  1. Update a service:");
-    console.log('     db.services.updateOne(');
+    console.log("     db.services.updateOne(");
     console.log('       { name: "Your Service Name" },');
-    console.log('       { $set: { fixedTimeSlots: ["09:15", "11:30", "16:00"] } }');
-    console.log('     )');
+    console.log(
+      '       { $set: { fixedTimeSlots: ["09:15", "11:30", "16:00"] } }'
+    );
+    console.log("     )");
     console.log("\n  2. Query slots via API:");
-    console.log('     GET /api/slots?serviceId=XXX&specialistId=YYY&date=2026-01-10');
-    
+    console.log(
+      "     GET /api/slots?serviceId=XXX&specialistId=YYY&date=2026-01-10"
+    );
+
     console.log("\n" + "=".repeat(60));
   } catch (error) {
     console.error("❌ Error:", error.message);

@@ -1059,11 +1059,41 @@ r.post("/stripe", async (req, res) => {
             }
           }
 
-          // TODO: Send receipt via email/SMS
-          console.log(
-            "[WEBHOOK] Receipt should be sent to:",
-            payment.client.email || payment.client.phone
-          );
+          // Send receipt via email/SMS
+          try {
+            const { client, tenant } = payment;
+            const deliveryOptions = {};
+
+            if (client?.email) {
+              deliveryOptions.email = client.email;
+            }
+            if (client?.phone) {
+              deliveryOptions.phone = client.phone;
+            }
+
+            if (deliveryOptions.email || deliveryOptions.phone) {
+              const { sendReceipt } = await import(
+                "../services/receiptService.js"
+              );
+              const results = await sendReceipt(payment, deliveryOptions);
+
+              console.log("[WEBHOOK] Receipt delivery results:", {
+                email: results.email.sent
+                  ? "✅ sent"
+                  : results.email.error || "❌ skipped",
+                sms: results.sms.sent
+                  ? "✅ sent"
+                  : results.sms.error || "❌ skipped",
+              });
+            } else {
+              console.log(
+                "[WEBHOOK] No email or phone available for receipt delivery"
+              );
+            }
+          } catch (receiptError) {
+            console.error("[WEBHOOK] Error sending receipt:", receiptError);
+            // Don't fail the webhook if receipt sending fails
+          }
         } catch (error) {
           console.error("[WEBHOOK] Error handling payment success:", error);
         }

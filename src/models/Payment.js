@@ -31,8 +31,9 @@ const paymentSchema = new mongoose.Schema(
     client: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Client",
-      required: true,
+      required: false,
       index: true,
+      // Nullable: walk-in customers may not have a client record
     },
     staff: {
       type: mongoose.Schema.Types.ObjectId,
