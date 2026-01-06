@@ -3,6 +3,7 @@ import Payment from "../models/Payment.js";
 import Appointment from "../models/Appointment.js";
 import Client from "../models/Client.js";
 import Tenant from "../models/Tenant.js";
+import User from "../models/User.js";
 import Stripe from "stripe";
 import { z } from "zod";
 import requireAdmin from "../middleware/requireAdmin.js";
