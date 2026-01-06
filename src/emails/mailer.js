@@ -313,8 +313,8 @@ export async function sendConfirmationEmail({
 
     servicesHtml = `
       <div style="margin: 12px 0;">
-        <strong>Services:</strong>
-        <ul style="margin: 8px 0; padding-left: 20px;">
+        <strong style="color: #374151;">Services:</strong>
+        <ul style="margin: 8px 0; padding-left: 20px; color: #374151;">
           ${appointment.services
             .map((s) => {
               const serviceName = s.serviceName || "Service";
@@ -333,7 +333,7 @@ export async function sendConfirmationEmail({
     `;
   } else {
     servicesList = serviceName;
-    servicesHtml = `<p style="margin: 8px 0;"><strong>Service:</strong> ${serviceName}</p>`;
+    servicesHtml = `<p style="margin: 8px 0; color: #374151;"><strong>Service:</strong> ${serviceName}</p>`;
   }
   const price = appointment.price
     ? formatCurrency(appointment.price, currency)
@@ -466,16 +466,16 @@ Appointment ID: ${appointment._id}
 
 Thank you for choosing us!`,
       html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #7c3aed 0%, #ec4899 50%, #06b6d4 100%); padding: 30px 20px; border-radius: 12px 12px 0 0; margin: -20px -20px 20px -20px;">
-          <h2 style="color: white; margin: 0; font-size: 24px; text-align: center;">${
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff;">
+        <div style="background-color: #7c3aed; background: linear-gradient(135deg, #7c3aed 0%, #ec4899 50%, #06b6d4 100%); padding: 30px 20px; border-radius: 12px 12px 0 0; margin: -20px -20px 20px -20px;">
+          <h2 style="color: #ffffff !important; margin: 0; font-size: 24px; text-align: center; line-height: 1.4;">${
             paymentLink
               ? "⏰ Appointment Reserved - Deposit Required"
               : "✓ Appointment Confirmed"
           }</h2>
         </div>
-        <p>Hi ${appointment.client?.name || ""},</p>
-        <p>${
+        <p style="color: #1f2937;">Hi ${appointment.client?.name || ""},</p>
+        <p style="color: #1f2937;">${
           paymentLink
             ? "Your appointment has been reserved and requires a deposit payment to be confirmed."
             : "Your appointment has been confirmed!"
@@ -498,11 +498,11 @@ Thank you for choosing us!`,
         }
         
         <div style="background: linear-gradient(135deg, rgba(124, 58, 237, 0.05) 0%, rgba(236, 72, 153, 0.05) 100%); padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #7c3aed;">
-          <h3 style="margin-top: 0; margin-bottom: 16px; background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-size: 18px;">Booking Details</h3>
+          <h3 style="margin-top: 0; margin-bottom: 16px; color: #7c3aed; font-size: 18px;">Booking Details</h3>
           ${servicesHtml}
-          <p style="margin: 8px 0;"><strong>With:</strong> ${beauticianName}</p>
-          <p style="margin: 8px 0;"><strong>Date & Time:</strong> ${startTime}</p>
-          <p style="margin: 8px 0;"><strong>Total Price:</strong> ${price}</p>
+          <p style="margin: 8px 0; color: #374151;"><strong>With:</strong> ${beauticianName}</p>
+          <p style="margin: 8px 0; color: #374151;"><strong>Date & Time:</strong> ${startTime}</p>
+          <p style="margin: 8px 0; color: #374151;"><strong>Total Price:</strong> ${price}</p>
           ${
             isDepositPayment && !paymentLink
               ? `
@@ -526,7 +526,7 @@ Thank you for choosing us!`,
             )}</p>
           </div>
           `
-              : `<p style="margin: 8px 0;"><strong>Payment:</strong> ${paymentStatus}</p>`
+              : `<p style="margin: 8px 0; color: #374151;"><strong>Payment:</strong> ${paymentStatus}</p>`
           }
           ${
             isDepositPayment && remainingBalance > 0
@@ -546,11 +546,11 @@ Thank you for choosing us!`,
         
         ${
           appointment.client?.notes
-            ? `<p><em>Your notes: ${appointment.client.notes}</em></p>`
+            ? `<p style="color: #6b7280;"><em>Your notes: ${appointment.client.notes}</em></p>`
             : ""
         }
         
-        <p>We look forward to seeing you!</p>
+        <p style="color: #1f2937;">We look forward to seeing you!</p>
         <p style="color: #6b7280; font-size: 12px;">If you need to cancel or reschedule, please contact us as soon as possible.</p>
         <p style="color: #9ca3af; font-size: 11px; margin-top: 30px;">Appointment ID: ${
           appointment._id
@@ -1919,6 +1919,209 @@ ${tenantName || "The Team"}`;
   }
 }
 
+/**
+ * Send seminar booking confirmation email to attendee
+ */
+export async function sendSeminarConfirmationEmail({
+  booking,
+  seminar,
+  session,
+  tenant,
+}) {
+  console.log(
+    "[MAILER] sendSeminarConfirmationEmail called for booking:",
+    booking?.bookingReference
+  );
+  const tx = getTransport();
+  if (!tx) {
+    console.warn("[MAILER] No transport - skipping seminar confirmation email");
+    return;
+  }
+
+  const from = process.env.SMTP_FROM || process.env.SMTP_USER;
+  console.log("[MAILER] Sending from:", from);
+
+  const salonTz = process.env.SALON_TZ || "Europe/London";
+  const sessionDate = new Date(session.date).toLocaleString("en-GB", {
+    timeZone: salonTz,
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
+  const attendeeEmail = booking.attendeeInfo?.email;
+  console.log("[MAILER] Attendee email:", attendeeEmail || "NOT SET");
+  if (!attendeeEmail) {
+    console.warn("[MAILER] No attendee email - skipping confirmation email");
+    return;
+  }
+
+  const currency = booking.payment?.currency || "GBP";
+  const amount = formatCurrency(booking.payment?.amount || 0, currency);
+  const tenantName = tenant?.businessName || "Our Business";
+
+  const subject = `Seminar Booking Confirmation - ${seminar.title}`;
+  const text = `
+Dear ${booking.attendeeInfo.name},
+
+Thank you for booking ${seminar.title}!
+
+BOOKING DETAILS
+Booking Reference: ${booking.bookingReference}
+Seminar: ${seminar.title}
+Date: ${sessionDate}
+Time: ${session.startTime} - ${session.endTime}
+Amount Paid: ${amount}
+
+${seminar.location?.address ? `Location: ${seminar.location.address}` : ""}
+${
+  booking.attendeeInfo.specialRequests
+    ? `Special Requests: ${booking.attendeeInfo.specialRequests}`
+    : ""
+}
+
+WHAT TO BRING
+${seminar.requirements || "Please arrive 10 minutes before the start time."}
+
+If you need to cancel or have any questions, please contact us at ${from}.
+
+Best regards,
+${tenantName}
+  `;
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f9fafb;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f9fafb; padding: 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 24px;">Booking Confirmed!</h1>
+            </td>
+          </tr>
+          
+          <!-- Content -->
+          <tr>
+            <td style="padding: 30px;">
+              <p style="font-size: 16px; color: #374151; margin: 0 0 20px;">Dear ${
+                booking.attendeeInfo.name
+              },</p>
+              <p style="font-size: 16px; color: #374151; margin: 0 0 20px;">Thank you for booking <strong>${
+                seminar.title
+              }</strong>! We're excited to have you join us.</p>
+              
+              <!-- Booking Details Box -->
+              <div style="background-color: #f3f4f6; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                <h2 style="color: #1f2937; margin: 0 0 15px; font-size: 18px;">Booking Details</h2>
+                <table width="100%" cellpadding="8" cellspacing="0">
+                  <tr>
+                    <td style="color: #6b7280; font-size: 14px; padding: 4px 0;">Booking Reference:</td>
+                    <td style="color: #1f2937; font-weight: bold; font-size: 14px; text-align: right; padding: 4px 0;">${
+                      booking.bookingReference
+                    }</td>
+                  </tr>
+                  <tr>
+                    <td style="color: #6b7280; font-size: 14px; padding: 4px 0;">Seminar:</td>
+                    <td style="color: #1f2937; font-weight: bold; font-size: 14px; text-align: right; padding: 4px 0;">${
+                      seminar.title
+                    }</td>
+                  </tr>
+                  <tr>
+                    <td style="color: #6b7280; font-size: 14px; padding: 4px 0;">Date:</td>
+                    <td style="color: #1f2937; font-weight: bold; font-size: 14px; text-align: right; padding: 4px 0;">${sessionDate}</td>
+                  </tr>
+                  <tr>
+                    <td style="color: #6b7280; font-size: 14px; padding: 4px 0;">Time:</td>
+                    <td style="color: #1f2937; font-weight: bold; font-size: 14px; text-align: right; padding: 4px 0;">${
+                      session.startTime
+                    } - ${session.endTime}</td>
+                  </tr>
+                  <tr>
+                    <td style="color: #6b7280; font-size: 14px; padding: 4px 0;">Amount Paid:</td>
+                    <td style="color: #10b981; font-weight: bold; font-size: 16px; text-align: right; padding: 4px 0;">${amount}</td>
+                  </tr>
+                  ${
+                    seminar.location?.address
+                      ? `
+                  <tr>
+                    <td style="color: #6b7280; font-size: 14px; padding: 4px 0; vertical-align: top;">Location:</td>
+                    <td style="color: #1f2937; font-size: 14px; text-align: right; padding: 4px 0;">${seminar.location.address}</td>
+                  </tr>
+                  `
+                      : ""
+                  }
+                  ${
+                    booking.attendeeInfo.specialRequests
+                      ? `
+                  <tr>
+                    <td style="color: #6b7280; font-size: 14px; padding: 4px 0; vertical-align: top;">Special Requests:</td>
+                    <td style="color: #1f2937; font-size: 14px; text-align: right; padding: 4px 0;">${booking.attendeeInfo.specialRequests}</td>
+                  </tr>
+                  `
+                      : ""
+                  }
+                </table>
+              </div>
+
+              ${
+                seminar.requirements
+                  ? `
+              <div style="background-color: #eff6ff; border-left: 4px solid #3b82f6; padding: 15px; margin: 20px 0; border-radius: 4px;">
+                <h3 style="color: #1e40af; margin: 0 0 10px; font-size: 16px;">What to Bring</h3>
+                <p style="color: #1e40af; margin: 0; font-size: 14px;">${seminar.requirements}</p>
+              </div>
+              `
+                  : ""
+              }
+
+              <p style="font-size: 14px; color: #6b7280; margin: 20px 0 0;">If you need to cancel or have any questions, please contact us at <a href="mailto:${from}" style="color: #667eea; text-decoration: none;">${from}</a></p>
+              
+              <p style="font-size: 16px; color: #374151; margin: 20px 0 0;">Best regards,<br><strong>${tenantName}</strong></p>
+            </td>
+          </tr>
+          
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f9fafb; padding: 20px; text-align: center; border-radius: 0 0 8px 8px;">
+              <p style="font-size: 12px; color: #9ca3af; margin: 0;">This is an automated confirmation email.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
+
+  try {
+    await tx.sendMail({
+      from,
+      to: attendeeEmail,
+      subject,
+      text,
+      html,
+    });
+    console.log(
+      `[MAILER] ✓ Seminar confirmation email sent to ${attendeeEmail}`
+    );
+  } catch (error) {
+    console.error(
+      `[MAILER] ✗ Failed to send seminar confirmation email to ${attendeeEmail}:`,
+      error
+    );
+  }
+}
+
 export default {
   sendCancellationEmails,
   sendConfirmationEmail,
@@ -1927,4 +2130,5 @@ export default {
   sendBeauticianProductOrderNotification,
   sendOrderReadyForCollectionEmail,
   sendSpecialistCredentialsEmail,
+  sendSeminarConfirmationEmail,
 };

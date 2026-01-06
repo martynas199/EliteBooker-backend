@@ -189,7 +189,10 @@ seminarSchema.methods.getActivePrice = function () {
 
 // Check if session is bookable
 seminarSchema.methods.isSessionBookable = function (sessionId) {
-  const session = this.sessions.id(sessionId);
+  // Find by either _id or sessionId field
+  const session =
+    this.sessions.id(sessionId) ||
+    this.sessions.find((s) => s.sessionId === sessionId);
   if (!session) return false;
 
   return (

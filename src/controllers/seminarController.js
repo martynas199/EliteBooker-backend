@@ -69,6 +69,16 @@ export const getPublicSeminars = async (req, res) => {
         (s) => new Date(s.date) > now && s.status !== "cancelled"
       );
 
+      // Calculate active price (early bird or regular)
+      let activePrice = seminar.pricing.price;
+      if (
+        seminar.pricing.earlyBirdPrice &&
+        seminar.pricing.earlyBirdDeadline &&
+        new Date(seminar.pricing.earlyBirdDeadline) > now
+      ) {
+        activePrice = seminar.pricing.earlyBirdPrice;
+      }
+
       return {
         ...seminar,
         upcomingSessions,
@@ -78,6 +88,7 @@ export const getPublicSeminars = async (req, res) => {
             ? upcomingSessions[0].maxAttendees -
               upcomingSessions[0].currentAttendees
             : 0,
+        activePrice,
       };
     });
 
@@ -116,9 +127,20 @@ export const getPublicSeminarBySlug = async (req, res) => {
       (s) => new Date(s.date) > now && s.status !== "cancelled"
     );
 
+    // Calculate active price (early bird or regular)
+    let activePrice = seminar.pricing.price;
+    if (
+      seminar.pricing.earlyBirdPrice &&
+      seminar.pricing.earlyBirdDeadline &&
+      new Date(seminar.pricing.earlyBirdDeadline) > now
+    ) {
+      activePrice = seminar.pricing.earlyBirdPrice;
+    }
+
     res.status(200).json({
       ...seminar,
       upcomingSessions,
+      activePrice,
     });
   } catch (error) {
     console.error("Error in getPublicSeminarBySlug:", error);
@@ -136,8 +158,13 @@ export const getSeminars = async (req, res) => {
 
     const filter = {};
 
-    // If not admin, only show own seminars
-    if (req.user.role !== "admin") {
+    // Filter by tenant for all users (admin sees all in their tenant)
+    if (req.user.tenantId) {
+      filter.tenantId = req.user.tenantId;
+    }
+
+    // If specialist role, only show own seminars
+    if (req.user.role === "specialist") {
       filter.specialistId = req.user._id;
     }
 

@@ -1,6 +1,8 @@
 import Seminar from "../models/Seminar.js";
 import SeminarBooking from "../models/SeminarBooking.js";
+import Tenant from "../models/Tenant.js";
 import Stripe from "stripe";
+import { sendSeminarConfirmationEmail } from "../emails/mailer.js";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
@@ -79,14 +81,16 @@ export const createCheckoutSession = async (req, res) => {
       return res.status(400).json({ error: "Seminar not available" });
     }
 
-    // Find session
-    const session = seminar.sessions.id(sessionId);
+    // Find session by sessionId field
+    const session = seminar.sessions.find(
+      (s) => s.sessionId === sessionId || s._id.toString() === sessionId
+    );
     if (!session) {
       return res.status(404).json({ error: "Session not found" });
     }
 
     // Check if session is bookable
-    if (!seminar.isSessionBookable(sessionId)) {
+    if (!seminar.isSessionBookable(session._id)) {
       return res.status(400).json({
         error: "Session is not available for booking",
       });
@@ -94,6 +98,7 @@ export const createCheckoutSession = async (req, res) => {
 
     // Get active price
     const price = seminar.getActivePrice();
+    const bookingFee = 0.99;
 
     // Create Stripe checkout session
     const stripeSession = await stripe.checkout.sessions.create({
@@ -116,12 +121,23 @@ export const createCheckoutSession = async (req, res) => {
           },
           quantity: 1,
         },
+        {
+          price_data: {
+            currency: seminar.pricing.currency.toLowerCase(),
+            unit_amount: Math.round(bookingFee * 100), // Convert to cents
+            product_data: {
+              name: "Booking Fee",
+              description: "Service charge for processing your booking",
+            },
+          },
+          quantity: 1,
+        },
       ],
       customer_email: attendeeInfo.email,
       metadata: {
         type: "seminar",
         seminarId: seminarId.toString(),
-        sessionId: sessionId,
+        sessionId: session._id.toString(),
         attendeeName: attendeeInfo.name,
         attendeeEmail: attendeeInfo.email,
         attendeePhone: attendeeInfo.phone || "",
@@ -226,7 +242,20 @@ export const confirmPayment = async (req, res) => {
       seminar.updateSessionStatus(sessionId);
       await seminar.save();
 
-      // TODO: Send confirmation emails to client and specialist
+      // Send confirmation email to attendee
+      try {
+        const tenant = await Tenant.findById(tenantId);
+        await sendSeminarConfirmationEmail({
+          booking,
+          seminar,
+          session: seminarSession,
+          tenant,
+        });
+      } catch (emailError) {
+        console.error("Failed to send confirmation email:", emailError);
+        // Don't fail the booking if email fails
+      }
+
       console.log("Booking created:", booking.bookingReference);
 
       res.status(200).json({ received: true, bookingId: booking._id });

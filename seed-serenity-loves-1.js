@@ -3,6 +3,8 @@ import dotenv from "dotenv";
 import Tenant from "./src/models/Tenant.js";
 import Specialist from "./src/models/Specialist.js";
 import Service from "./src/models/Service.js";
+import Seminar from "./src/models/Seminar.js";
+import { v4 as uuidv4 } from "uuid";
 
 dotenv.config();
 
@@ -418,6 +420,201 @@ async function seedSerenityLoves1() {
     console.log(`- Tenant: ${tenant.name} (${tenant.slug})`);
     console.log(`- Specialists/Therapists: ${createdSpecialists.length}`);
     console.log(`- Services: ${services.length}`);
+    console.log(
+      `\nAccess at: https://www.elitebooker.co.uk/salon/${tenant.slug}`
+    );
+
+    // Create seminars
+    console.log("\nCreating seminars...");
+
+    const seminars = [
+      {
+        specialistId: createdSpecialists[3]._id, // Serenity Park (Yoga instructor)
+        tenantId: tenant._id,
+        title: "Mindful Movement: Introduction to Yoga & Meditation",
+        slug: "mindful-movement-intro-yoga-meditation",
+        description: `Join our comprehensive introduction to yoga and meditation workshop designed for beginners and those looking to deepen their practice. 
+
+This transformative 3-hour workshop will guide you through:
+- Fundamental yoga poses and proper alignment
+- Breathing techniques (Pranayama) for stress relief
+- Meditation practices for daily life
+- Mindfulness exercises you can take home
+
+Led by certified yoga instructor Serenity Park, this workshop creates a welcoming space for all body types and fitness levels. You'll leave with practical tools to incorporate mindfulness into your daily routine, reduce stress, and improve overall well-being.
+
+What to Bring:
+- Comfortable clothing that allows movement
+- Water bottle
+- Yoga mat (or we can provide one)
+- Open mind and willingness to learn
+
+Light refreshments will be provided during the break.`,
+        shortDescription:
+          "Learn fundamental yoga poses, breathing techniques, and meditation practices for stress relief and mindfulness in daily life.",
+        category: "Other",
+        level: "Beginner",
+        pricing: {
+          price: 45,
+          currency: "GBP",
+          earlyBirdPrice: 35,
+          earlyBirdDeadline: new Date("2026-02-15"),
+        },
+        location: {
+          type: "physical",
+          address: "45 Wellness Way",
+          city: "Bristol",
+          postcode: "BS1 4QT",
+          instructions:
+            "Enter through the main entrance and follow signs to Studio B on the second floor.",
+        },
+        sessions: [
+          {
+            sessionId: uuidv4(),
+            date: new Date("2026-02-22T10:00:00Z"),
+            startTime: "10:00",
+            endTime: "13:00",
+            maxAttendees: 15,
+            currentAttendees: 0,
+            status: "scheduled",
+          },
+          {
+            sessionId: uuidv4(),
+            date: new Date("2026-03-08T10:00:00Z"),
+            startTime: "10:00",
+            endTime: "13:00",
+            maxAttendees: 15,
+            currentAttendees: 0,
+            status: "scheduled",
+          },
+          {
+            sessionId: uuidv4(),
+            date: new Date("2026-03-22T14:00:00Z"),
+            startTime: "14:00",
+            endTime: "17:00",
+            maxAttendees: 15,
+            currentAttendees: 0,
+            status: "scheduled",
+          },
+        ],
+        requirements: [
+          "No prior yoga experience required",
+          "Ability to sit and stand comfortably",
+          "Please inform instructor of any injuries or physical limitations",
+        ],
+        whatYouWillLearn: [
+          "Basic yoga poses (asanas) and proper form",
+          "Breathing techniques to calm the mind and reduce anxiety",
+          "Simple meditation practices for beginners",
+          "How to create a sustainable home practice",
+          "Mindfulness techniques for stress management",
+          "Understanding the connection between breath, body, and mind",
+        ],
+        status: "published",
+      },
+      {
+        specialistId: createdSpecialists[0]._id, // Luna Martinez (Massage therapist)
+        tenantId: tenant._id,
+        title: "Deep Tissue Massage Techniques Workshop",
+        slug: "deep-tissue-massage-techniques-workshop",
+        description: `Calling all massage therapists and bodywork practitioners! Elevate your skills with this advanced deep tissue massage workshop.
+
+This intensive 4-hour masterclass covers:
+- Advanced deep tissue techniques and protocols
+- Working with chronic pain and muscle tension
+- Body mechanics for therapist longevity
+- Client communication and assessment
+- Trigger point therapy integration
+
+Led by Luna Martinez, a certified massage therapist with over 12 years of experience specializing in deep tissue work. Luna has helped hundreds of clients overcome chronic pain and will share her expertise in this hands-on workshop.
+
+This workshop includes:
+- Live demonstrations
+- Hands-on practice time
+- Case study discussions
+- Professional tips and best practices
+- Certificate of completion
+
+Perfect for massage therapists looking to add deep tissue to their repertoire or refine existing skills.
+
+Requirements:
+- Active massage therapy license or certification
+- Basic anatomy knowledge
+- Minimum 6 months professional experience`,
+        shortDescription:
+          "Advanced workshop for massage therapists to learn and refine deep tissue massage techniques, trigger points, and chronic pain management.",
+        category: "Business",
+        level: "Advanced",
+        pricing: {
+          price: 120,
+          currency: "GBP",
+        },
+        location: {
+          type: "physical",
+          address: "45 Wellness Way",
+          city: "Bristol",
+          postcode: "BS1 4QT",
+          instructions: "Professional workshop room - check in at reception.",
+        },
+        sessions: [
+          {
+            sessionId: uuidv4(),
+            date: new Date("2026-02-28T09:00:00Z"),
+            startTime: "09:00",
+            endTime: "13:00",
+            maxAttendees: 10,
+            currentAttendees: 0,
+            status: "scheduled",
+          },
+          {
+            sessionId: uuidv4(),
+            date: new Date("2026-03-28T09:00:00Z"),
+            startTime: "09:00",
+            endTime: "13:00",
+            maxAttendees: 10,
+            currentAttendees: 0,
+            status: "scheduled",
+          },
+        ],
+        requirements: [
+          "Active massage therapy license or certification",
+          "Minimum 6 months professional massage experience",
+          "Basic understanding of anatomy and physiology",
+          "Proof of liability insurance required",
+        ],
+        whatYouWillLearn: [
+          "Advanced deep tissue techniques for different muscle groups",
+          "How to work effectively with chronic pain patterns",
+          "Proper body mechanics to prevent therapist injury",
+          "Client assessment and treatment planning",
+          "Trigger point location and release techniques",
+          "Integration with other modalities",
+          "Building a specialized deep tissue practice",
+        ],
+        status: "published",
+      },
+    ];
+
+    for (const seminar of seminars) {
+      const existing = await Seminar.findOne({
+        slug: seminar.slug,
+        tenantId: tenant._id,
+      });
+
+      if (!existing) {
+        await Seminar.create(seminar);
+        console.log(`✓ Created seminar: ${seminar.title}`);
+      } else {
+        console.log(`✓ Seminar already exists: ${existing.title}`);
+      }
+    }
+
+    console.log("\n✅ Seeding completed successfully!");
+    console.log("\nSummary:");
+    console.log(`- Tenant: ${tenant.name} (${tenant.slug})`);
+    console.log(`- Specialists/Therapists: ${createdSpecialists.length}`);
+    console.log(`- Services: ${services.length}`);
+    console.log(`- Seminars: ${seminars.length}`);
     console.log(
       `\nAccess at: https://www.elitebooker.co.uk/salon/${tenant.slug}`
     );

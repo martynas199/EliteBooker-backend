@@ -1,5 +1,6 @@
 import { Router } from "express";
 import Stripe from "stripe";
+import mongoose from "mongoose";
 import Service from "../models/Service.js";
 import Specialist from "../models/Specialist.js";
 import Appointment from "../models/Appointment.js";

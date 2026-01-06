@@ -91,7 +91,6 @@ const seminarBookingSchema = new mongoose.Schema(
     },
     bookingReference: {
       type: String,
-      required: true,
       unique: true,
       index: true,
     },

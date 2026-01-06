@@ -5,11 +5,15 @@ import Appointment from "../models/Appointment.js";
 import Specialist from "../models/Specialist.js";
 import Order from "../models/Order.js";
 import Payment from "../models/Payment.js";
+import Seminar from "../models/Seminar.js";
+import SeminarBooking from "../models/SeminarBooking.js";
+import Tenant from "../models/Tenant.js";
 import {
   sendConfirmationEmail,
   sendOrderConfirmationEmail,
   sendAdminOrderNotification,
   sendBeauticianProductOrderNotification,
+  sendSeminarConfirmationEmail,
 } from "../emails/mailer.js";
 import smsService from "../services/smsService.js";
 
@@ -58,12 +62,18 @@ r.post("/stripe", async (req, res) => {
         const apptId =
           session.client_reference_id || session.metadata?.appointmentId;
         const orderId = session.metadata?.orderId;
+        const seminarId = session.metadata?.seminarId;
+        const bookingType = session.metadata?.type;
 
         console.log(
           "[WEBHOOK] checkout.session.completed - apptId:",
           apptId,
           "orderId:",
           orderId,
+          "seminarId:",
+          seminarId,
+          "type:",
+          bookingType,
           "session:",
           session.id
         );
@@ -284,9 +294,103 @@ r.post("/stripe", async (req, res) => {
           }
         }
 
-        if (!apptId && !orderId) {
+        // Handle seminar booking confirmation
+        if (seminarId && bookingType === "seminar") {
+          try {
+            const {
+              sessionId,
+              attendeeName,
+              attendeeEmail,
+              attendeePhone,
+              specialRequests,
+              specialistId,
+              tenantId,
+            } = session.metadata;
+
+            // Find seminar and session
+            const seminar = await Seminar.findById(seminarId);
+            if (!seminar) {
+              console.error("[WEBHOOK] Seminar not found:", seminarId);
+              break;
+            }
+
+            const seminarSession = seminar.sessions.id(sessionId);
+            if (!seminarSession) {
+              console.error("[WEBHOOK] Session not found:", sessionId);
+              break;
+            }
+
+            // Check if session still has space
+            if (
+              seminarSession.currentAttendees >= seminarSession.maxAttendees
+            ) {
+              console.error("[WEBHOOK] Session is full:", sessionId);
+              // TODO: Handle refund
+              break;
+            }
+
+            // Create booking (using new + save to ensure pre-save hook runs)
+            const booking = new SeminarBooking({
+              seminarId,
+              sessionId,
+              clientId: session.customer || null,
+              specialistId,
+              tenantId,
+              attendeeInfo: {
+                name: attendeeName,
+                email: attendeeEmail,
+                phone: attendeePhone,
+                specialRequests,
+              },
+              payment: {
+                stripeSessionId: session.id,
+                stripePaymentIntentId: session.payment_intent,
+                amount: session.amount_total / 100,
+                currency: session.currency.toUpperCase(),
+                status: "paid",
+                paidAt: new Date(),
+              },
+              status: "confirmed",
+            });
+            await booking.save();
+
+            // Increment session attendees
+            seminarSession.currentAttendees += 1;
+            seminar.updateSessionStatus(sessionId);
+            await seminar.save();
+
+            console.log(
+              "[WEBHOOK] Seminar booking created:",
+              booking.bookingReference
+            );
+
+            // Send confirmation email
+            try {
+              const tenant = await Tenant.findById(tenantId);
+              await sendSeminarConfirmationEmail({
+                booking,
+                seminar,
+                session: seminarSession,
+                tenant,
+              });
+              console.log(
+                "[WEBHOOK] Seminar confirmation email sent to",
+                attendeeEmail
+              );
+            } catch (emailErr) {
+              console.error(
+                "[WEBHOOK] Failed to send seminar confirmation email:",
+                emailErr
+              );
+            }
+          } catch (e) {
+            console.error("[WEBHOOK] seminar booking update err", e);
+          }
+        }
+
+        if (!apptId && !orderId && !seminarId) {
           console.warn(
-            "[WEBHOOK] checkout.session.completed missing both apptId and orderId"
+            "[WEBHOOK] checkout.session.completed missing apptId, orderId, and seminarId"
           );
         }
         break;

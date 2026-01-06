@@ -62,6 +62,9 @@ export async function requireAdmin(req, res, next) {
 
     // 5) Grant access - attach admin to request
     req.admin = admin;
+    // Backwards compatibility: many legacy controllers expect req.user/req.userId
+    req.user = admin;
+    req.userId = admin._id;
 
     // 6) Set tenant context from admin's token if not already set
     if (admin.tenantId && !req.tenantId) {
