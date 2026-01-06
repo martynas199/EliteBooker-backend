@@ -91,6 +91,7 @@ const createPaymentIntentSchema = z.object({
     .default(0),
   currency: z.enum(["gbp", "usd", "eur"]).optional().default("gbp"),
   captureMethod: z.enum(["automatic", "manual"]).optional().default("manual"), // Stripe Terminal requires manual capture to prevent timeouts
+  flowType: z.enum(["terminal", "wallet"]).optional().default("terminal"),
   metadata: z.record(z.string()).optional().default({}),
 });
 
@@ -235,6 +236,7 @@ router.post("/intents", async (req, res) => {
       tip,
       currency,
       captureMethod,
+      flowType,
       metadata,
     } = validation.data;
 
@@ -356,7 +358,7 @@ router.post("/intents", async (req, res) => {
       netAmount,
       status: "pending",
       stripe: {
-        connectedAccountId: useConnectAccount || "dev_mode",
+        connectedAccountId: useConnectAccount || null,
       },
       metadata: {
         ...metadata,
@@ -371,11 +373,13 @@ router.post("/intents", async (req, res) => {
 
     // Create Stripe PaymentIntent on connected account (or direct in development)
     try {
+      const isWalletFlow = flowType === "wallet";
+
       const paymentIntentParams = {
         amount: total,
         currency: currency.toLowerCase(),
-        capture_method: captureMethod,
-        payment_method_types: ["card_present"], // Tap to Pay requires card_present
+        capture_method: isWalletFlow ? "automatic" : captureMethod,
+        payment_method_types: isWalletFlow ? ["card"] : ["card_present"],
         metadata: {
           tenantId: tenantId.toString(),
           appointmentId: appointmentId?.toString() || "custom",
@@ -383,8 +387,17 @@ router.post("/intents", async (req, res) => {
           staffId: staffId.toString(),
           paymentDbId: payment._id.toString(),
           tip: tip.toString(),
+          flowType,
         },
       };
+
+      if (isWalletFlow) {
+        paymentIntentParams.payment_method_options = {
+          card: {
+            request_three_d_secure: "automatic",
+          },
+        };
+      }
 
       // Add application fee if using connected account
       if (useConnectAccount) {
@@ -507,12 +520,14 @@ router.post("/confirm", async (req, res) => {
     }
 
     // Retrieve PaymentIntent from Stripe
-    const paymentIntent = await stripe.paymentIntents.retrieve(
-      paymentIntentId,
-      {
+    const retrieveArgs = [paymentIntentId];
+    if (payment.stripe.connectedAccountId) {
+      retrieveArgs.push({
         stripeAccount: payment.stripe.connectedAccountId,
-      }
-    );
+      });
+    }
+
+    const paymentIntent = await stripe.paymentIntents.retrieve(...retrieveArgs);
 
     // Update payment status based on Stripe status
     payment.status =
@@ -528,6 +543,9 @@ router.post("/confirm", async (req, res) => {
           charge.payment_method_details.card_present.brand;
         payment.stripe.cardLast4 =
           charge.payment_method_details.card_present.last4;
+      } else if (charge.payment_method_details?.card) {
+        payment.stripe.cardBrand = charge.payment_method_details.card.brand;
+        payment.stripe.cardLast4 = charge.payment_method_details.card.last4;
       }
     }
 
