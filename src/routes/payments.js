@@ -205,27 +205,41 @@ router.post("/intents", async (req, res) => {
       }
     }
 
-    // Get tenant's Stripe Connect account
-    const tenant = await Tenant.findById(tenantId).select(
-      "stripeConnectAccountId settings"
+    // Get staff member's Stripe Connect account (the person taking the payment)
+    const staff = await User.findById(staffId).select("specialistId");
+    if (!staff || !staff.specialistId) {
+      return res.status(400).json({
+        success: false,
+        message: "Staff member not linked to a specialist account",
+      });
+    }
+
+    const Specialist = (await import("../models/Specialist.js")).default;
+    const specialist = await Specialist.findById(staff.specialistId).select(
+      "stripeAccountId stripeStatus"
     );
 
     // In development, allow testing without Stripe Connect
     const isDevelopment = process.env.NODE_ENV !== "production";
-    const useConnectAccount = tenant?.stripeConnectAccountId;
+    const useConnectAccount = specialist?.stripeAccountId;
 
     // Log for debugging
-    console.log("[Payment Intent] Tenant:", tenantId);
+    console.log("[Payment Intent] Staff ID:", staffId);
+    console.log("[Payment Intent] Specialist ID:", staff.specialistId);
     console.log("[Payment Intent] Stripe Connect ID:", useConnectAccount);
+    console.log("[Payment Intent] Stripe Status:", specialist?.stripeStatus);
     console.log("[Payment Intent] Is Development:", isDevelopment);
     console.log("[Payment Intent] NODE_ENV:", process.env.NODE_ENV);
 
     if (!useConnectAccount && !isDevelopment) {
       return res.status(400).json({
         success: false,
-        message: "Stripe Connect not configured for this business",
+        message: "Stripe Connect not configured. Please complete your Stripe onboarding in Settings.",
       });
     }
+
+    // Get tenant for settings
+    const tenant = await Tenant.findById(tenantId).select("settings");
 
     // Calculate total and fees
     const total = amount + tip;
