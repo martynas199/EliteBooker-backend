@@ -65,7 +65,7 @@ const createPaymentIntentSchema = z.object({
   captureMethod: z
     .enum(["automatic", "manual"])
     .optional()
-    .default("automatic"),
+    .default("manual"), // Stripe Terminal requires manual capture to prevent timeouts
   metadata: z.record(z.string()).optional().default({}),
 });
 
@@ -108,6 +108,59 @@ const listPaymentsSchema = z.object({
     .optional(),
   startDate: z.string().datetime().optional(),
   endDate: z.string().datetime().optional(),
+});
+
+// ==================== CONNECTION TOKEN ====================
+
+/**
+ * POST /api/payments/connection-token
+ *
+ * Generate a Stripe Terminal connection token for mobile SDK initialization
+ *
+ * Required for: Stripe Terminal SDK to discover and connect to card readers
+ *
+ * Required permissions: Any authenticated admin
+ */
+router.post("/connection-token", async (req, res) => {
+  try {
+    // Authentication check
+    if (!req.admin || !req.tenantId) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
+    // Get Stripe Connect account if configured
+    let stripeAccount = null;
+    if (req.admin.specialistId) {
+      const Specialist = (await import("../models/Specialist.js")).default;
+      const specialist = await Specialist.findById(req.admin.specialistId).select(
+        "stripeAccountId"
+      );
+      stripeAccount = specialist?.stripeAccountId;
+    }
+
+    // Create connection token with or without connected account
+    const connectionToken = stripeAccount
+      ? await stripe.terminal.connectionTokens.create(
+          {},
+          { stripeAccount }
+        )
+      : await stripe.terminal.connectionTokens.create({});
+
+    res.json({
+      success: true,
+      secret: connectionToken.secret,
+    });
+  } catch (error) {
+    console.error("[Connection Token Error]:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to create connection token",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
 });
 
 // ==================== CREATE PAYMENT INTENT ====================
