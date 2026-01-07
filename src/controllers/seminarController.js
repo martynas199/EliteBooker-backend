@@ -158,14 +158,17 @@ export const getSeminars = async (req, res) => {
 
     const filter = {};
 
+    // Use req.admin from requireAdmin middleware
+    const admin = req.admin || req.user;
+
     // Filter by tenant for all users (admin sees all in their tenant)
-    if (req.user.tenantId) {
-      filter.tenantId = req.user.tenantId;
+    if (admin.tenantId) {
+      filter.tenantId = admin.tenantId;
     }
 
     // If specialist role, only show own seminars
-    if (req.user.role === "specialist") {
-      filter.specialistId = req.user._id;
+    if (admin.role === "specialist") {
+      filter.specialistId = admin._id;
     }
 
     // Filter by status
@@ -219,10 +222,13 @@ export const getSeminarById = async (req, res) => {
       return res.status(404).json({ error: "Seminar not found" });
     }
 
-    // Check permission
+    // Check permission (use req.admin from requireAdmin middleware)
+    const admin = req.admin || req.user;
     if (
-      req.user.role !== "admin" &&
-      seminar.specialistId._id.toString() !== req.user._id.toString()
+      admin.role !== "admin" &&
+      admin.role !== "owner" &&
+      admin.role !== "manager" &&
+      seminar.specialistId._id.toString() !== admin._id.toString()
     ) {
       return res.status(403).json({ error: "Access denied" });
     }
@@ -293,9 +299,10 @@ export const createSeminar = async (req, res) => {
     }));
 
     // Create seminar
+    const admin = req.admin || req.user;
     const seminar = await Seminar.create({
-      specialistId: req.user._id,
-      tenantId: req.user.tenantId || req.user._id, // Use tenantId if available
+      specialistId: admin._id,
+      tenantId: admin.tenantId || admin._id, // Use tenantId if available
       title,
       slug: finalSlug,
       shortDescription,
