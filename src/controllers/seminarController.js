@@ -224,12 +224,25 @@ export const getSeminarById = async (req, res) => {
 
     // Check permission (use req.admin from requireAdmin middleware)
     const admin = req.admin || req.user;
-    if (
-      admin.role !== "admin" &&
-      admin.role !== "owner" &&
-      admin.role !== "manager" &&
-      seminar.specialistId._id.toString() !== admin._id.toString()
-    ) {
+
+    console.log("[getSeminarById] Permission check:", {
+      adminRole: admin.role,
+      adminId: admin._id.toString(),
+      seminarSpecialistId: seminar.specialistId._id.toString(),
+      seminarId: seminar._id,
+    });
+
+    // Allow super_admin, admin, owner, manager, or the specialist who created it
+    const isAdminRole = ["super_admin", "admin", "owner", "manager"].includes(
+      admin.role
+    );
+    const isOwner =
+      seminar.specialistId._id.toString() === admin._id.toString();
+
+    if (!isAdminRole && !isOwner) {
+      console.log(
+        "[getSeminarById] Access denied - not admin role and not owner"
+      );
       return res.status(403).json({ error: "Access denied" });
     }
 
