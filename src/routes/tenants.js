@@ -17,6 +17,7 @@ import { requireAdmin, requireSuperAdmin } from "../middleware/requireAdmin.js";
 import { clearTenantCache } from "../middleware/resolveTenant.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
+import nodemailer from "nodemailer";
 
 const router = Router();
 
@@ -237,6 +238,118 @@ router.post("/create", async (req, res) => {
       "[Tenant Create] Admin linked to specialist:",
       defaultSpecialist._id
     );
+
+    // Send notification email to admin about new registration
+    try {
+      const transport = nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port: Number(process.env.SMTP_PORT || 587),
+        secure: process.env.SMTP_PORT === "465",
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS,
+        },
+      });
+
+      const from = process.env.SMTP_FROM || process.env.SMTP_USER;
+
+      await transport.sendMail({
+        from,
+        to: "martynas.20@hotmail.com",
+        subject: "🎉 New Business Registration - Elite Booker",
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #1f2937; border-bottom: 3px solid #3b82f6; padding-bottom: 10px;">
+              New Business Registration
+            </h2>
+            
+            <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <h3 style="margin-top: 0; color: #374151;">Business Details</h3>
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td style="padding: 8px 0; font-weight: bold; color: #6b7280;">Business Name:</td>
+                  <td style="padding: 8px 0;">${validatedData.businessName}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; font-weight: bold; color: #6b7280;">Salon Name:</td>
+                  <td style="padding: 8px 0;">${validatedData.name}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; font-weight: bold; color: #6b7280;">Business Email:</td>
+                  <td style="padding: 8px 0;">${validatedData.email}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; font-weight: bold; color: #6b7280;">Phone:</td>
+                  <td style="padding: 8px 0;">${
+                    validatedData.phone || "N/A"
+                  }</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; font-weight: bold; color: #6b7280;">Slug:</td>
+                  <td style="padding: 8px 0;">${tenant.slug}</td>
+                </tr>
+              </table>
+            </div>
+
+            <div style="background: #eff6ff; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <h3 style="margin-top: 0; color: #374151;">Admin Account</h3>
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td style="padding: 8px 0; font-weight: bold; color: #6b7280;">Name:</td>
+                  <td style="padding: 8px 0;">${validatedData.adminName}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; font-weight: bold; color: #6b7280;">Email:</td>
+                  <td style="padding: 8px 0;">${validatedData.adminEmail}</td>
+                </tr>
+              </table>
+            </div>
+
+            <div style="background: #fef3c7; padding: 15px; border-radius: 8px; border-left: 4px solid #f59e0b;">
+              <p style="margin: 0; color: #92400e;">
+                <strong>Trial Status:</strong> 14 days trial period<br>
+                <strong>Trial Ends:</strong> ${new Date(
+                  tenant.trialEndsAt
+                ).toLocaleDateString("en-GB")}
+              </p>
+            </div>
+
+            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 12px;">
+              <p>Registration completed at: ${new Date().toLocaleString(
+                "en-GB"
+              )}</p>
+              <p>Tenant ID: ${tenant._id}</p>
+            </div>
+          </div>
+        `,
+        text: `New Business Registration
+
+Business Details:
+- Business Name: ${validatedData.businessName}
+- Salon Name: ${validatedData.name}
+- Email: ${validatedData.email}
+- Phone: ${validatedData.phone || "N/A"}
+- Slug: ${tenant.slug}
+
+Admin Account:
+- Name: ${validatedData.adminName}
+- Email: ${validatedData.adminEmail}
+
+Trial Status: 14 days
+Trial Ends: ${new Date(tenant.trialEndsAt).toLocaleDateString("en-GB")}
+
+Tenant ID: ${tenant._id}
+Registered: ${new Date().toLocaleString("en-GB")}`,
+      });
+
+      console.log("[Tenant Create] Notification email sent to admin");
+    } catch (emailError) {
+      console.error(
+        "[Tenant Create] Failed to send notification email:",
+        emailError
+      );
+      // Don't fail the registration if email fails
+    }
 
     // Generate JWT token for the new admin
     const token = jwt.sign(

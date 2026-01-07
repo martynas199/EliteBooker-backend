@@ -47,7 +47,7 @@ export const isSeminarOwner = async (req, res, next) => {
 
     // Use req.admin from requireAdmin middleware (with fallback to req.user)
     const admin = req.admin || req.user;
-    
+
     if (!admin) {
       return res.status(401).json({ error: "Authentication required" });
     }
@@ -59,9 +59,11 @@ export const isSeminarOwner = async (req, res, next) => {
     });
 
     // Check if user is admin role or seminar owner
-    const isAdminRole = ["super_admin", "admin", "owner", "manager"].includes(admin.role);
+    const isAdminRole = ["super_admin", "admin", "owner", "manager"].includes(
+      admin.role
+    );
     const isOwner = seminar.specialistId.toString() === admin._id.toString();
-    
+
     if (isAdminRole || isOwner) {
       req.seminar = seminar; // Attach seminar to request for controller use
       return next();
