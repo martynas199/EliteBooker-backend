@@ -45,11 +45,24 @@ export const isSeminarOwner = async (req, res, next) => {
       return res.status(404).json({ error: "Seminar not found" });
     }
 
-    // Check if user is admin or seminar owner
-    if (
-      req.user.role === "admin" ||
-      seminar.specialistId.toString() === req.user._id.toString()
-    ) {
+    // Use req.admin from requireAdmin middleware (with fallback to req.user)
+    const admin = req.admin || req.user;
+    
+    if (!admin) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+
+    console.log("[isSeminarOwner] Permission check:", {
+      adminRole: admin.role,
+      adminId: admin._id.toString(),
+      seminarSpecialistId: seminar.specialistId.toString(),
+    });
+
+    // Check if user is admin role or seminar owner
+    const isAdminRole = ["super_admin", "admin", "owner", "manager"].includes(admin.role);
+    const isOwner = seminar.specialistId.toString() === admin._id.toString();
+    
+    if (isAdminRole || isOwner) {
       req.seminar = seminar; // Attach seminar to request for controller use
       return next();
     }

@@ -30,8 +30,15 @@ router.get("/", requireAdmin, seminarController.getSeminars);
 // Get single seminar by ID
 router.get("/:id", requireAdmin, seminarController.getSeminarById);
 
-// Update seminar (owner or admin only)
+// Update seminar (owner or admin only) - support both PUT and PATCH
 router.put(
+  "/:id",
+  requireAdmin,
+  isSeminarOwner,
+  seminarController.updateSeminar
+);
+
+router.patch(
   "/:id",
   requireAdmin,
   isSeminarOwner,
