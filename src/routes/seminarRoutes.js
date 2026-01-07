@@ -1,4 +1,5 @@
 import express from "express";
+import multer from "multer";
 import * as seminarController from "../controllers/seminarController.js";
 import * as seminarBookingController from "../controllers/seminarBookingController.js";
 import { requireAdmin } from "../middleware/requireAdmin.js";
@@ -6,6 +7,21 @@ import { authenticateUser } from "../middleware/userAuth.js";
 import { isSpecialist, isSeminarOwner } from "../middleware/seminarRoles.js";
 
 const router = express.Router();
+
+// Configure multer for memory storage (buffers)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith("image/")) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only image files are allowed"));
+    }
+  },
+});
 
 // ============================================
 // PUBLIC ROUTES (No auth required)
@@ -67,6 +83,24 @@ router.patch(
   requireAdmin,
   isSeminarOwner,
   seminarController.archiveSeminar
+);
+
+// Upload main image
+router.post(
+  "/:id/upload-image",
+  requireAdmin,
+  isSeminarOwner,
+  upload.single("image"),
+  seminarController.uploadMainImage
+);
+
+// Upload gallery images
+router.post(
+  "/:id/upload-images",
+  requireAdmin,
+  isSeminarOwner,
+  upload.array("images", 10),
+  seminarController.uploadGalleryImages
 );
 
 // Get all bookings for a seminar

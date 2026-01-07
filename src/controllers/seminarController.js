@@ -1,5 +1,6 @@
 import Seminar from "../models/Seminar.js";
 import { v4 as uuidv4 } from "uuid";
+import { uploadImage, deleteImage } from "../utils/cloudinary.js";
 
 /**
  * Get all published seminars (public)
@@ -491,5 +492,96 @@ export const archiveSeminar = async (req, res) => {
   } catch (error) {
     console.error("Error in archiveSeminar:", error);
     res.status(500).json({ error: "Failed to archive seminar" });
+  }
+};
+
+/**
+ * Upload main image for seminar
+ * @route POST /api/seminars/:id/upload-image
+ */
+export const uploadMainImage = async (req, res) => {
+  try {
+    const seminar = req.seminar; // Attached by isSeminarOwner middleware
+
+    if (!req.file) {
+      return res.status(400).json({ error: "No image file provided" });
+    }
+
+    // Delete old image if exists
+    if (seminar.images?.main?.publicId) {
+      try {
+        await deleteImage(seminar.images.main.publicId);
+      } catch (err) {
+        console.warn("Failed to delete old image:", err);
+      }
+    }
+
+    // Upload new image to Cloudinary
+    const result = await uploadImage(req.file.buffer, {
+      folder: "seminars",
+      transformation: [{ width: 1200, height: 800, crop: "limit" }],
+    });
+
+    // Update seminar with new image
+    seminar.images = seminar.images || {};
+    seminar.images.main = {
+      url: result.secure_url,
+      publicId: result.public_id,
+    };
+
+    await seminar.save();
+
+    res.status(200).json({
+      message: "Main image uploaded successfully",
+      image: seminar.images.main,
+    });
+  } catch (error) {
+    console.error("Error uploading main image:", error);
+    res.status(500).json({ error: "Failed to upload image" });
+  }
+};
+
+/**
+ * Upload gallery images for seminar
+ * @route POST /api/seminars/:id/upload-images
+ */
+export const uploadGalleryImages = async (req, res) => {
+  try {
+    const seminar = req.seminar; // Attached by isSeminarOwner middleware
+
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ error: "No image files provided" });
+    }
+
+    // Upload all images to Cloudinary
+    const uploadPromises = req.files.map((file) =>
+      uploadImage(file.buffer, {
+        folder: "seminars/gallery",
+        transformation: [{ width: 800, height: 600, crop: "limit" }],
+      })
+    );
+
+    const results = await Promise.all(uploadPromises);
+
+    // Add images to gallery
+    seminar.images = seminar.images || {};
+    seminar.images.gallery = seminar.images.gallery || [];
+
+    const newImages = results.map((result) => ({
+      url: result.secure_url,
+      publicId: result.public_id,
+    }));
+
+    seminar.images.gallery.push(...newImages);
+
+    await seminar.save();
+
+    res.status(200).json({
+      message: "Gallery images uploaded successfully",
+      images: newImages,
+    });
+  } catch (error) {
+    console.error("Error uploading gallery images:", error);
+    res.status(500).json({ error: "Failed to upload images" });
   }
 };
