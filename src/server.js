@@ -49,6 +49,9 @@ import giftCardsRouter from "./routes/giftCards.js";
 import paymentsRouter from "./routes/payments.js";
 import supportRouter from "./routes/support.js";
 import demoRouter from "./routes/demo.js";
+import consentTemplatesRouter from "./routes/consentTemplates.js";
+import consentsRouter from "./routes/consents.js";
+import consentPublicRouter from "./routes/consentPublic.js";
 import { startReminderCron } from "./services/reminderService.js";
 import {
   apiLimiter,
@@ -242,6 +245,9 @@ app.use("/api/orders", ordersRouter);
 // Shipping rates (public endpoint)
 app.use("/api/shipping", shippingRouter);
 
+// Public consent routes (signing via link)
+app.use("/api/public", readLimiter, consentPublicRouter);
+
 // Apply general rate limiting to remaining API routes
 app.use("/api", apiLimiter);
 
@@ -274,6 +280,10 @@ app.use("/api/client", clientRouter); // Client profile, bookings, GDPR
 app.use("/api/favorites", favoritesRouter); // Client favorites
 app.use("/api/gift-cards", giftCardsRouter); // Gift cards
 app.use("/api/cancellation-policy", cancellationPolicyRouter); // Cancellation policies
+
+// Consent forms (admin template management + client signing)
+app.use("/api/consent-templates", consentTemplatesRouter); // Admin: manage consent templates
+app.use("/api/consents", consentsRouter); // Admin & Client: view/sign consents
 
 // Error handling
 app.use((err, req, res, next) => {

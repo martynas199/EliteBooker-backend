@@ -14,8 +14,14 @@ import { attachTenantToModels } from "../middleware/multiTenantPlugin.js";
 import multer from "multer";
 import { uploadImage, deleteImage } from "../utils/cloudinary.js";
 import fs from "fs";
+import OpenAI from "openai";
 
 const r = Router();
+
+// Initialize OpenAI (only if API key is set)
+const openai = process.env.OPENAI_API_KEY
+  ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  : null;
 
 // Multer setup: Temporary file storage
 const upload = multer({ dest: "uploads/" });
@@ -588,6 +594,194 @@ r.post(
         req.files.forEach((file) => deleteLocalFile(file.path));
       }
       next(err);
+    }
+  }
+);
+
+/**
+ * POST /api/services/generate-description
+ * Generate AI service description
+ * Access: Private (Admin only)
+ */
+r.post(
+  "/generate-description",
+  requireAdmin,
+  attachTenantToModels,
+  async (req, res, next) => {
+    try {
+      const {
+        serviceTitle,
+        businessType,
+        country = "UK",
+        serviceDuration,
+        serviceCategory,
+      } = req.body;
+
+      // Validation
+      if (!serviceTitle || serviceTitle.trim().length <= 3) {
+        return res.status(400).json({
+          success: false,
+          message: "Service title must be at least 4 characters long",
+        });
+      }
+
+      // Check if OpenAI is configured
+      if (!openai) {
+        return res.status(503).json({
+          success: false,
+          message:
+            "AI service not configured. Please enter description manually.",
+          error: "openai_not_configured",
+        });
+      }
+
+      // Build context string for the prompt
+      let contextString = `Service: ${serviceTitle}`;
+      if (businessType) contextString += `\nBusiness Type: ${businessType}`;
+      if (serviceCategory) contextString += `\nCategory: ${serviceCategory}`;
+      if (serviceDuration)
+        contextString += `\nDuration: ${serviceDuration} minutes`;
+      if (country) contextString += `\nCountry: ${country}`;
+
+      // Safety-focused system prompt
+      const systemPrompt = `You are a professional service description writer for a booking platform used by beauty salons, wellness centers, and clinics.
+
+Your task is to write SAFE, NEUTRAL, CLIENT-FACING service descriptions.
+
+## CRITICAL SAFETY RULES (MUST FOLLOW):
+1. NO medical claims or health guarantees
+2. NO promises of specific outcomes or results
+3. NO diagnosis or treatment advice
+4. NO words like "best", "guaranteed", "permanent", "cure", "treat"
+5. NO regulatory or certification claims unless explicitly stated
+6. Use SAFE phrases: "designed to", "commonly used for", "may help improve", "suitable for"
+
+## Writing Style:
+- Professional and informative tone
+- Simple, clear English (readable by general public)
+- 2-4 short paragraphs OR bullet-friendly format
+- Client-facing language (avoid technical jargon)
+- Similar tone to Fresha, Treatwell, Booksy
+
+## What to INCLUDE:
+- What the service involves
+- General purpose/use case
+- What clients can typically expect (process, not results)
+- Duration context (if provided)
+- Mention consultation if relevant
+
+## What to EXCLUDE:
+- Emojis
+- Markdown formatting (plain text only)
+- Medical terminology or diagnoses
+- Pricing information
+- Specific contraindications (unless very general)
+- Marketing hype or exaggeration
+
+## Output Format:
+Return ONLY the description text. No title, no extra commentary.`;
+
+      const userPrompt = `Generate a professional service description for:
+
+${contextString}
+
+Write 2-4 short paragraphs that explain what this service is and what clients can expect. Keep it safe, neutral, and informative. No medical claims or guarantees.`;
+
+      console.log("🤖 Generating AI description for:", serviceTitle);
+
+      // Call OpenAI API
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        temperature: 0.7,
+        max_tokens: 300,
+        presence_penalty: 0.1,
+        frequency_penalty: 0.1,
+      });
+
+      const generatedDescription = completion.choices[0].message.content.trim();
+
+      // Additional safety check: scan for forbidden words
+      const forbiddenWords = [
+        "guaranteed",
+        "guarantee",
+        "permanent",
+        "cure",
+        "cures",
+        "treat disease",
+        "medical condition",
+        "diagnose",
+        "prescription",
+        "FDA approved",
+        "clinically proven",
+      ];
+
+      const lowerDescription = generatedDescription.toLowerCase();
+      const foundForbiddenWords = forbiddenWords.filter((word) =>
+        lowerDescription.includes(word.toLowerCase())
+      );
+
+      if (foundForbiddenWords.length > 0) {
+        console.warn(
+          "⚠️ Generated description contains forbidden words:",
+          foundForbiddenWords
+        );
+        // Return a safe fallback
+        return res.status(200).json({
+          success: true,
+          data: {
+            description: `This service provides ${serviceTitle.toLowerCase()}. A consultation is recommended to ensure this service is suitable for your needs. Please contact us for more information about what to expect during your appointment.`,
+            source: "fallback",
+            warning:
+              "AI-generated description contained restricted terms. Using safe fallback.",
+          },
+        });
+      }
+
+      // Log usage for monitoring
+      console.log("✅ AI description generated successfully");
+      console.log("📊 Tokens used:", completion.usage.total_tokens);
+
+      res.status(200).json({
+        success: true,
+        data: {
+          description: generatedDescription,
+          source: "openai",
+          model: "gpt-4",
+          tokensUsed: completion.usage.total_tokens,
+        },
+      });
+    } catch (error) {
+      console.error("❌ Error generating AI description:", error);
+
+      // Handle specific OpenAI errors
+      if (error.code === "insufficient_quota") {
+        return res.status(503).json({
+          success: false,
+          message:
+            "AI service temporarily unavailable. Please enter description manually.",
+          error: "quota_exceeded",
+        });
+      }
+
+      if (error.code === "invalid_api_key") {
+        return res.status(500).json({
+          success: false,
+          message: "AI service configuration error. Please contact support.",
+          error: "configuration_error",
+        });
+      }
+
+      // Generic error response
+      res.status(500).json({
+        success: false,
+        message:
+          "Failed to generate description. Please enter description manually.",
+        error: error.message,
+      });
     }
   }
 );
