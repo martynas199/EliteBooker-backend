@@ -34,7 +34,7 @@
     "multer": "^2.0.2",
     "node-cron": "^3.0.3",
     "nodemailer": "^7.0.9",
-    "openai": "^4.77.3",
+    "openai": "^4.104.0",
     "passport": "^0.7.0",
     "passport-apple": "^2.0.2",
     "passport-google-oauth20": "^2.0.0",

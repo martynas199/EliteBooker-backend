@@ -89,14 +89,25 @@ Return ONLY the description text. No title, no extra commentary.`;
 
 ${contextString}
 
-Write 2-4 short paragraphs that explain what this service is and what clients can expect. Keep it safe, neutral, and informative. No medical claims or guarantees.`;
+Write 2-4 short paragraphs that:
+1. EXPLAIN what this service actually is (the technique, procedure, or treatment involved)
+2. Describe what happens during the appointment
+3. Mention what clients can typically expect from the experience
+4. Include any relevant preparation or aftercare notes if applicable
+
+Be specific and educational. Don't just repeat the service name - actually explain what it involves. Keep it safe, neutral, and informative. No medical claims or guarantees.`;
 
     console.log("🤖 Generating AI description for:", serviceTitle);
     console.log("📝 Context:", contextString);
+    console.log("\n📋 SYSTEM PROMPT:");
+    console.log(systemPrompt);
+    console.log("\n📝 USER PROMPT:");
+    console.log(userPrompt);
+    console.log("\n🔄 Making OpenAI API call...\n");
 
     // Call OpenAI API
     const completion = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: "gpt-3.5-turbo",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
@@ -155,7 +166,7 @@ Write 2-4 short paragraphs that explain what this service is and what clients ca
       data: {
         description: generatedDescription,
         source: "openai",
-        model: "gpt-4",
+        model: "gpt-3.5-turbo",
         tokensUsed: completion.usage.total_tokens,
       },
     });
