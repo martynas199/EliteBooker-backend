@@ -740,11 +740,13 @@ Be specific and educational. Don't just repeat the service name - actually expla
           foundForbiddenWords
         );
         console.log("🔄 Retrying with stricter instructions...");
-        
+
         // Retry with stricter prompt
         const retryPrompt = `${userPrompt}
 
-CRITICAL: Your previous response contained forbidden words (${foundForbiddenWords.join(", ")}). 
+CRITICAL: Your previous response contained forbidden words (${foundForbiddenWords.join(
+          ", "
+        )}). 
 DO NOT use these words or make any permanent/guaranteed claims. 
 Focus on describing the process and experience, NOT the results or duration of effects.
 For PMU/cosmetic procedures, describe the technique and what happens during the appointment without claiming permanence.`;
@@ -759,8 +761,9 @@ For PMU/cosmetic procedures, describe the technique and what happens during the 
           max_tokens: 300,
         });
 
-        const retryDescription = retryCompletion.choices[0].message.content.trim();
-        
+        const retryDescription =
+          retryCompletion.choices[0].message.content.trim();
+
         // Check again
         const retryLower = retryDescription.toLowerCase();
         const stillForbidden = forbiddenWords.filter((word) =>
@@ -768,17 +771,20 @@ For PMU/cosmetic procedures, describe the technique and what happens during the 
         );
 
         if (stillForbidden.length > 0) {
-          console.warn("⚠️ Retry still contains forbidden words. Using fallback.");
+          console.warn(
+            "⚠️ Retry still contains forbidden words. Using fallback."
+          );
           return res.status(200).json({
             success: true,
             data: {
               description: `This service provides ${serviceTitle.toLowerCase()}. A consultation is recommended to ensure this service is suitable for your needs. Please contact us for more information about what to expect during your appointment.`,
               source: "fallback",
-              warning: "AI-generated description contained restricted terms. Using safe fallback.",
+              warning:
+                "AI-generated description contained restricted terms. Using safe fallback.",
             },
           });
         }
-        
+
         console.log("✅ Retry successful - clean description generated");
         return res.status(200).json({
           success: true,

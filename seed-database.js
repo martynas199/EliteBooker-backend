@@ -31,9 +31,9 @@ async function seedDatabase() {
         email: "info@elitebooker.co.uk",
         phone: "+44 20 1234 5678",
         address: {
-          street: "123 High Street",
-          city: "London",
-          postalCode: "SW1A 1AA",
+          street: "17 Cathedral Square",
+          city: "Peterborough",
+          postalCode: "PE1 1XB",
           country: "United Kingdom",
         },
         active: true,
@@ -84,7 +84,8 @@ async function seedDatabase() {
         salonName: "Elite Booker",
         salonEmail: "info@elitebooker.co.uk",
         salonPhone: "+44 20 1234 5678",
-        salonAddress: "123 High Street, London, SW1A 1AA, United Kingdom",
+        salonAddress:
+          "17 Cathedral Square, Peterborough, PE1 1XB, United Kingdom",
         salonDescription: "Professional booking system for service providers",
         workingHours: {
           mon: { start: "09:00", end: "17:00" },
@@ -115,9 +116,9 @@ async function seedDatabase() {
         email: "info@namboo.co.uk",
         phone: "+44 20 9876 5432",
         address: {
-          street: "456 Beauty Lane",
-          city: "London",
-          postalCode: "E1 6AN",
+          street: "92 Rivergate",
+          city: "Peterborough",
+          postalCode: "PE1 1EL",
           country: "United Kingdom",
         },
         active: true,
@@ -153,7 +154,7 @@ async function seedDatabase() {
         salonName: "Namboo Salon",
         salonEmail: "info@namboo.co.uk",
         salonPhone: "+44 20 9876 5432",
-        salonAddress: "456 Beauty Lane, London, E1 6AN, United Kingdom",
+        salonAddress: "92 Rivergate, Peterborough, PE1 1EL, United Kingdom",
         salonDescription: "Premium beauty and wellness services",
         workingHours: {
           mon: { start: "09:00", end: "18:00" },
