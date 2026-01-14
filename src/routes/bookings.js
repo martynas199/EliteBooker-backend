@@ -11,6 +11,7 @@ const Specialist = require("../models/Specialist");
 const Service = require("../models/Service");
 const { requireAuth } = require("../middleware/auth");
 const smsService = require("../services/smsService.cjs");
+const { sendConfirmationEmail } = require("../emails/mailer.js");
 
 const router = express.Router();
 const lockService = getLockService();
@@ -264,7 +265,24 @@ router.post("/create", async (req, res) => {
       message: "Booking created successfully",
     });
 
-    // Step 7: Send confirmation SMS (async, don't wait)
+    // Step 7: Send confirmation email and SMS (async, don't wait)
+    // Populate appointment with service and specialist for email
+    const populatedAppointment = await Appointment.findById(appointment._id)
+      .populate("serviceId")
+      .populate("specialistId", "name email subscription");
+
+    // Send confirmation email
+    if (populatedAppointment) {
+      sendConfirmationEmail({
+        appointment: populatedAppointment,
+        service: populatedAppointment.serviceId,
+        specialist: populatedAppointment.specialistId,
+      })
+        .then(() => console.log("[Bookings] Confirmation email sent"))
+        .catch((err) => console.error("[Bookings] Email failed:", err.message));
+    }
+
+    // Send confirmation SMS
     if (customerPhone) {
       // Check if specialist has active SMS subscription AND tenant has SMS enabled
       const Specialist = mongoose.model("Specialist");

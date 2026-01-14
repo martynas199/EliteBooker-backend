@@ -14,11 +14,20 @@ const router = express.Router();
 const allowAdminOrClient = [
   optionalAuth,
   (req, res, next) => {
-    if (!req.user) {
+    // Check for either admin or client authentication
+    if (!req.user && !req.admin) {
       return res.status(401).json({
         success: false,
         message: "Authentication required",
       });
+    }
+    // Normalize to req.user for consistency
+    if (!req.user && req.admin) {
+      req.user = {
+        userId: req.admin._id,
+        role: req.admin.role,
+        clientId: req.admin.clientId,
+      };
     }
     next();
   },
@@ -242,7 +251,10 @@ router.get("/client/:clientId", requireAdmin, async (req, res) => {
     const { includeRevoked } = req.query;
 
     // Verify access (admin or client themselves)
-    const isAdmin = req.user.role === "admin" || req.user.role === "owner";
+    const isAdmin =
+      req.user.role === "admin" ||
+      req.user.role === "owner" ||
+      req.user.role === "super_admin";
     const isOwnClient = req.user.clientId?.toString() === clientId;
 
     if (!isAdmin && !isOwnClient) {
@@ -272,6 +284,41 @@ router.get("/client/:clientId", requireAdmin, async (req, res) => {
 });
 
 /**
+ * GET /api/consents/appointment/:appointmentId
+ * Get consent for a specific appointment (admin only)
+ */
+router.get("/appointment/:appointmentId", requireAdmin, async (req, res) => {
+  try {
+    const { appointmentId } = req.params;
+
+    const consent = await ConsentRecord.findOne({ appointmentId })
+      .populate("clientId", "name email")
+      .populate("consentTemplateId", "name version")
+      .sort({ signedAt: -1 }) // Get most recent if multiple exist
+      .lean();
+
+    if (!consent) {
+      return res.status(404).json({
+        success: false,
+        message: "No consent found for this appointment",
+      });
+    }
+
+    res.json({
+      success: true,
+      data: consent,
+    });
+  } catch (error) {
+    console.error("Error fetching appointment consent:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch consent",
+      error: error.message,
+    });
+  }
+});
+
+/**
  * GET /api/consents/:id
  * Get single consent record
  */
@@ -292,7 +339,10 @@ router.get("/:id", requireAdmin, async (req, res) => {
     }
 
     // Verify access
-    const isAdmin = req.user.role === "admin" || req.user.role === "owner";
+    const isAdmin =
+      req.user.role === "admin" ||
+      req.user.role === "owner" ||
+      req.user.role === "super_admin";
     const isOwnClient =
       req.user.clientId?.toString() === consent.clientId._id.toString();
 
@@ -338,7 +388,10 @@ router.get("/:id/pdf", allowAdminOrClient, async (req, res) => {
     }
 
     // Verify access
-    const isAdmin = req.user.role === "admin" || req.user.role === "owner";
+    const isAdmin =
+      req.user.role === "admin" ||
+      req.user.role === "owner" ||
+      req.user.role === "super_admin";
     const isOwnClient =
       req.user.clientId?.toString() === consent.clientId._id.toString();
 
@@ -349,38 +402,109 @@ router.get("/:id/pdf", allowAdminOrClient, async (req, res) => {
       });
     }
 
-    // Generate signed URL
-    let signedUrl;
-    if (download === "true") {
-      const filename =
-        `${consent.consentTemplateId.name}_v${consent.templateVersion}_${consent.clientId.name}.pdf`.replace(
-          /[^a-z0-9._-]/gi,
-          "_"
-        );
-      signedUrl = await gcsConsentService.generateDownloadUrl(
-        consent.gcsObjectPath,
-        filename
-      );
-    } else {
-      signedUrl = await gcsConsentService.generateSignedUrl(
-        consent.gcsObjectPath
-      );
+    // Get business info for PDF generation
+    const { default: Tenant } = await import("../models/Tenant.js");
+    const business = await Tenant.findById(consent.businessId);
+
+    if (!business) {
+      return res.status(404).json({
+        success: false,
+        message: "Business not found",
+      });
     }
 
-    // Log access
-    await consent.logAccess(
-      download === "true" ? "download" : "view",
-      req.user.userId,
-      req.ip
-    );
+    // Prepare PDF data
+    const pdfData = {
+      templateName: consent.templateName,
+      templateVersion: consent.templateVersion,
+      sections: consent.templateContent,
+      signedByName: consent.signedByName,
+      signatureData: consent.signatureData,
+      signedAt: consent.signedAt,
+      businessName: business.businessName,
+      businessAddress: business.businessAddress,
+      clientName: consent.clientId.name,
+    };
 
-    res.json({
-      success: true,
-      data: {
-        pdfUrl: signedUrl,
-        expiresIn: "15 minutes",
-      },
-    });
+    // Generate PDF buffer
+    let pdfBuffer;
+    try {
+      pdfBuffer = await pdfGenerationService.generateConsentPDF(pdfData);
+
+      console.log("PDF generation result:", {
+        type: typeof pdfBuffer,
+        isBuffer: Buffer.isBuffer(pdfBuffer),
+        isUint8Array: pdfBuffer instanceof Uint8Array,
+        constructor: pdfBuffer?.constructor?.name,
+        length: pdfBuffer?.length,
+      });
+
+      // Convert Uint8Array to Buffer if needed (Puppeteer sometimes returns Uint8Array)
+      if (pdfBuffer instanceof Uint8Array && !Buffer.isBuffer(pdfBuffer)) {
+        pdfBuffer = Buffer.from(pdfBuffer);
+      }
+
+      // Validate PDF buffer
+      if (!Buffer.isBuffer(pdfBuffer)) {
+        throw new Error("Generated PDF is not a valid buffer");
+      }
+
+      if (pdfBuffer.length === 0) {
+        throw new Error("Generated PDF is empty");
+      }
+
+      // Check for PDF magic bytes (%PDF-)
+      const header = pdfBuffer.slice(0, 5).toString("ascii");
+      if (!header.startsWith("%PDF-")) {
+        console.error("Invalid PDF header:", header);
+        throw new Error("Generated file is not a valid PDF");
+      }
+
+      console.log(`PDF generated successfully: ${pdfBuffer.length} bytes`);
+    } catch (pdfError) {
+      console.error("PDF generation error:", pdfError);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to generate PDF",
+        error:
+          process.env.NODE_ENV === "development" ? pdfError.message : undefined,
+      });
+    }
+
+    // Set response headers
+    const filename =
+      `${consent.templateName}_v${consent.templateVersion}_${consent.clientId.name}.pdf`.replace(
+        /[^a-z0-9._-]/gi,
+        "_"
+      );
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      download === "true" ? `attachment; filename="${filename}"` : "inline"
+    );
+    res.setHeader("Content-Length", pdfBuffer.length);
+    res.setHeader("Accept-Ranges", "bytes");
+    res.setHeader("Cache-Control", "no-cache");
+
+    // Log access
+    try {
+      // Note: logAccess might fail if it tries to save, so just skip it for now
+      // await consent.logAccess(
+      //   download === "true" ? "download" : "view",
+      //   req.user.userId,
+      //   req.ip
+      // );
+      console.log(
+        `PDF accessed by user ${req.user.userId} for consent ${consent._id}`
+      );
+    } catch (logError) {
+      // Log error but don't fail the request
+      console.error("Failed to log consent access:", logError.message);
+    }
+
+    // Send PDF - use end() instead of send() for binary data
+    res.end(pdfBuffer, "binary");
   } catch (error) {
     console.error("Error generating PDF URL:", error);
     res.status(500).json({

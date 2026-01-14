@@ -4,6 +4,25 @@ import requireAdmin from "../middleware/requireAdmin.js";
 
 const router = express.Router();
 
+// Helper function to migrate old frequency enum values
+const migrateFrequencyValue = (template) => {
+  const oldToNewMapping = {
+    first_visit_only: "first_visit",
+    annually: "until_changed",
+    bi_annually: "until_changed",
+  };
+
+  if (template.requiredFor && template.requiredFor.frequency) {
+    const oldValue = template.requiredFor.frequency;
+    if (oldToNewMapping[oldValue]) {
+      template.requiredFor.frequency = oldToNewMapping[oldValue];
+      console.log(
+        `Migrated frequency from ${oldValue} to ${template.requiredFor.frequency}`
+      );
+    }
+  }
+};
+
 /**
  * GET /api/consent-templates
  * List all consent templates for business
@@ -250,6 +269,9 @@ router.post("/:id/publish", requireAdmin, async (req, res) => {
       });
     }
 
+    // Migrate old frequency values before publishing
+    migrateFrequencyValue(template);
+
     await template.publish(adminId);
 
     res.json({
@@ -296,6 +318,9 @@ router.post("/:id/new-version", requireAdmin, async (req, res) => {
       });
     }
 
+    // Migrate old frequency values before creating new version
+    migrateFrequencyValue(template);
+
     // Create new version
     const newVersion = await template.createNewVersion();
 
@@ -335,6 +360,9 @@ router.post("/:id/archive", requireAdmin, async (req, res) => {
         message: "Consent template not found",
       });
     }
+
+    // Migrate old frequency values before archiving
+    migrateFrequencyValue(template);
 
     await template.archive(adminId);
 

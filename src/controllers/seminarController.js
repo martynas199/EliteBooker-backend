@@ -1,6 +1,7 @@
 import Seminar from "../models/Seminar.js";
 import { v4 as uuidv4 } from "uuid";
 import { uploadImage, deleteImage } from "../utils/cloudinary.js";
+import Tenant from "../models/Tenant.js";
 
 /**
  * Get all published seminars (public)
@@ -23,6 +24,31 @@ export const getPublicSeminars = async (req, res) => {
     } = req.query;
 
     const filter = { status: "published" };
+
+    // CRITICAL: Filter by tenant to prevent data leakage
+    const tenantSlug = req.headers["x-tenant-slug"];
+    if (tenantSlug) {
+      const tenant = await Tenant.findOne({ slug: tenantSlug, active: true });
+      if (tenant) {
+        filter.tenantId = tenant._id;
+      } else {
+        // If tenant slug is provided but not found, return empty results
+        return res.status(200).json({
+          seminars: [],
+          total: 0,
+          page: parseInt(page),
+          pages: 0,
+        });
+      }
+    } else {
+      // If no tenant slug is provided, return empty results for security
+      return res.status(200).json({
+        seminars: [],
+        total: 0,
+        page: parseInt(page),
+        pages: 0,
+      });
+    }
 
     // Apply filters
     if (category) filter.category = category;
@@ -111,10 +137,26 @@ export const getPublicSeminars = async (req, res) => {
  */
 export const getPublicSeminarBySlug = async (req, res) => {
   try {
-    const seminar = await Seminar.findOne({
+    // CRITICAL: Filter by tenant to prevent data leakage
+    const filter = {
       slug: req.params.slug,
       status: "published",
-    })
+    };
+
+    const tenantSlug = req.headers["x-tenant-slug"];
+    if (tenantSlug) {
+      const tenant = await Tenant.findOne({ slug: tenantSlug, active: true });
+      if (tenant) {
+        filter.tenantId = tenant._id;
+      } else {
+        return res.status(404).json({ error: "Seminar not found" });
+      }
+    } else {
+      // If no tenant slug is provided, deny access for security
+      return res.status(404).json({ error: "Seminar not found" });
+    }
+
+    const seminar = await Seminar.findOne(filter)
       .populate("specialistId", "name email avatar bio")
       .lean();
 

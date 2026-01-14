@@ -1,5 +1,5 @@
-import puppeteer from 'puppeteer';
-import crypto from 'crypto';
+import puppeteer from "puppeteer";
+import crypto from "crypto";
 
 class PDFGenerationService {
   constructor() {
@@ -12,13 +12,13 @@ class PDFGenerationService {
   async initBrowser() {
     if (!this.browser) {
       this.browser = await puppeteer.launch({
-        headless: 'new',
+        headless: "new",
         args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-gpu'
-        ]
+          "--no-sandbox",
+          "--disable-setuid-sandbox",
+          "--disable-dev-shm-usage",
+          "--disable-gpu",
+        ],
       });
     }
     return this.browser;
@@ -49,7 +49,7 @@ class PDFGenerationService {
       userAgent,
       clientName,
       businessName,
-      businessLogo
+      businessLogo,
     } = consentData;
 
     try {
@@ -61,42 +61,27 @@ class PDFGenerationService {
 
       // Set page content
       await page.setContent(html, {
-        waitUntil: 'networkidle0'
+        waitUntil: "networkidle0",
       });
 
       // Generate PDF
       const pdfBuffer = await page.pdf({
-        format: 'A4',
+        format: "A4",
         printBackground: true,
         margin: {
-          top: '20mm',
-          right: '15mm',
-          bottom: '20mm',
-          left: '15mm'
+          top: "20mm",
+          right: "15mm",
+          bottom: "20mm",
+          left: "15mm",
         },
-        displayHeaderFooter: true,
-        headerTemplate: `
-          <div style="font-size: 9px; width: 100%; text-align: center; color: #666; padding: 0 15mm;">
-            <span style="float: left;">${businessName}</span>
-            <span style="float: right;">Page <span class="pageNumber"></span> of <span class="totalPages"></span></span>
-          </div>
-        `,
-        footerTemplate: `
-          <div style="font-size: 8px; width: 100%; text-align: center; color: #999; padding: 0 15mm;">
-            Generated on ${new Date().toLocaleString('en-US', { 
-              dateStyle: 'long', 
-              timeStyle: 'long',
-              timeZone: 'Europe/London'
-            })} | Document ID: ${crypto.randomBytes(8).toString('hex')}
-          </div>
-        `
+        displayHeaderFooter: false, // Disable header/footer to avoid encoding issues
       });
 
       await page.close();
 
       return pdfBuffer;
     } catch (error) {
-      console.error('Error generating consent PDF:', error);
+      console.error("Error generating consent PDF:", error);
       throw new Error(`Failed to generate PDF: ${error.message}`);
     }
   }
@@ -108,21 +93,21 @@ class PDFGenerationService {
     const {
       templateName,
       templateVersion,
-      sections,
+      sections = [],
       signedByName,
       signatureData,
       signedAt,
-      ipAddress,
-      userAgent,
+      ipAddress = "Not recorded",
+      userAgent = "Not recorded",
       clientName,
       businessName,
-      businessLogo
+      businessLogo,
     } = consentData;
 
     const sectionsHTML = sections
-      .sort((a, b) => a.order - b.order)
-      .map(section => this.renderSection(section))
-      .join('\n');
+      .sort((a, b) => (a.order || 0) - (b.order || 0))
+      .map((section) => this.renderSection(section))
+      .join("\n");
 
     return `
       <!DOCTYPE html>
@@ -251,7 +236,13 @@ class PDFGenerationService {
             border: 2px solid #4F46E5;
             margin-right: 10px;
             flex-shrink: 0;
-            margin-top: 3px;
+            margin-top: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            line-height: 1;
+            color: #4F46E5;
           }
           
           .signature-section {
@@ -346,23 +337,32 @@ class PDFGenerationService {
       </head>
       <body>
         <div class="header">
-          ${businessLogo ? `<img src="${businessLogo}" alt="${businessName}" class="logo">` : ''}
+          ${
+            businessLogo
+              ? `<img src="${businessLogo}" alt="${businessName}" class="logo">`
+              : ""
+          }
           <div class="business-name">${businessName}</div>
           <div class="document-title">${templateName}</div>
           <div class="document-meta">
-            Version ${templateVersion} | Generated ${new Date().toLocaleDateString('en-GB')}
+            Version ${templateVersion} | Generated ${new Date().toLocaleDateString(
+      "en-GB"
+    )}
           </div>
         </div>
         
         <div class="client-info">
           <h3>Client Information</h3>
           <p><strong>Name:</strong> ${clientName}</p>
-          <p><strong>Date:</strong> ${new Date(signedAt).toLocaleDateString('en-GB', { 
-            weekday: 'long', 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric' 
-          })}</p>
+          <p><strong>Date:</strong> ${new Date(signedAt).toLocaleDateString(
+            "en-GB",
+            {
+              weekday: "long",
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            }
+          )}</p>
         </div>
         
         <div class="content">
@@ -380,24 +380,19 @@ class PDFGenerationService {
             
             <div class="signature-field">
               <div class="signature-label">Date & Time</div>
-              <div class="signature-value">${new Date(signedAt).toLocaleString('en-GB', {
-                dateStyle: 'long',
-                timeStyle: 'medium'
-              })}</div>
+              <div class="signature-value">${new Date(signedAt).toLocaleString(
+                "en-GB",
+                {
+                  dateStyle: "long",
+                  timeStyle: "medium",
+                }
+              )}</div>
             </div>
           </div>
           
           <div class="signature-field">
             <div class="signature-label">Electronic Signature</div>
             <img src="${signatureData}" alt="Signature" class="signature-image">
-          </div>
-          
-          <div class="audit-trail">
-            <h4>Digital Verification Details</h4>
-            <p><strong>IP Address:</strong> ${ipAddress}</p>
-            <p><strong>Device:</strong> ${this.parseUserAgent(userAgent)}</p>
-            <p><strong>Timestamp (UTC):</strong> ${new Date(signedAt).toISOString()}</p>
-            <p><strong>Document Hash:</strong> Will be generated upon PDF creation</p>
           </div>
         </div>
         
@@ -418,15 +413,17 @@ class PDFGenerationService {
    */
   renderSection(section) {
     switch (section.type) {
-      case 'header':
+      case "header":
         return `<div class="section"><h2 class="section-header">${section.content}</h2></div>`;
-      
-      case 'paragraph':
+
+      case "paragraph":
         return `<div class="section"><p class="section-paragraph">${section.content}</p></div>`;
-      
-      case 'list':
+
+      case "list":
         if (section.options && Array.isArray(section.options)) {
-          const items = section.options.map(item => `<li>${item}</li>`).join('\n');
+          const items = section.options
+            .map((item) => `<li>${item}</li>`)
+            .join("\n");
           return `
             <div class="section">
               <p class="section-paragraph"><strong>${section.content}</strong></p>
@@ -435,11 +432,11 @@ class PDFGenerationService {
           `;
         }
         return `<div class="section"><p class="section-paragraph">• ${section.content}</p></div>`;
-      
-      case 'declaration':
+
+      case "declaration":
         return `<div class="section"><div class="section-declaration">${section.content}</div></div>`;
-      
-      case 'checkbox':
+
+      case "checkbox":
         return `
           <div class="section">
             <div class="section-checkbox">
@@ -448,7 +445,7 @@ class PDFGenerationService {
             </div>
           </div>
         `;
-      
+
       default:
         return `<div class="section"><p>${section.content}</p></div>`;
     }
@@ -458,17 +455,17 @@ class PDFGenerationService {
    * Parse user agent to readable device info
    */
   parseUserAgent(userAgent) {
-    if (!userAgent) return 'Unknown Device';
-    
+    if (!userAgent) return "Unknown Device";
+
     // Basic parsing - can be enhanced with a library like ua-parser-js
-    if (userAgent.includes('iPhone')) return 'iPhone';
-    if (userAgent.includes('iPad')) return 'iPad';
-    if (userAgent.includes('Android')) return 'Android Device';
-    if (userAgent.includes('Windows')) return 'Windows PC';
-    if (userAgent.includes('Macintosh')) return 'Mac';
-    if (userAgent.includes('Linux')) return 'Linux';
-    
-    return 'Web Browser';
+    if (userAgent.includes("iPhone")) return "iPhone";
+    if (userAgent.includes("iPad")) return "iPad";
+    if (userAgent.includes("Android")) return "Android Device";
+    if (userAgent.includes("Windows")) return "Windows PC";
+    if (userAgent.includes("Macintosh")) return "Mac";
+    if (userAgent.includes("Linux")) return "Linux";
+
+    return "Web Browser";
   }
 
   /**
@@ -482,22 +479,22 @@ class PDFGenerationService {
       await page.setViewport({
         width: width,
         height: Math.floor(width * 1.414), // A4 ratio
-        deviceScaleFactor: 2
+        deviceScaleFactor: 2,
       });
 
       const html = this.generateHTML(consentData);
-      await page.setContent(html, { waitUntil: 'networkidle0' });
+      await page.setContent(html, { waitUntil: "networkidle0" });
 
       const screenshot = await page.screenshot({
-        type: 'png',
-        fullPage: false
+        type: "png",
+        fullPage: false,
       });
 
       await page.close();
 
       return screenshot;
     } catch (error) {
-      console.error('Error generating preview image:', error);
+      console.error("Error generating preview image:", error);
       throw new Error(`Failed to generate preview: ${error.message}`);
     }
   }
