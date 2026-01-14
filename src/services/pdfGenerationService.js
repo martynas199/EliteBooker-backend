@@ -23,10 +23,8 @@ class PDFGenerationService {
         ],
       };
 
-      // Use environment variable for executable path if set (Render production)
-      if (process.env.PUPPETEER_EXECUTABLE_PATH) {
-        launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
-      }
+      // Let Puppeteer auto-detect Chrome from its cache
+      // The @puppeteer/browsers install command will put it in the right place
 
       this.browser = await puppeteer.launch(launchOptions);
     }
