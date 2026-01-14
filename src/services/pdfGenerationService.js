@@ -11,15 +11,24 @@ class PDFGenerationService {
    */
   async initBrowser() {
     if (!this.browser) {
-      this.browser = await puppeteer.launch({
+      const launchOptions = {
         headless: "new",
         args: [
           "--no-sandbox",
           "--disable-setuid-sandbox",
           "--disable-dev-shm-usage",
           "--disable-gpu",
+          "--disable-software-rasterizer",
+          "--disable-extensions",
         ],
-      });
+      };
+
+      // In production on Render, use the installed Chrome
+      if (process.env.NODE_ENV === "production") {
+        launchOptions.executablePath = "/usr/bin/chromium-browser";
+      }
+
+      this.browser = await puppeteer.launch(launchOptions);
     }
     return this.browser;
   }
