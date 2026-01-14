@@ -23,10 +23,8 @@ class PDFGenerationService {
         ],
       };
 
-      // In production on Render, use the installed Chrome
-      if (process.env.NODE_ENV === "production") {
-        launchOptions.executablePath = "/usr/bin/chromium-browser";
-      }
+      // Puppeteer will use its bundled Chrome in production
+      // No need to specify executablePath, let Puppeteer find it automatically
 
       this.browser = await puppeteer.launch(launchOptions);
     }

@@ -2,9 +2,7 @@ services:
   - type: web
     name: beauty-salon-backend
     env: node
-    buildCommand: |
-      apt-get update && apt-get install -y chromium chromium-sandbox
-      npm install
+    buildCommand: npm install && npx puppeteer browsers install chrome
     startCommand: npm start
     healthCheckPath: /
     envVars:
