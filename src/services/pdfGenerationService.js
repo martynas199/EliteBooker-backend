@@ -1,4 +1,5 @@
 import puppeteer from "puppeteer";
+import chromium from "@sparticuz/chromium";
 import crypto from "crypto";
 
 class PDFGenerationService {
@@ -12,8 +13,9 @@ class PDFGenerationService {
   async initBrowser() {
     if (!this.browser) {
       const launchOptions = {
-        headless: "new",
+        headless: chromium.headless,
         args: [
+          ...chromium.args,
           "--no-sandbox",
           "--disable-setuid-sandbox",
           "--disable-dev-shm-usage",
@@ -21,10 +23,8 @@ class PDFGenerationService {
           "--disable-software-rasterizer",
           "--disable-extensions",
         ],
+        executablePath: await chromium.executablePath(),
       };
-
-      // Let Puppeteer auto-detect Chrome from its cache
-      // The @puppeteer/browsers install command will put it in the right place
 
       this.browser = await puppeteer.launch(launchOptions);
     }
