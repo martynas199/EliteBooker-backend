@@ -23,8 +23,10 @@ class PDFGenerationService {
         ],
       };
 
-      // Puppeteer will use its bundled Chrome in production
-      // No need to specify executablePath, let Puppeteer find it automatically
+      // Use environment variable for executable path if set (Render production)
+      if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+        launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+      }
 
       this.browser = await puppeteer.launch(launchOptions);
     }
