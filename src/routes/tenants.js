@@ -18,6 +18,11 @@ import { clearTenantCache } from "../middleware/resolveTenant.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import nodemailer from "nodemailer";
+import {
+  applyQueryOptimizations,
+  executePaginatedQuery,
+  MAX_LIMIT,
+} from "../utils/queryHelpers.js";
 
 const router = Router();
 
@@ -429,7 +434,7 @@ Registered: ${new Date().toLocaleString("en-GB")}`,
  */
 router.get("/", requireAdmin, requireSuperAdmin, async (req, res) => {
   try {
-    const { status, search, page = 1, limit = 20 } = req.query;
+    const { status, search } = req.query;
 
     const query = {};
 
@@ -446,25 +451,32 @@ router.get("/", requireAdmin, requireSuperAdmin, async (req, res) => {
       ];
     }
 
-    const skip = (page - 1) * limit;
+    // Build optimized query with lean and populate
+    let tenantQuery = Tenant.find(query)
+      .populate("ownerId", "name email")
+      .lean();
 
-    const [tenants, total] = await Promise.all([
-      Tenant.find(query)
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(parseInt(limit))
-        .populate("ownerId", "name email"),
-      Tenant.countDocuments(query),
-    ]);
+    // Apply pagination and optimizations with enforced MAX_LIMIT
+    tenantQuery = applyQueryOptimizations(tenantQuery, req.query, {
+      defaultSort: "-createdAt",
+      maxLimit: MAX_LIMIT,
+      defaultLimit: 20,
+      lean: false,
+    });
+
+    // Execute with caching
+    const cacheKey = `tenants:${status || "all"}:${search || "all"}`;
+    const result = await executePaginatedQuery(
+      tenantQuery,
+      Tenant,
+      query,
+      req.query,
+      { useCache: true, cacheKey }
+    );
 
     res.json({
-      tenants,
-      pagination: {
-        total,
-        page: parseInt(page),
-        limit: parseInt(limit),
-        pages: Math.ceil(total / limit),
-      },
+      tenants: result.data,
+      pagination: result.pagination,
     });
   } catch (error) {
     console.error("List tenants error:", error);
@@ -482,7 +494,7 @@ router.get("/", requireAdmin, requireSuperAdmin, async (req, res) => {
  */
 router.get("/public", async (req, res) => {
   try {
-    const { search, limit = 100 } = req.query;
+    const { search, limit } = req.query;
 
     const query = {
       status: { $in: ["active", "trial"] }, // Show active and trial tenants
@@ -498,18 +510,23 @@ router.get("/public", async (req, res) => {
       ];
     }
 
+    // Enforce MAX_LIMIT
+    const effectiveLimit = Math.min(parseInt(limit) || 100, MAX_LIMIT);
+
     const tenants = await Tenant.find(query)
       .select(
         "name slug address description location branding services rating reviewCount"
       )
       .sort({ createdAt: -1 })
-      .limit(parseInt(limit))
+      .limit(effectiveLimit)
       .lean();
 
     // Enrich tenants with hero image from HeroSection or Settings
-    console.log(
-      `[TENANTS/PUBLIC] Enriching ${tenants.length} tenants with hero images...`
-    );
+    if (process.env.LOG_VERBOSE) {
+      console.log(
+        `[TENANTS/PUBLIC] Enriching ${tenants.length} tenants with hero images...`
+      );
+    }
     const enrichedTenants = await Promise.all(
       tenants.map(async (tenant) => {
         try {

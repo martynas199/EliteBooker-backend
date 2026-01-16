@@ -8,6 +8,7 @@ import morgan from "morgan";
 import cookieParser from "cookie-parser";
 import mongoose from "mongoose";
 import passport from "./config/passport.js";
+import { requestTimer } from "./middleware/performanceMonitoring.js";
 import servicesRouter from "./routes/services.js";
 import beauticiansRouter from "./routes/specialists.js";
 import specialistsRouter from "./routes/specialists.js";
@@ -138,6 +139,11 @@ app.use(
 
 // Logging
 app.use(morgan("dev"));
+
+// Performance monitoring (log slow requests > 750ms)
+if (process.env.NODE_ENV !== "test") {
+  app.use(requestTimer(750));
+}
 
 // Cookie parser (for JWT in cookies)
 app.use(cookieParser());

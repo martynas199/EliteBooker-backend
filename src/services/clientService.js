@@ -33,14 +33,18 @@ class ClientService {
         marketingConsent: false,
       });
 
-      console.log(`[ClientService] Created new global client: ${email}`);
+      if (process.env.LOG_VERBOSE) {
+        console.log(`[ClientService] Created new global client: ${email}`);
+      }
     } else {
       // Update last activity
       client.lastActivity = new Date();
       client.totalBookings += 1;
       await client.save();
 
-      console.log(`[ClientService] Found existing client: ${email}`);
+      if (process.env.LOG_VERBOSE) {
+        console.log(`[ClientService] Found existing client: ${email}`);
+      }
     }
 
     return client;

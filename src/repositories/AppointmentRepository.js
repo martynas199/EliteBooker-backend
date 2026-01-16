@@ -1,5 +1,6 @@
 import Appointment from "../models/Appointment.js";
 import Service from "../models/Service.js";
+import { populateProjections } from "../utils/queryHelpers.js";
 
 /**
  * Repository for Appointment data access
@@ -23,8 +24,14 @@ class AppointmentRepository {
       .sort({ start: -1 })
       .skip(skip)
       .limit(limit)
-      .populate({ path: "serviceId", select: "name" })
-      .populate({ path: "specialistId", select: "name" })
+      .populate({
+        path: "serviceId",
+        select: populateProjections.service,
+      })
+      .populate({
+        path: "specialistId",
+        select: populateProjections.specialist,
+      })
       .lean();
   }
 
@@ -50,14 +57,14 @@ class AppointmentRepository {
   }
 
   /**
-   * Bulk fetch services by IDs (performance optimized)
+   * Bulk fetch services by IDs (performance optimized with projection)
    * @param {Array<string>} serviceIds - Array of service IDs
    * @returns {Promise<Array>} Array of services
    */
   async findServicesByIds(serviceIds) {
     if (!serviceIds || serviceIds.length === 0) return [];
     return await Service.find({ _id: { $in: serviceIds } })
-      .select("name")
+      .select(populateProjections.service)
       .lean();
   }
 

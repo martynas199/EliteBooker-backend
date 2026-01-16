@@ -12,19 +12,34 @@ class PDFGenerationService {
    */
   async initBrowser() {
     if (!this.browser) {
-      const launchOptions = {
-        headless: chromium.headless,
-        args: [
-          ...chromium.args,
-          "--no-sandbox",
-          "--disable-setuid-sandbox",
-          "--disable-dev-shm-usage",
-          "--disable-gpu",
-          "--disable-software-rasterizer",
-          "--disable-extensions",
-        ],
-        executablePath: await chromium.executablePath(),
-      };
+      // Use local Chromium in development, @sparticuz/chromium in production
+      // Set USE_LOCAL_CHROMIUM=true to force local Chromium even in production
+      const useLocalChromium =
+        process.env.NODE_ENV !== "production" ||
+        process.env.USE_LOCAL_CHROMIUM === "true";
+
+      const launchOptions = useLocalChromium
+        ? {
+            headless: "new",
+            args: [
+              "--no-sandbox",
+              "--disable-setuid-sandbox",
+              "--disable-dev-shm-usage",
+              "--disable-gpu",
+            ],
+            // Let Puppeteer use its bundled Chromium
+          }
+        : {
+            headless: chromium.headless,
+            args: [
+              ...chromium.args,
+              "--no-sandbox",
+              "--disable-setuid-sandbox",
+              "--disable-dev-shm-usage",
+              "--disable-gpu",
+            ],
+            executablePath: await chromium.executablePath(),
+          };
 
       this.browser = await puppeteer.launch(launchOptions);
     }
@@ -353,8 +368,8 @@ class PDFGenerationService {
           <div class="document-title">${templateName}</div>
           <div class="document-meta">
             Version ${templateVersion} | Generated ${new Date().toLocaleDateString(
-      "en-GB"
-    )}
+              "en-GB"
+            )}
           </div>
         </div>
         

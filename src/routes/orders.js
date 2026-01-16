@@ -9,6 +9,11 @@ import {
   sendOrderReadyForCollectionEmail,
   sendBeauticianProductOrderNotification,
 } from "../emails/mailer.js";
+import {
+  applyQueryOptimizations,
+  executePaginatedQuery,
+  MAX_LIMIT,
+} from "../utils/queryHelpers.js";
 
 const router = Router();
 
@@ -25,49 +30,43 @@ function getStripe() {
 // GET /api/orders - List all orders (admin)
 router.get("/", async (req, res) => {
   try {
-    const { status, paymentStatus, page, limit = 50 } = req.query;
     const filter = {};
 
-    if (status) filter.orderStatus = status;
-    if (paymentStatus) filter.paymentStatus = paymentStatus;
+    if (req.query.status) filter.orderStatus = req.query.status;
+    if (req.query.paymentStatus) filter.paymentStatus = req.query.paymentStatus;
 
     // Pagination support
-    const usePagination = page !== undefined;
-    const pageNum = Math.max(1, parseInt(page) || 1);
-    const pageLimit = Math.min(100, Math.max(1, parseInt(limit) || 50));
-    const skip = (pageNum - 1) * pageLimit;
+    const usePagination = req.query.page !== undefined;
+
+    // Build optimized query with lean and select
+    let orderQuery = Order.find(filter)
+      .select(
+        "orderNumber userId items subtotal shipping total orderStatus paymentStatus createdAt shippingAddress"
+      )
+      .lean();
+
+    // Apply pagination and optimizations with enforced MAX_LIMIT
+    orderQuery = applyQueryOptimizations(orderQuery, req.query, {
+      defaultSort: "-createdAt",
+      maxLimit: MAX_LIMIT,
+      lean: false,
+    });
 
     if (usePagination) {
-      // Paginated response
-      const [orders, total] = await Promise.all([
-        Order.find(filter)
-          .select(
-            "orderNumber userId items subtotal shipping total orderStatus paymentStatus createdAt shippingAddress"
-          )
-          .sort({ createdAt: -1 })
-          .skip(skip)
-          .limit(pageLimit)
-          .lean(),
-        Order.countDocuments(filter),
-      ]);
+      // Paginated response with caching
+      const cacheKey = `orders:${req.query.status || "all"}:${req.query.paymentStatus || "all"}`;
+      const result = await executePaginatedQuery(
+        orderQuery,
+        Order,
+        filter,
+        req.query,
+        { useCache: true, cacheKey }
+      );
 
-      res.json({
-        data: orders,
-        pagination: {
-          page: pageNum,
-          limit: pageLimit,
-          total,
-          totalPages: Math.ceil(total / pageLimit),
-          hasMore: pageNum * pageLimit < total,
-        },
-      });
+      res.json(result);
     } else {
       // Legacy: return limited orders
-      const orders = await Order.find(filter)
-        .sort({ createdAt: -1 })
-        .limit(pageLimit)
-        .lean();
-
+      const orders = await orderQuery;
       res.json(orders);
     }
   } catch (error) {

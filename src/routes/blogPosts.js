@@ -2,6 +2,11 @@ import express from "express";
 import { z } from "zod";
 import { requireAdmin, requireSuperAdmin } from "../middleware/requireAdmin.js";
 import BlogPost from "../models/BlogPost.js";
+import {
+  applyQueryOptimizations,
+  executePaginatedQuery,
+  MAX_LIMIT,
+} from "../utils/queryHelpers.js";
 
 const router = express.Router();
 
@@ -31,36 +36,36 @@ const UpdateBlogPostSchema = z.object({
 // GET /api/blog-posts - Public route to get all published blog posts
 router.get("/", async (req, res) => {
   try {
-    const { status, tag, limit = 50, page = 1 } = req.query;
-
     // Build query - only published posts for public
     const query = { status: "published" };
 
-    if (tag) {
-      query.tags = tag;
+    if (req.query.tag) {
+      query.tags = req.query.tag;
     }
 
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    // Build optimized query with lean and projections
+    let blogQuery = BlogPost.find(query).populate("author", "name").lean();
 
-    const [posts, total] = await Promise.all([
-      BlogPost.find(query)
-        .populate("author", "name")
-        .sort({ publishedAt: -1 })
-        .limit(parseInt(limit))
-        .skip(skip)
-        .lean(),
-      BlogPost.countDocuments(query),
-    ]);
+    // Apply pagination and optimizations with enforced MAX_LIMIT
+    blogQuery = applyQueryOptimizations(blogQuery, req.query, {
+      defaultSort: "-publishedAt",
+      maxLimit: MAX_LIMIT,
+      lean: false, // Already applied
+    });
+
+    // Execute with count caching
+    const cacheKey = `blogposts:published:${req.query.tag || "all"}`;
+    const result = await executePaginatedQuery(
+      blogQuery,
+      BlogPost,
+      query,
+      req.query,
+      { useCache: true, cacheKey }
+    );
 
     res.json({
       success: true,
-      data: posts,
-      pagination: {
-        total,
-        page: parseInt(page),
-        limit: parseInt(limit),
-        pages: Math.ceil(total / parseInt(limit)),
-      },
+      ...result,
     });
   } catch (error) {
     console.error("[BLOG-POSTS] Error fetching blog posts:", error);
@@ -74,29 +79,37 @@ router.get("/", async (req, res) => {
 // GET /api/blog-posts/admin - Admin route to get all blog posts (including drafts)
 router.get("/admin", requireAdmin, async (req, res) => {
   try {
-    const { status, tag, limit = 50, page = 1 } = req.query;
-
     const query = {};
 
-    if (status) {
-      query.status = status;
+    if (req.query.status) {
+      query.status = req.query.status;
     }
 
-    if (tag) {
-      query.tags = tag;
+    if (req.query.tag) {
+      query.tags = req.query.tag;
     }
 
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    // Build optimized query
+    let blogQuery = BlogPost.find(query)
+      .populate("author", "name email")
+      .lean();
 
-    const [posts, total] = await Promise.all([
-      BlogPost.find(query)
-        .populate("author", "name email")
-        .sort({ createdAt: -1 })
-        .limit(parseInt(limit))
-        .skip(skip)
-        .lean(),
-      BlogPost.countDocuments(query),
-    ]);
+    // Apply pagination and optimizations with enforced MAX_LIMIT
+    blogQuery = applyQueryOptimizations(blogQuery, req.query, {
+      defaultSort: "-createdAt",
+      maxLimit: MAX_LIMIT,
+      lean: false,
+    });
+
+    // Execute with caching
+    const result = await executePaginatedQuery(
+      blogQuery,
+      BlogPost,
+      query,
+      req.query
+    );
+
+    const { data: posts, pagination: total } = result;
 
     res.json({
       success: true,

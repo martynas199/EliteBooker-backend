@@ -1,8 +1,12 @@
 import cron from "node-cron";
 import mongoose from "mongoose";
+import pLimit from "p-limit";
 import Appointment from "../models/Appointment.js";
 import smsService from "./smsService.js";
 import { sendReminderEmail } from "../emails/mailer.js";
+
+// Bounded concurrency limiter - process max 10 reminders concurrently
+const limit = pLimit(10);
 
 /**
  * Appointment Reminder Service
@@ -182,10 +186,13 @@ async function processReminders() {
     let failureCount = 0;
     let emailOnlyCount = 0;
 
-    for (const appointment of appointments) {
-      console.log(
-        `[Reminder] Processing appointment ${appointment._id} for ${appointment.client?.name}`
-      );
+    // Process appointments with bounded concurrency (max 10 concurrent)
+    const processAppointment = async (appointment) => {
+      if (process.env.LOG_VERBOSE) {
+        console.log(
+          `[Reminder] Processing appointment ${appointment._id} for ${appointment.client?.name}`
+        );
+      }
 
       let smsResult = { success: false, reason: "not_attempted" };
       let emailResult = { success: false, reason: "not_attempted" };
@@ -203,27 +210,35 @@ async function processReminders() {
         const smsRemindersEnabled = tenant?.features?.smsReminders === true;
 
         if (!smsRemindersEnabled) {
-          console.log(
-            `[Reminder] SMS Reminders feature is disabled, skipping SMS for appointment ${appointment._id}`
-          );
+          if (process.env.LOG_VERBOSE) {
+            console.log(
+              `[Reminder] SMS Reminders feature is disabled, skipping SMS for appointment ${appointment._id}`
+            );
+          }
         } else {
           smsResult = await sendSMSReminder(appointment);
           if (smsResult.success) {
             reminderTypes.push("sms");
-            console.log(
-              `[Reminder] ✓ SMS sent for appointment ${appointment._id}`
-            );
+            if (process.env.LOG_VERBOSE) {
+              console.log(
+                `[Reminder] ✓ SMS sent for appointment ${appointment._id}`
+              );
+            }
           } else {
-            console.log(
-              `[Reminder] ✗ SMS failed for appointment ${appointment._id}:`,
-              smsResult.reason || smsResult.error
-            );
+            if (process.env.LOG_VERBOSE) {
+              console.log(
+                `[Reminder] ✗ SMS failed for appointment ${appointment._id}:`,
+                smsResult.reason || smsResult.error
+              );
+            }
           }
         }
       } else {
-        console.log(
-          `[Reminder] No phone number for appointment ${appointment._id}`
-        );
+        if (process.env.LOG_VERBOSE) {
+          console.log(
+            `[Reminder] No phone number for appointment ${appointment._id}`
+          );
+        }
       }
 
       // Try to send email
@@ -231,17 +246,23 @@ async function processReminders() {
         emailResult = await sendEmailReminder(appointment);
         if (emailResult.success) {
           reminderTypes.push("email");
-          console.log(
-            `[Reminder] ✓ Email sent for appointment ${appointment._id}`
-          );
+          if (process.env.LOG_VERBOSE) {
+            console.log(
+              `[Reminder] ✓ Email sent for appointment ${appointment._id}`
+            );
+          }
         } else {
-          console.log(
-            `[Reminder] ✗ Email failed for appointment ${appointment._id}:`,
-            emailResult.reason || emailResult.error
-          );
+          if (process.env.LOG_VERBOSE) {
+            console.log(
+              `[Reminder] ✗ Email failed for appointment ${appointment._id}:`,
+              emailResult.reason || emailResult.error
+            );
+          }
         }
       } else {
-        console.log(`[Reminder] No email for appointment ${appointment._id}`);
+        if (process.env.LOG_VERBOSE) {
+          console.log(`[Reminder] No email for appointment ${appointment._id}`);
+        }
       }
 
       // Update appointment
@@ -258,11 +279,13 @@ async function processReminders() {
         if (reminderTypes.includes("email") && !reminderTypes.includes("sms")) {
           emailOnlyCount++;
         }
-        console.log(
-          `[Reminder] ✓ Appointment ${
-            appointment._id
-          } marked as reminded (${reminderTypes.join(", ")})`
-        );
+        if (process.env.LOG_VERBOSE) {
+          console.log(
+            `[Reminder] ✓ Appointment ${
+              appointment._id
+            } marked as reminded (${reminderTypes.join(", ")})`
+          );
+        }
       } else {
         failureCount++;
         console.log(
@@ -270,7 +293,14 @@ async function processReminders() {
         );
         // Don't mark as sent so it will be retried
       }
-    }
+    };
+
+    // Process all appointments with bounded concurrency
+    await Promise.all(
+      appointments.map((appointment) =>
+        limit(() => processAppointment(appointment))
+      )
+    );
 
     console.log("[Reminder] ========================================");
     console.log(`[Reminder] Summary:`);

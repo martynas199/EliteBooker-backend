@@ -54,7 +54,9 @@ class LockService {
 
     // Connection event handlers
     this.redis.on("connect", () => {
-      console.log("✅ Redis connected for lock service");
+      if (process.env.LOG_VERBOSE) {
+        console.log("✅ Redis connected for lock service");
+      }
     });
 
     this.redis.on("error", (err) => {

@@ -11,12 +11,19 @@ import requireAdmin from "../middleware/requireAdmin.js";
 import optionalAuth from "../middleware/optionalAuth.js";
 import checkServicePermission from "../middleware/checkServicePermission.js";
 import { attachTenantToModels } from "../middleware/multiTenantPlugin.js";
+import {
+  applyQueryOptimizations,
+  executePaginatedQuery,
+  populateProjections,
+  MAX_LIMIT,
+} from "../utils/queryHelpers.js";
 import multer from "multer";
 import { uploadImage, deleteImage } from "../utils/cloudinary.js";
 import fs from "fs";
 import OpenAI from "openai";
 
 const r = Router();
+const LOG_VERBOSE = process.env.LOG_VERBOSE === "true";
 
 // Initialize OpenAI (only if API key is set)
 const openai = process.env.OPENAI_API_KEY
@@ -49,12 +56,14 @@ const deleteLocalFile = (path) => {
  */
 r.get("/", optionalAuth, attachTenantToModels, async (req, res, next) => {
   try {
-    console.log("[SERVICES] Request context:", {
-      hasAdmin: !!req.admin,
-      adminEmail: req.admin?.email,
-      tenantId: req.tenantId,
-      isSuperAdmin: req.isSuperAdmin,
-    });
+    if (LOG_VERBOSE) {
+      console.log("[SERVICES] Request context:", {
+        hasAdmin: !!req.admin,
+        adminEmail: req.admin?.email,
+        tenantId: req.tenantId,
+        isSuperAdmin: req.isSuperAdmin,
+      });
+    }
 
     // Validate query params
     const queryValidation = listServicesQuerySchema.safeParse(req.query);
@@ -65,31 +74,10 @@ r.get("/", optionalAuth, attachTenantToModels, async (req, res, next) => {
       });
     }
 
-    const {
-      active,
-      category,
-      specialistId,
-      tenantId,
-      limit = 20,
-      skip = 0,
-    } = queryValidation.data;
-
-    // Parse pagination params
-    const page = Math.max(1, parseInt(req.query.page) || 1);
-    const pageLimit = Math.min(
-      100,
-      Math.max(1, parseInt(req.query.limit) || limit)
-    );
-    const pageSkip = req.query.page ? (page - 1) * pageLimit : skip;
+    const { active, category, specialistId, tenantId } = queryValidation.data;
 
     // Build query
     const query = {};
-
-    console.log("[SERVICES] Cookies:", {
-      accessToken: req.cookies.accessToken ? "EXISTS" : "MISSING",
-      refreshToken: req.cookies.refreshToken ? "EXISTS" : "MISSING",
-      cookieKeys: Object.keys(req.cookies),
-    });
 
     // TENANT FILTERING
     let queryTenantId;
@@ -101,10 +89,12 @@ r.get("/", optionalAuth, attachTenantToModels, async (req, res, next) => {
       ) {
         queryTenantId = new mongoose.Types.ObjectId(tenantId);
         query.tenantId = queryTenantId;
-        console.log(
-          "[SERVICES] Super admin/support querying tenant:",
-          tenantId
-        );
+        if (LOG_VERBOSE) {
+          console.log(
+            "[SERVICES] Super admin/support querying tenant:",
+            tenantId
+          );
+        }
       } else {
         return res.status(403).json({
           error:
@@ -113,14 +103,13 @@ r.get("/", optionalAuth, attachTenantToModels, async (req, res, next) => {
       }
     } else {
       if (!req.tenantId) {
-        console.log("[SERVICES] ERROR: No tenantId found in request");
+        console.error("[SERVICES] No tenantId found in request");
         return res.status(400).json({
           error: "Tenant context required. Please provide tenant information.",
         });
       }
       queryTenantId = req.tenantId;
       query.tenantId = req.tenantId;
-      console.log("[SERVICES] Adding tenant filter:", req.tenantId);
     }
 
     if (active && active !== "all") {
@@ -130,7 +119,9 @@ r.get("/", optionalAuth, attachTenantToModels, async (req, res, next) => {
       query.category = category;
     }
     if (specialistId) {
-      console.log(`[SERVICES] Filtering by specialistId: ${specialistId}`);
+      if (LOG_VERBOSE) {
+        console.log(`[SERVICES] Filtering by specialistId: ${specialistId}`);
+      }
       // Check all possible specialist fields (including legacy fields)
       query.$or = [
         { primaryBeauticianId: specialistId },
@@ -145,9 +136,11 @@ r.get("/", optionalAuth, attachTenantToModels, async (req, res, next) => {
     if (req.admin) {
       // SPECIALIST role: Only see services assigned to them
       if (req.admin.role === "specialist" && req.admin.specialistId) {
-        console.log(
-          `[SERVICES] Filtering for SPECIALIST: ${req.admin.specialistId}`
-        );
+        if (LOG_VERBOSE) {
+          console.log(
+            `[SERVICES] Filtering for SPECIALIST: ${req.admin.specialistId}`
+          );
+        }
         // Override any existing $or filter to enforce role-based access
         query.$or = [
           { primaryBeauticianId: req.admin.specialistId },
@@ -158,9 +151,11 @@ r.get("/", optionalAuth, attachTenantToModels, async (req, res, next) => {
       }
       // BEAUTICIAN role (legacy): Only see services assigned to their specialistId
       else if (req.admin.role === "admin" && req.admin.specialistId) {
-        console.log(
-          `[SERVICES] Filtering for BEAUTICIAN admin: ${req.admin.specialistId}`
-        );
+        if (LOG_VERBOSE) {
+          console.log(
+            `[SERVICES] Filtering for BEAUTICIAN admin: ${req.admin.specialistId}`
+          );
+        }
         // Override any existing $or filter to enforce role-based access
         query.$or = [
           { primaryBeauticianId: req.admin.specialistId },
@@ -169,13 +164,11 @@ r.get("/", optionalAuth, attachTenantToModels, async (req, res, next) => {
           { beauticianIds: req.admin.specialistId }, // Legacy field
         ];
       }
-      // SUPER_ADMIN: See all services (no additional filter needed)
-      else if (req.admin.role === "super_admin") {
-        console.log("[SERVICES] SUPER_ADMIN: Showing all services");
-      }
     }
 
-    console.log("[SERVICES] Final query:", JSON.stringify(query, null, 2));
+    if (LOG_VERBOSE) {
+      console.log("[SERVICES] Final query:", JSON.stringify(query, null, 2));
+    }
 
     // Prepare query options for multiTenantPlugin
     const queryOptions = {};
@@ -187,38 +180,40 @@ r.get("/", optionalAuth, attachTenantToModels, async (req, res, next) => {
       queryOptions.tenantId = queryTenantId;
     }
 
-    // Get total count for pagination (uses indexed fields)
-    const total = await Service.countDocuments(query).setOptions(queryOptions);
-
-    const docs = await Service.find(query)
+    // Build optimized query with lean and projections
+    let serviceQuery = Service.find(query)
       .setOptions(queryOptions)
       .populate({
         path: "primaryBeauticianId",
-        select: "name email stripeStatus subscription",
+        select: populateProjections.specialist,
       })
       .populate({
         path: "additionalBeauticianIds",
-        select: "name email stripeStatus subscription",
+        select: populateProjections.specialist,
       })
-      .limit(pageLimit)
-      .skip(pageSkip)
-      .sort({ name: 1 })
       .lean();
+
+    // Apply pagination and optimizations
+    serviceQuery = applyQueryOptimizations(serviceQuery, req.query, {
+      defaultSort: "name",
+      maxLimit: MAX_LIMIT,
+      lean: false, // Already applied .lean() above
+    });
 
     // Return paginated response if page param is used
     if (req.query.page) {
-      res.json({
-        data: docs,
-        pagination: {
-          page,
-          limit: pageLimit,
-          total,
-          totalPages: Math.ceil(total / pageLimit),
-          hasMore: page * pageLimit < total,
-        },
-      });
+      const cacheKey = `services:${JSON.stringify(query)}`;
+      const result = await executePaginatedQuery(
+        serviceQuery,
+        Service,
+        query,
+        req.query,
+        { useCache: true, cacheKey }
+      );
+      res.json(result);
     } else {
       // Backward compatibility: return array if no page param
+      const docs = await serviceQuery;
       res.json(docs);
     }
   } catch (err) {
@@ -244,11 +239,11 @@ r.get("/:id", async (req, res, next) => {
     const service = await Service.findById(req.params.id)
       .populate({
         path: "primaryBeauticianId",
-        select: "name email stripeStatus subscription",
+        select: populateProjections.specialist,
       })
       .populate({
         path: "additionalBeauticianIds",
-        select: "name email stripeStatus subscription",
+        select: populateProjections.specialist,
       })
       .lean();
 

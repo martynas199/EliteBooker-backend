@@ -3,6 +3,43 @@
  * Provides pagination, field selection, and query optimization helpers
  */
 
+// Global configuration
+const MAX_LIMIT = 100; // Maximum documents per request
+const DEFAULT_LIMIT = 50;
+const DEFAULT_SORT = "-createdAt";
+
+// In-memory cache for count queries (short TTL)
+const countCache = new Map();
+const COUNT_CACHE_TTL = 60 * 1000; // 60 seconds
+
+/**
+ * Get or set cached count with TTL
+ * @param {String} key - Cache key
+ * @param {Function} fetcher - Function to fetch count if not cached
+ * @returns {Promise<Number>} Document count
+ */
+async function getCachedCount(key, fetcher) {
+  const cached = countCache.get(key);
+  if (cached && Date.now() - cached.timestamp < COUNT_CACHE_TTL) {
+    return cached.value;
+  }
+
+  const value = await fetcher();
+  countCache.set(key, { value, timestamp: Date.now() });
+
+  // Cleanup old cache entries periodically
+  if (countCache.size > 1000) {
+    const now = Date.now();
+    for (const [k, v] of countCache.entries()) {
+      if (now - v.timestamp > COUNT_CACHE_TTL) {
+        countCache.delete(k);
+      }
+    }
+  }
+
+  return value;
+}
+
 /**
  * Parse and validate pagination parameters
  * @param {Object} query - Express request query object
@@ -10,12 +47,16 @@
  * @returns {Object} Pagination parameters
  */
 export function parsePagination(query, options = {}) {
-  const { defaultLimit = 50, maxLimit = 100, defaultPage = 1 } = options;
+  const {
+    defaultLimit = DEFAULT_LIMIT,
+    maxLimit = MAX_LIMIT,
+    defaultPage = 1,
+  } = options;
 
   let limit = parseInt(query.limit) || defaultLimit;
   let page = parseInt(query.page) || defaultPage;
 
-  // Validate and constrain values
+  // Validate and constrain values - ENFORCE GLOBAL MAX LIMIT
   limit = Math.min(Math.max(1, limit), maxLimit);
   page = Math.max(1, page);
 
@@ -48,7 +89,7 @@ export function parseFields(query, defaultFields = "") {
  * @param {String} defaultSort - Default sort (e.g., '-createdAt')
  * @returns {String} Sort string for Mongoose
  */
-export function parseSort(query, defaultSort = "-createdAt") {
+export function parseSort(query, defaultSort = DEFAULT_SORT) {
   if (query.sort) {
     // Convert comma-separated to space-separated
     return query.sort.split(",").join(" ");
@@ -66,14 +107,17 @@ export function parseSort(query, defaultSort = "-createdAt") {
 export function applyQueryOptimizations(query, params, options = {}) {
   const {
     defaultFields = "",
-    defaultSort = "-createdAt",
-    defaultLimit = 50,
-    maxLimit = 100,
+    defaultSort = DEFAULT_SORT,
+    defaultLimit = DEFAULT_LIMIT,
+    maxLimit = MAX_LIMIT,
     lean = true,
   } = options;
 
-  // Apply pagination
-  const { limit, skip } = parsePagination(params, { defaultLimit, maxLimit });
+  // Apply pagination with enforced limits
+  const { limit, skip } = parsePagination(params, {
+    defaultLimit,
+    maxLimit: MAX_LIMIT,
+  });
   query = query.limit(limit).skip(skip);
 
   // Apply field selection
@@ -132,13 +176,21 @@ export async function executePaginatedQuery(
   params,
   options = {}
 ) {
-  const { limit, page } = parsePagination(params, options);
+  const { limit, page } = parsePagination(params, { maxLimit: MAX_LIMIT });
+  const { useCache = true, cacheKey = null } = options;
 
   // Execute query and count in parallel
-  const [data, total] = await Promise.all([
-    query,
-    model.countDocuments(filter),
-  ]);
+  const dataPromise = query;
+
+  let totalPromise;
+  if (useCache && cacheKey) {
+    // Use cached count if available
+    totalPromise = getCachedCount(cacheKey, () => model.countDocuments(filter));
+  } else {
+    totalPromise = model.countDocuments(filter);
+  }
+
+  const [data, total] = await Promise.all([dataPromise, totalPromise]);
 
   const pagination = createPaginationMeta(total, page, limit);
 
@@ -163,3 +215,37 @@ export const commonFields = {
     "_id orderNumber userId items total orderStatus paymentStatus createdAt",
   user: "_id name email phone role isActive createdAt",
 };
+
+/**
+ * Common populate projections to minimize over-fetching
+ */
+export const populateProjections = {
+  specialist:
+    "_id name email phone bio image specialty active stripeStatus subscription",
+  service:
+    "_id name description category image variants price duration active primaryBeauticianId specialistId",
+  user: "_id name email phone",
+  client: "name email phone",
+  tenant: "_id name slug domain",
+  location: "_id name address city postcode phone",
+};
+
+/**
+ * Helper to apply strictPopulate and projections to populate calls
+ * @param {Query} query - Mongoose query
+ * @param {Array|Object} populateConfig - Populate configuration
+ * @returns {Query} Query with optimized populate
+ */
+export function applyOptimizedPopulate(query, populateConfig) {
+  if (Array.isArray(populateConfig)) {
+    populateConfig.forEach((config) => {
+      query = query.populate(config);
+    });
+  } else {
+    query = query.populate(populateConfig);
+  }
+  return query;
+}
+
+// Export constants
+export { MAX_LIMIT, DEFAULT_LIMIT, DEFAULT_SORT };

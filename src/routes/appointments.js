@@ -12,7 +12,15 @@ import {
 } from "../emails/mailer.js";
 import AppointmentService from "../services/appointmentService.js";
 import requireAdmin from "../middleware/requireAdmin.js";
+import {
+  applyQueryOptimizations,
+  executePaginatedQuery,
+  populateProjections,
+  MAX_LIMIT,
+} from "../utils/queryHelpers.js";
+
 const r = Router();
+const LOG_VERBOSE = process.env.LOG_VERBOSE === "true";
 
 r.get("/metrics", requireAdmin, async (req, res) => {
   try {
@@ -45,7 +53,9 @@ r.get("/", async (req, res) => {
     const tenantId = req.tenantId;
 
     if (!tenantId) {
-      console.warn("[Appointments] No tenantId found in request");
+      if (LOG_VERBOSE) {
+        console.warn("[Appointments] No tenantId found in request");
+      }
       return res.status(403).json({ error: "Tenant context required" });
     }
 
@@ -53,9 +63,12 @@ r.get("/", async (req, res) => {
     const usePagination = req.query.page !== undefined;
 
     if (usePagination) {
-      // Parse pagination params
+      // Parse pagination params with enforced MAX_LIMIT
       const page = Math.max(1, parseInt(req.query.page) || 1);
-      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
+      const limit = Math.min(
+        MAX_LIMIT,
+        Math.max(1, parseInt(req.query.limit) || 50)
+      );
 
       // Use service layer for paginated results with tenant filtering
       const result = await AppointmentService.getAppointmentsPaginated({
@@ -66,10 +79,9 @@ r.get("/", async (req, res) => {
 
       res.json(result);
     } else {
-      // Backward compatibility: return array if no page param
-      const appointments = await AppointmentService.getAllAppointments(
-        tenantId
-      );
+      // Backward compatibility: return array if no page param (with max limit for safety)
+      const appointments =
+        await AppointmentService.getAllAppointments(tenantId);
       res.json(appointments);
     }
   } catch (err) {
@@ -88,9 +100,11 @@ r.get("/:id", async (req, res) => {
       return res.status(404).json({ error: "Appointment not found" });
     }
 
-    // Fetch specialist separately (not in bulk for single appointment)
+    // Fetch specialist separately with projection (not in bulk for single appointment)
     const specialist = appointment.specialistId
-      ? await Specialist.findById(appointment.specialistId).lean()
+      ? await Specialist.findById(appointment.specialistId)
+          .select(populateProjections.specialist)
+          .lean()
       : null;
 
     res.json({ ...appointment, specialist: specialist || null });
