@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 import Admin from "../models/Admin.js";
+import { applySentryRequestContext } from "./sentryContext.js";
 
 const JWT_SECRET =
   process.env.JWT_SECRET || "your-secret-key-change-this-in-production";
@@ -83,6 +84,8 @@ export async function requireAdmin(req, res, next) {
         "[requireAdmin] Super admin status set (but tenantId still set from token)"
       );
     }
+
+    applySentryRequestContext(req);
 
     next();
   } catch (error) {

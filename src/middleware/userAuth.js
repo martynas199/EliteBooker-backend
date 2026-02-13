@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
+import { applySentryRequestContext } from "./sentryContext.js";
 
 const JWT_SECRET =
   process.env.JWT_SECRET || "your-secret-key-change-in-production";
@@ -53,6 +54,7 @@ export const authenticateUser = async (req, res, next) => {
     // Attach user to request
     req.user = user;
     req.userId = user._id;
+    applySentryRequestContext(req);
 
     next();
   } catch (error) {
@@ -82,6 +84,7 @@ export const optionalAuth = async (req, res, next) => {
         if (user && user.isActive) {
           req.user = user;
           req.userId = user._id;
+          applySentryRequestContext(req);
         }
       }
     } catch (err) {

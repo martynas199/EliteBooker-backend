@@ -8,6 +8,7 @@ import Tenant from "../models/Tenant.js";
 import { sendConfirmationEmail } from "../emails/mailer.js";
 import ClientService from "../services/clientService.js";
 import AppointmentService from "../services/appointmentService.js";
+import { retrieveStripeCheckoutSession } from "../utils/stripeSessionResolver.js";
 import jwt from "jsonwebtoken";
 import Client from "../models/Client.js";
 import smsService from "../services/smsService.js";
@@ -62,29 +63,30 @@ r.get("/confirm", async (req, res, next) => {
     // Get specialist to determine which Stripe account has the session
     const specialist = await Specialist.findById(appt.specialistId).lean();
 
-    // Retrieve session from the correct account
-    let stripe;
-    if (
-      specialist?.stripeAccountId &&
-      specialist?.stripeStatus === "connected"
-    ) {
-      // Direct charge - session is on specialist's account
-      stripe = getStripe(specialist.stripeAccountId);
-      console.log(
-        "[CHECKOUT CONFIRM] Retrieving from specialist account:",
-        specialist.stripeAccountId
-      );
-    } else {
-      // Platform charge - session is on platform account
-      stripe = getStripe();
-      console.log("[CHECKOUT CONFIRM] Retrieving from platform account");
-    }
+    const connectedAccountId =
+      specialist?.stripeAccountId && specialist?.stripeStatus === "connected"
+        ? specialist.stripeAccountId
+        : null;
 
-    const session = await stripe.checkout.sessions.retrieve(
-      String(session_id),
-      { expand: ["payment_intent"] }
+    const preferredSource =
+      appt?.payment?.stripe?.sessionAccount === "connected"
+        ? "connected"
+        : "platform";
+
+    const { session, source: sessionSource } = await retrieveStripeCheckoutSession(
+      {
+        sessionId: String(session_id),
+        preferredSource,
+        connectedAccountId,
+        getPlatformStripe: () => getStripe(),
+        getConnectedStripe: (accountId) => getStripe(accountId),
+        logger: console,
+      }
     );
-    console.log("[CHECKOUT CONFIRM] Stripe session retrieved successfully");
+
+    console.log(
+      `[CHECKOUT CONFIRM] Stripe session retrieved from ${sessionSource} account`
+    );
 
     const isCancelled = [
       "cancelled_no_refund",
@@ -835,7 +837,7 @@ r.post("/create-session", async (req, res, next) => {
         },
       };
       console.log(
-        "[CHECKOUT] Creating DIRECT CHARGE on connected account:",
+        "[CHECKOUT] Creating destination charge (platform -> connected account):",
         specialist.stripeAccountId,
         "Platform fee:",
         platformFee
@@ -853,6 +855,14 @@ r.post("/create-session", async (req, res, next) => {
           status: "pending",
           mode: isDeposit ? "deposit" : "pay_now", // Save the payment mode
           amountTotal: unit_amount, // Save intended amount in minor units (e.g. pence)
+          stripe: {
+            ...(appt.payment?.stripe || {}),
+            sessionAccount: "platform",
+            chargeType: useConnect ? "destination_charge" : "platform_charge",
+            ...(useConnect
+              ? { beauticianStripeAccount: specialist.stripeAccountId }
+              : {}),
+          },
         },
       },
     });

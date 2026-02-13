@@ -1,5 +1,6 @@
 // Load environment variables first (must be before all other imports)
 import "./config/env.js";
+import "./instrument.js";
 
 import { createApp } from "./app.js";
 import { connectToDatabase } from "./config/database.js";
@@ -28,4 +29,3 @@ if (process.env.NODE_ENV !== "test") {
 }
 
 export default app;
-

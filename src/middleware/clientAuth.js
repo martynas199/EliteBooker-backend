@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import Client from "../models/Client.js";
+import { applySentryRequestContext } from "./sentryContext.js";
 
 const JWT_SECRET =
   process.env.JWT_SECRET || "your-secret-key-change-in-production";
@@ -40,6 +41,7 @@ export const authenticateClient = async (req, res, next) => {
     // Attach client to request
     req.client = client;
     req.clientId = client._id;
+    applySentryRequestContext(req);
 
     next();
   } catch (error) {

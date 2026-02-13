@@ -1,4 +1,5 @@
 import express from "express";
+import * as Sentry from "@sentry/node";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
@@ -59,6 +60,7 @@ import {
 import { resolveTenant } from "./middleware/resolveTenant.js";
 import { attachTenantToModels } from "./middleware/multiTenantPlugin.js";
 import optionalAuth from "./middleware/optionalAuth.js";
+import { sentryContextMiddleware } from "./middleware/sentryContext.js";
 import { buildAllowedOrigins, createCorsOptions } from "./config/cors.js";
 import { notFoundHandler, errorHandler } from "./middleware/errorHandler.js";
 
@@ -105,6 +107,14 @@ export function createApp({ logger = console } = {}) {
 
   // Health check (no rate limit)
   app.get("/health", (req, res) => res.json({ ok: true }));
+  if (
+    process.env.NODE_ENV !== "production" ||
+    process.env.SENTRY_DEBUG_ROUTE_ENABLED === "true"
+  ) {
+    app.get("/debug-sentry", () => {
+      throw new Error("My first Sentry error!");
+    });
+  }
 
   // Webhooks: use raw body for Stripe signature verification BEFORE json parser
   app.use(
@@ -123,6 +133,7 @@ export function createApp({ logger = console } = {}) {
   app.use(resolveTenant);
   app.use(attachTenantToModels);
   app.use(optionalAuth);
+  app.use(sentryContextMiddleware);
 
   // Authentication routes with stricter rate limiting (BEFORE general limiter)
   app.use("/api/auth/login", authLimiter);
@@ -213,8 +224,8 @@ export function createApp({ logger = console } = {}) {
 
   // Fallback + error handling
   app.use(notFoundHandler);
+  Sentry.setupExpressErrorHandler(app);
   app.use(errorHandler);
 
   return { app, allowedOrigins };
 }
-

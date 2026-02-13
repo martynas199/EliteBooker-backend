@@ -7,6 +7,16 @@ const PaymentStripeSchema = new mongoose.Schema(
     chargeId: String,
     refundIds: [String],
     // Stripe Connect fields
+    sessionAccount: {
+      type: String,
+      enum: ["platform", "connected"],
+      default: "platform",
+    },
+    chargeType: {
+      type: String,
+      enum: ["platform_charge", "destination_charge", "direct_charge"],
+      default: "platform_charge",
+    },
     platformFee: { type: Number, default: 99 }, // £0.99 in pence
     beauticianStripeAccount: String, // Connected account ID
     transferId: String, // ID of the transfer to specialist
