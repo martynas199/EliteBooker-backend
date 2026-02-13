@@ -6,7 +6,7 @@ import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import Admin from "../models/Admin.js";
 import RefreshToken from "../models/RefreshToken.js";
-import nodemailer from "nodemailer";
+import { escapeHtml, getDefaultFromEmail, sendEmail } from "../emails/transport.js";
 
 const r = Router();
 
@@ -647,30 +647,12 @@ r.patch("/change-password", async (req, res) => {
  * Helper function to send password reset email
  */
 async function sendPasswordResetEmail(admin, resetToken) {
-  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM } = process.env;
-
-  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
-    console.error(
-      "[AUTH] SMTP not configured. Cannot send password reset email."
-    );
-    throw new Error("Email service not configured");
-  }
-
-  const transport = nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: parseInt(SMTP_PORT || "587"),
-    secure: parseInt(SMTP_PORT || "587") === 465,
-    auth: {
-      user: SMTP_USER,
-      pass: SMTP_PASS,
-    },
-  });
-
   // Create reset URL
   const resetUrl = `${process.env.FRONTEND_URL}/admin/reset-password?token=${resetToken}`;
+  const safeAdminName = escapeHtml(admin.name);
 
-  const mailOptions = {
-    from: SMTP_FROM || `"Elite Booker Admin" <${SMTP_USER}>`,
+  const result = await sendEmail({
+    from: getDefaultFromEmail(),
     to: admin.email,
     subject: "Password Reset Request - Elite Booker",
     html: `
@@ -681,7 +663,7 @@ async function sendPasswordResetEmail(admin, resetToken) {
           </h2>
           
           <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-            Hello <strong>${admin.name}</strong>,
+            Hello <strong>${safeAdminName}</strong>,
           </p>
           
           <p style="color: #374151; font-size: 16px; line-height: 1.6;">
@@ -728,13 +710,14 @@ async function sendPasswordResetEmail(admin, resetToken) {
         </div>
       </div>
     `,
-  };
+    loggerPrefix: "[AUTH]",
+  });
 
-  try {
-    await transport.sendMail(mailOptions);
-  } catch (error) {
-    console.error("[AUTH] Failed to send password reset email:", error);
-    throw error;
+  if (result?.skipped) {
+    console.error(
+      "[AUTH] SMTP not configured. Cannot send password reset email."
+    );
+    throw new Error("Email service not configured");
   }
 }
 

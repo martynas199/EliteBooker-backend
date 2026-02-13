@@ -19,7 +19,7 @@ import { requireAdmin, requireSuperAdmin } from "../middleware/requireAdmin.js";
 import { clearTenantCache } from "../middleware/resolveTenant.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
-import nodemailer from "nodemailer";
+import { escapeHtml, getDefaultFromEmail, sendEmail } from "../emails/transport.js";
 import {
   normalizeCode,
   isValidFormat,
@@ -305,19 +305,16 @@ router.post("/create", async (req, res) => {
 
     // Send notification email to admin about new registration
     try {
-      const transport = nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
-        port: Number(process.env.SMTP_PORT || 587),
-        secure: process.env.SMTP_PORT === "465",
-        auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASS,
-        },
-      });
+      const from = getDefaultFromEmail();
+      const safeBusinessName = escapeHtml(validatedData.businessName);
+      const safeSalonName = escapeHtml(validatedData.name);
+      const safeBusinessEmail = escapeHtml(validatedData.email);
+      const safeBusinessPhone = escapeHtml(validatedData.phone || "N/A");
+      const safeSlug = escapeHtml(tenant.slug);
+      const safeAdminName = escapeHtml(validatedData.adminName);
+      const safeAdminEmail = escapeHtml(validatedData.adminEmail);
 
-      const from = process.env.SMTP_FROM || process.env.SMTP_USER;
-
-      await transport.sendMail({
+      const result = await sendEmail({
         from,
         to: "martynas.20@hotmail.com",
         subject: "🎉 New Business Registration - Elite Booker",
@@ -332,25 +329,23 @@ router.post("/create", async (req, res) => {
               <table style="width: 100%; border-collapse: collapse;">
                 <tr>
                   <td style="padding: 8px 0; font-weight: bold; color: #6b7280;">Business Name:</td>
-                  <td style="padding: 8px 0;">${validatedData.businessName}</td>
+                  <td style="padding: 8px 0;">${safeBusinessName}</td>
                 </tr>
                 <tr>
                   <td style="padding: 8px 0; font-weight: bold; color: #6b7280;">Salon Name:</td>
-                  <td style="padding: 8px 0;">${validatedData.name}</td>
+                  <td style="padding: 8px 0;">${safeSalonName}</td>
                 </tr>
                 <tr>
                   <td style="padding: 8px 0; font-weight: bold; color: #6b7280;">Business Email:</td>
-                  <td style="padding: 8px 0;">${validatedData.email}</td>
+                  <td style="padding: 8px 0;">${safeBusinessEmail}</td>
                 </tr>
                 <tr>
                   <td style="padding: 8px 0; font-weight: bold; color: #6b7280;">Phone:</td>
-                  <td style="padding: 8px 0;">${
-                    validatedData.phone || "N/A"
-                  }</td>
+                  <td style="padding: 8px 0;">${safeBusinessPhone}</td>
                 </tr>
                 <tr>
                   <td style="padding: 8px 0; font-weight: bold; color: #6b7280;">Slug:</td>
-                  <td style="padding: 8px 0;">${tenant.slug}</td>
+                  <td style="padding: 8px 0;">${safeSlug}</td>
                 </tr>
               </table>
             </div>
@@ -360,11 +355,11 @@ router.post("/create", async (req, res) => {
               <table style="width: 100%; border-collapse: collapse;">
                 <tr>
                   <td style="padding: 8px 0; font-weight: bold; color: #6b7280;">Name:</td>
-                  <td style="padding: 8px 0;">${validatedData.adminName}</td>
+                  <td style="padding: 8px 0;">${safeAdminName}</td>
                 </tr>
                 <tr>
                   <td style="padding: 8px 0; font-weight: bold; color: #6b7280;">Email:</td>
-                  <td style="padding: 8px 0;">${validatedData.adminEmail}</td>
+                  <td style="padding: 8px 0;">${safeAdminEmail}</td>
                 </tr>
               </table>
             </div>
@@ -404,7 +399,14 @@ Trial Ends: ${new Date(tenant.trialEndsAt).toLocaleDateString("en-GB")}
 
 Tenant ID: ${tenant._id}
 Registered: ${new Date().toLocaleString("en-GB")}`,
+        loggerPrefix: "[Tenant Create]",
       });
+
+      if (result?.skipped) {
+        console.warn(
+          "[Tenant Create] SMTP not configured - notification email skipped"
+        );
+      }
 
       console.log("[Tenant Create] Notification email sent to admin");
     } catch (emailError) {

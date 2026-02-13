@@ -2,35 +2,16 @@ import express from "express";
 import Admin from "../models/Admin.js";
 import AuditLog from "../models/AuditLog.js";
 import { requireAdmin } from "../middleware/requireAdmin.js";
-import nodemailer from "nodemailer";
+import { getDefaultFromEmail, sendEmail } from "../emails/transport.js";
 
 const router = express.Router();
 
 // Email helper function
 async function sendAccountUnlockedEmail(admin) {
   try {
-    const host = process.env.SMTP_HOST;
-    const port = Number(process.env.SMTP_PORT || 587);
-    const user = process.env.SMTP_USER;
-    const pass = process.env.SMTP_PASS;
+    const from = getDefaultFromEmail();
 
-    if (!host || !user || !pass) {
-      console.warn(
-        "[MAILER] SMTP not configured - skipping unlock notification email"
-      );
-      return;
-    }
-
-    const transport = nodemailer.createTransport({
-      host,
-      port,
-      secure: port === 465,
-      auth: { user, pass },
-    });
-
-    const from = process.env.SMTP_FROM || user;
-
-    await transport.sendMail({
+    const result = await sendEmail({
       from,
       to: admin.email,
       subject: "Your Account Has Been Unlocked",
@@ -70,7 +51,15 @@ This is an automated message. Please do not reply to this email.`,
           </div>
         </div>
       `,
+      loggerPrefix: "[MAILER]",
     });
+
+    if (result?.skipped) {
+      console.warn(
+        "[MAILER] SMTP not configured - skipping unlock notification email"
+      );
+      return;
+    }
 
     console.log(
       "[MAILER] ✓ Account unlocked email sent successfully to:",

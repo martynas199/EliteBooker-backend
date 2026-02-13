@@ -1,4 +1,4 @@
-import nodemailer from "nodemailer";
+import { getDefaultFromEmail, getEmailTransport } from "./transport.js";
 
 /**
  * Format currency based on the currency code
@@ -18,24 +18,7 @@ function formatCurrency(amount, currency = "GBP") {
  * Get email transport (returns null if not configured)
  */
 function getTransport() {
-  const host = process.env.SMTP_HOST;
-  const port = Number(process.env.SMTP_PORT || 587);
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-
-  if (!host || !user || !pass) {
-    console.warn(
-      "[GIFT-CARD-MAILER] SMTP not configured - emails will be skipped"
-    );
-    return null;
-  }
-
-  return nodemailer.createTransport({
-    host,
-    port,
-    secure: port === 465,
-    auth: { user, pass },
-  });
+  return getEmailTransport({ loggerPrefix: "[GIFT-CARD-MAILER]" });
 }
 
 /**
@@ -59,7 +42,7 @@ export async function sendGiftCardPurchaseConfirmation({
     return;
   }
 
-  const from = process.env.SMTP_FROM || process.env.SMTP_USER;
+  const from = getDefaultFromEmail();
   const purchaseDate = new Date(giftCard.purchaseDate).toLocaleDateString(
     "en-GB",
     {
@@ -297,7 +280,7 @@ export async function sendGiftCardToRecipient({
     return;
   }
 
-  const from = process.env.SMTP_FROM || process.env.SMTP_USER;
+  const from = getDefaultFromEmail();
   const expiryDate = new Date(giftCard.expiryDate).toLocaleDateString("en-GB", {
     year: "numeric",
     month: "long",
@@ -568,7 +551,7 @@ export async function sendGiftCardSaleNotification({
     return;
   }
 
-  const from = process.env.SMTP_FROM || process.env.SMTP_USER;
+  const from = getDefaultFromEmail();
   const purchaseDate = new Date(giftCard.purchaseDate).toLocaleDateString(
     "en-GB",
     {

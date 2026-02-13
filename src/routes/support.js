@@ -1,27 +1,7 @@
 import { Router } from "express";
-import nodemailer from "nodemailer";
+import { escapeHtml, getDefaultFromEmail, sendEmail } from "../emails/transport.js";
 
 const r = Router();
-
-// Get SMTP transport
-function getTransport() {
-  const host = process.env.SMTP_HOST;
-  const port = Number(process.env.SMTP_PORT || 587);
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-
-  if (!host || !user || !pass) {
-    console.warn("[SUPPORT] SMTP not configured - cannot send support emails");
-    return null;
-  }
-
-  return nodemailer.createTransport({
-    host,
-    port,
-    secure: port === 465,
-    auth: { user, pass },
-  });
-}
 
 // POST /support/contact - Send support message
 r.post("/contact", async (req, res) => {
@@ -32,17 +12,14 @@ r.post("/contact", async (req, res) => {
       return res.status(400).json({ error: "All fields are required" });
     }
 
-    const transport = getTransport();
-
-    if (!transport) {
-      return res.status(500).json({ error: "Email service not configured" });
-    }
-
-    const from = process.env.SMTP_FROM || process.env.SMTP_USER;
+    const from = getDefaultFromEmail();
     const supportEmail = process.env.SUPPORT_EMAIL || "martynas.20@hotmail.com";
+    const safeName = escapeHtml(name);
+    const safeEmail = escapeHtml(email);
+    const safeMessage = escapeHtml(message);
 
     // Send email to support
-    await transport.sendMail({
+    const result = await sendEmail({
       from,
       to: supportEmail,
       subject: `Support Request from ${name}`,
@@ -71,13 +48,13 @@ ${message}
               <div style="padding: 30px 20px;">
                 <div style="background-color: #f9fafb; border-left: 4px solid #3B82F6; padding: 20px; margin: 20px 0; border-radius: 8px;">
                   <p style="margin: 0 0 10px 0; color: #374151; font-weight: 600;">From:</p>
-                  <p style="margin: 0 0 5px 0; color: #111827; font-size: 16px;">${name}</p>
-                  <p style="margin: 0; color: #6b7280; font-size: 14px;">${email}</p>
+                  <p style="margin: 0 0 5px 0; color: #111827; font-size: 16px;">${safeName}</p>
+                  <p style="margin: 0; color: #6b7280; font-size: 14px;">${safeEmail}</p>
                 </div>
 
                 <div style="margin: 20px 0;">
                   <p style="margin: 0 0 10px 0; color: #374151; font-weight: 600;">Message:</p>
-                  <p style="margin: 0; color: #111827; line-height: 1.6; white-space: pre-wrap;">${message}</p>
+                  <p style="margin: 0; color: #111827; line-height: 1.6; white-space: pre-wrap;">${safeMessage}</p>
                 </div>
               </div>
 
@@ -91,7 +68,12 @@ ${message}
           </body>
         </html>
       `,
+      loggerPrefix: "[SUPPORT]",
     });
+
+    if (result?.skipped) {
+      return res.status(500).json({ error: "Email service not configured" });
+    }
 
     console.log(`[SUPPORT] Support email sent from ${name} (${email})`);
 

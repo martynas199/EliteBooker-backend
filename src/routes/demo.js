@@ -1,5 +1,5 @@
 import express from "express";
-import nodemailer from "nodemailer";
+import { escapeHtml, getDefaultFromEmail, sendEmail } from "../emails/transport.js";
 
 const router = express.Router();
 
@@ -12,20 +12,12 @@ router.post("/", async (req, res) => {
       return res.status(400).json({ error: "Name and phone are required" });
     }
 
-    // Create transporter (reuse existing email configuration from your app)
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || "smtp.gmail.com",
-      port: process.env.SMTP_PORT || 587,
-      secure: false,
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
+    const safeName = escapeHtml(name);
+    const safePhone = escapeHtml(phone);
 
     // Email content
-    const mailOptions = {
-      from: process.env.SMTP_USER,
+    const result = await sendEmail({
+      from: getDefaultFromEmail(),
       to: "martynas.20@hotmail.com",
       subject: "New Demo Request - Elite Booker",
       html: `
@@ -34,8 +26,8 @@ router.post("/", async (req, res) => {
           <p>Someone has requested a demo of Elite Booker:</p>
           
           <div style="background-color: #F3F4F6; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <p style="margin: 10px 0;"><strong>Name:</strong> ${name}</p>
-            <p style="margin: 10px 0;"><strong>Phone:</strong> ${phone}</p>
+            <p style="margin: 10px 0;"><strong>Name:</strong> ${safeName}</p>
+            <p style="margin: 10px 0;"><strong>Phone:</strong> ${safePhone}</p>
           </div>
           
           <p style="color: #6B7280; font-size: 14px;">
@@ -46,10 +38,12 @@ router.post("/", async (req, res) => {
           </p>
         </div>
       `,
-    };
+      loggerPrefix: "[DEMO]",
+    });
 
-    // Send email
-    await transporter.sendMail(mailOptions);
+    if (result?.skipped) {
+      return res.status(500).json({ error: "Email service not configured" });
+    }
 
     res.json({ message: "Demo request sent successfully" });
   } catch (error) {

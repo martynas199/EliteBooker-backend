@@ -1,4 +1,8 @@
-import nodemailer from "nodemailer";
+import {
+  getDefaultFromEmail,
+  getEmailTransport,
+  sendEmail,
+} from "./transport.js";
 
 /**
  * Format currency based on the currency code
@@ -20,30 +24,7 @@ function formatCurrency(amount, currency = "GBP") {
 }
 
 function getTransport() {
-  const host = process.env.SMTP_HOST;
-  const port = Number(process.env.SMTP_PORT || 587);
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-
-  if (!host || !user || !pass) {
-    return null; // no-op mailer
-  }
-
-  const transport = nodemailer.createTransport({
-    host,
-    port,
-    secure: port === 465,
-    auth: { user, pass },
-  });
-
-  // Test the connection
-  transport.verify((error, success) => {
-    if (error) {
-      console.error("[MAILER] ✗ SMTP connection test failed:", error);
-    }
-  });
-
-  return transport;
+  return getEmailTransport({ loggerPrefix: "[MAILER]" });
 }
 
 /**
@@ -60,7 +41,7 @@ export async function sendCancellationEmails({
   if (!tx) {
     return;
   }
-  const from = process.env.SMTP_FROM || process.env.SMTP_USER;
+  const from = getDefaultFromEmail();
   const salonTz = process.env.SALON_TZ || "Europe/London";
 
   const startDate = new Date(appointment.start).toLocaleString("en-GB", {
@@ -263,7 +244,7 @@ export async function sendConfirmationEmail({
     return;
   }
 
-  const from = process.env.SMTP_FROM || process.env.SMTP_USER;
+  const from = getDefaultFromEmail();
   console.log("[MAILER] Sending from:", from);
 
   const salonTz = process.env.SALON_TZ || "Europe/London";
@@ -892,7 +873,7 @@ export async function sendOrderConfirmationEmail({ order }) {
     return;
   }
 
-  const from = process.env.SMTP_FROM || process.env.SMTP_USER;
+  const from = getDefaultFromEmail();
   console.log("[MAILER] Sending from:", from);
 
   const customerEmail = order.shippingAddress?.email;
@@ -1132,7 +1113,7 @@ export async function sendBeauticianProductOrderNotification({
     return;
   }
 
-  const from = process.env.SMTP_FROM || process.env.SMTP_USER;
+  const from = getDefaultFromEmail();
   const customerName = `${order.shippingAddress.firstName} ${order.shippingAddress.lastName}`;
   const currency = order.currency || "GBP";
 
@@ -1319,7 +1300,7 @@ export async function sendAdminOrderNotification({ order }) {
     return;
   }
 
-  const from = process.env.SMTP_FROM || process.env.SMTP_USER;
+  const from = getDefaultFromEmail();
   const customerName = `${order.shippingAddress.firstName} ${order.shippingAddress.lastName}`;
   const currency = order.currency || "GBP";
   const totalPrice = formatCurrency(
@@ -1555,7 +1536,7 @@ export async function sendOrderReadyForCollectionEmail({ order }) {
     return;
   }
 
-  const from = process.env.SMTP_FROM || process.env.SMTP_USER;
+  const from = getDefaultFromEmail();
   console.log("[MAILER] Sending from:", from);
 
   const customerEmail = order.shippingAddress?.email;
@@ -1814,7 +1795,7 @@ export async function sendSpecialistCredentialsEmail({
     return;
   }
 
-  const from = process.env.SMTP_FROM || process.env.SMTP_USER;
+  const from = getDefaultFromEmail();
   const loginUrl = process.env.FRONTEND_URL
     ? `${process.env.FRONTEND_URL}/admin/login`
     : "https://yourdomain.com/admin/login";
@@ -1942,7 +1923,7 @@ export async function sendSeminarConfirmationEmail({
     return;
   }
 
-  const from = process.env.SMTP_FROM || process.env.SMTP_USER;
+  const from = getDefaultFromEmail();
   console.log("[MAILER] Sending from:", from);
 
   const salonTz = process.env.SALON_TZ || "Europe/London";
@@ -2126,9 +2107,12 @@ ${tenantName}
   }
 }
 
+export { sendEmail };
+
 export default {
   sendCancellationEmails,
   sendConfirmationEmail,
+  sendEmail,
   sendOrderConfirmationEmail,
   sendAdminOrderNotification,
   sendBeauticianProductOrderNotification,
