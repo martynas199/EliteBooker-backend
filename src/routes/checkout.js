@@ -69,10 +69,10 @@ r.get("/confirm", async (req, res, next) => {
       specialist?.stripeStatus === "connected"
     ) {
       // Direct charge - session is on specialist's account
-      stripe = getStripe(Specialist.stripeAccountId);
+      stripe = getStripe(specialist.stripeAccountId);
       console.log(
         "[CHECKOUT CONFIRM] Retrieving from specialist account:",
-        Specialist.stripeAccountId
+        specialist.stripeAccountId
       );
     } else {
       // Platform charge - session is on platform account
@@ -86,17 +86,20 @@ r.get("/confirm", async (req, res, next) => {
     );
     console.log("[CHECKOUT CONFIRM] Stripe session retrieved successfully");
 
-    // If already confirmed, exit early
-    if (
-      [
-        "cancelled_no_refund",
-        "cancelled_partial_refund",
-        "cancelled_full_refund",
-        "confirmed",
-      ].includes(appt.status)
-    ) {
+    const isCancelled = [
+      "cancelled_no_refund",
+      "cancelled_partial_refund",
+      "cancelled_full_refund",
+    ].includes(appt.status);
+    const wasAlreadyConfirmed = appt.status === "confirmed";
+    const hasConfirmationEmailAudit = (appt.audit || []).some(
+      (entry) => entry?.action === "confirmation_email_sent"
+    );
+
+    // If cancelled, exit early
+    if (isCancelled) {
       console.log(
-        "[CHECKOUT CONFIRM] Already confirmed or cancelled, status:",
+        "[CHECKOUT CONFIRM] Appointment cancelled, status:",
         appt.status
       );
       return res.json({ ok: true, status: appt.status });
@@ -165,40 +168,44 @@ r.get("/confirm", async (req, res, next) => {
       specialist?.stripeStatus === "connected"
     ) {
       stripeData.platformFee = platformFee;
-      stripeData.beauticianStripeAccount = Specialist.stripeAccountId;
+      stripeData.beauticianStripeAccount = specialist.stripeAccountId;
       console.log("[CHECKOUT CONFIRM] Stripe Connect payment tracked");
 
-      // Update specialist's total earnings (amount minus platform fee, converted to pounds)
-      const earningsInPounds = (amountTotal - platformFee) / 100;
-      await Specialist.findByIdAndUpdate(appt.specialistId, {
-        $inc: { totalEarnings: earningsInPounds },
-      });
+      if (!wasAlreadyConfirmed) {
+        // Update specialist's total earnings (amount minus platform fee, converted to pounds)
+        const earningsInPounds = (amountTotal - platformFee) / 100;
+        await Specialist.findByIdAndUpdate(appt.specialistId, {
+          $inc: { totalEarnings: earningsInPounds },
+        });
+      }
     }
 
-    await Appointment.findByIdAndUpdate(appt._id, {
-      $set: {
-        status: "confirmed",
-        payment: {
-          ...(appt.payment || {}),
-          provider: "stripe",
-          mode: appt.payment?.mode || "pay_now", // Preserve the original mode
-          status: "succeeded",
-          amountTotal,
-          stripe: stripeData,
+    if (!wasAlreadyConfirmed) {
+      await Appointment.findByIdAndUpdate(appt._id, {
+        $set: {
+          status: "confirmed",
+          payment: {
+            ...(appt.payment || {}),
+            provider: "stripe",
+            mode: appt.payment?.mode || "pay_now", // Preserve the original mode
+            status: "succeeded",
+            amountTotal,
+            stripe: stripeData,
+          },
         },
-      },
-      $push: {
-        audit: {
-          at: new Date(),
-          action: "checkout_confirm_reconcile",
-          meta: { sessionId: session.id },
+        $push: {
+          audit: {
+            at: new Date(),
+            action: "checkout_confirm_reconcile",
+            meta: { sessionId: session.id },
+          },
         },
-      },
-    });
-    console.log("[CHECKOUT CONFIRM] Appointment updated to confirmed.");
+      });
+      console.log("[CHECKOUT CONFIRM] Appointment updated to confirmed.");
+    }
 
     // Update client metrics after successful booking
-    if (appt.clientId) {
+    if (appt.clientId && !wasAlreadyConfirmed) {
       try {
         await ClientService.updateTenantClientMetrics(
           appt.tenantId,
@@ -230,31 +237,56 @@ r.get("/confirm", async (req, res, next) => {
         confirmedAppt.client?.email
       );
 
-      // For multi-service bookings, fetch service details
-      let serviceForEmail = confirmedAppt.serviceId;
-      if (!serviceForEmail && confirmedAppt.services?.length > 0) {
-        // Bulk fetch all services for multi-service appointment
-        const serviceIds = confirmedAppt.services
-          .map((s) => s.serviceId)
-          .filter(Boolean);
-        if (serviceIds.length > 0) {
-          const services = await Service.find({
-            _id: { $in: serviceIds },
-          }).lean();
-          // Use first service for email display (or combine names)
-          serviceForEmail = services[0] || {
-            name: confirmedAppt.services[0].serviceName || "Service",
-          };
+      if (!hasConfirmationEmailAudit && confirmedAppt.client?.email) {
+        // For multi-service bookings, fetch service details
+        let serviceForEmail = confirmedAppt.serviceId;
+        if (!serviceForEmail && confirmedAppt.services?.length > 0) {
+          // Bulk fetch all services for multi-service appointment
+          const serviceIds = confirmedAppt.services
+            .map((s) => s.serviceId)
+            .filter(Boolean);
+          if (serviceIds.length > 0) {
+            const services = await Service.find({
+              _id: { $in: serviceIds },
+            }).lean();
+            // Use first service for email display (or combine names)
+            serviceForEmail = services[0] || {
+              name: confirmedAppt.services[0].serviceName || "Service",
+            };
+          }
         }
+
+        await sendConfirmationEmail({
+          appointment: confirmedAppt,
+          service: serviceForEmail,
+          specialist: confirmedAppt.specialistId,
+        });
+
+        await Appointment.findByIdAndUpdate(appt._id, {
+          $push: {
+            audit: {
+              at: new Date(),
+              action: "confirmation_email_sent",
+              meta: {
+                source: "checkout_confirm",
+                sessionId: session.id,
+              },
+            },
+          },
+        });
+        console.log("[CHECKOUT CONFIRM] Confirmation email sent.");
+      } else if (hasConfirmationEmailAudit) {
+        console.log(
+          "[CHECKOUT CONFIRM] Confirmation email already sent, skipping."
+        );
+      } else {
+        console.log(
+          "[CHECKOUT CONFIRM] Missing client email, skipping confirmation email."
+        );
       }
 
-      // Email is sent by webhook handler to avoid duplicates
-      console.log(
-        "[CHECKOUT CONFIRM] Skipping email - will be sent by webhook"
-      );
-
       // Send SMS confirmation
-      if (confirmedAppt.client?.phone) {
+      if (!wasAlreadyConfirmed && confirmedAppt.client?.phone) {
         let serviceName = "your service";
 
         // Handle both single and multi-service appointments

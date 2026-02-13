@@ -10,7 +10,6 @@ import {
   computeSlotsForBeautician,
   computeSlotsAnyStaff,
 } from "../utils/slotPlanner.js";
-import { generateFixedSlots } from "../utils/slotEngine.js";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -171,27 +170,14 @@ r.get("/fully-booked", async (req, res) => {
         continue;
       }
 
-      // Check if specialist works this day (either regular hours OR custom schedule)
+      // Check if specialist works this day
       const dayOfWeek = dateObj.day();
-
-      // Normalize custom schedule (convert Map to object if needed)
-      const normalizedCustomSchedule =
-        specialist.customSchedule instanceof Map
-          ? Object.fromEntries(specialist.customSchedule)
-          : specialist.customSchedule || {};
-
-      const hasCustomSchedule =
-        normalizedCustomSchedule[dateStr] &&
-        Array.isArray(normalizedCustomSchedule[dateStr]) &&
-        normalizedCustomSchedule[dateStr].length > 0;
-
       const worksThisDay = specialist.workingHours?.some(
         (wh) =>
           wh && typeof wh.dayOfWeek === "number" && wh.dayOfWeek === dayOfWeek
       );
 
-      // Skip only if there's no regular working hours AND no custom schedule
-      if (!worksThisDay && !hasCustomSchedule) {
+      if (!worksThisDay) {
         fullyBookedSet.add(dateStr);
         continue;
       }
@@ -210,34 +196,18 @@ r.get("/fully-booked", async (req, res) => {
             bufferAfterMin: 10,
           };
 
-          let slots;
-
-          // Check if service has fixed time slots defined
-          if (service.fixedTimeSlots && service.fixedTimeSlots.length > 0) {
-            // Use fixed time slots instead of computed slots
-            slots = generateFixedSlots({
-              fixedTimes: service.fixedTimeSlots,
-              specialist: normalizedSpecialist,
-              variant,
-              date: dateStr,
-              appointments: dayAppts,
-              salonTz,
-            });
-          } else {
-            // Use normal computed slots from slotPlanner
-            slots = computeSlotsForBeautician({
-              date: dateStr,
-              salonTz,
-              stepMin: 15,
-              service: {
-                durationMin: variant.durationMin,
-                bufferBeforeMin: variant.bufferBeforeMin || 0,
-                bufferAfterMin: variant.bufferAfterMin || 0,
-              },
-              specialist: normalizedSpecialist, // Use pre-normalized specialist
-              appointments: dayAppts, // Already in correct format!
-            });
-          }
+          const slots = computeSlotsForBeautician({
+            date: dateStr,
+            salonTz,
+            stepMin: 15,
+            service: {
+              durationMin: variant.durationMin,
+              bufferBeforeMin: variant.bufferBeforeMin || 0,
+              bufferAfterMin: variant.bufferAfterMin || 0,
+            },
+            specialist: normalizedSpecialist, // Use pre-normalized specialist
+            appointments: dayAppts, // Already in correct format!
+          });
 
           if (slots.length > 0) {
             hasAvailableSlots = true;
@@ -326,26 +296,14 @@ r.get("/", async (req, res) => {
       status: a.status,
     }));
 
-    // Check if service has fixed time slots
-    if (service.fixedTimeSlots && service.fixedTimeSlots.length > 0) {
-      slots = generateFixedSlots({
-        fixedTimes: service.fixedTimeSlots,
-        specialist: normalizeBeautician(b),
-        variant,
-        date,
-        appointments: appointmentsForSlots,
-        salonTz,
-      });
-    } else {
-      slots = computeSlotsForBeautician({
-        date,
-        salonTz,
-        stepMin,
-        service: svc,
-        specialist: normalizeBeautician(b),
-        appointments: appointmentsForSlots,
-      });
-    }
+    slots = computeSlotsForBeautician({
+      date,
+      salonTz,
+      stepMin,
+      service: svc,
+      specialist: normalizeBeautician(b),
+      appointments: appointmentsForSlots,
+    });
 
     // Transform slots to include startTime and endTime
     slots = slots.map((slot) => ({
@@ -385,26 +343,14 @@ r.get("/", async (req, res) => {
       status: a.status,
     }));
 
-    // Check if service has fixed time slots
-    if (service.fixedTimeSlots && service.fixedTimeSlots.length > 0) {
-      slots = generateFixedSlots({
-        fixedTimes: service.fixedTimeSlots,
-        specialist: normalizeBeautician(b),
-        variant,
-        date,
-        appointments: appointmentsForSlots,
-        salonTz,
-      });
-    } else {
-      slots = computeSlotsForBeautician({
-        date,
-        salonTz,
-        stepMin,
-        service: svc,
-        specialist: normalizeBeautician(b),
-        appointments: appointmentsForSlots,
-      });
-    }
+    slots = computeSlotsForBeautician({
+      date,
+      salonTz,
+      stepMin,
+      service: svc,
+      specialist: normalizeBeautician(b),
+      appointments: appointmentsForSlots,
+    });
 
     // Transform slots to include startTime and endTime
     slots = slots.map((slot) => ({

@@ -31,6 +31,12 @@ let tenant1, tenant2;
 let admin1Token, admin2Token;
 let admin1, admin2;
 
+function clearModelTenantContext() {
+  Appointment.setTenantContext?.(null);
+  Service.setTenantContext?.(null);
+  Specialist.setTenantContext?.(null);
+}
+
 beforeAll(async () => {
   // Disconnect from any existing connection
   if (mongoose.connection.readyState !== 0) {
@@ -99,6 +105,8 @@ beforeAll(async () => {
     JWT_SECRET,
     { expiresIn: "7d" }
   );
+
+  clearModelTenantContext();
 });
 
 afterAll(async () => {
@@ -107,10 +115,12 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
+  clearModelTenantContext();
+
   // Clear relevant collections before each test
-  await Appointment.deleteMany({});
-  await Service.deleteMany({});
-  await Specialist.deleteMany({});
+  await Appointment.collection.deleteMany({});
+  await Service.collection.deleteMany({});
+  await Specialist.collection.deleteMany({});
 });
 
 describe("Cross-Tenant Access Prevention - API Endpoints", () => {

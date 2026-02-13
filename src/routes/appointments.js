@@ -61,6 +61,13 @@ r.get("/", async (req, res) => {
 
     // Check if pagination is requested
     const usePagination = req.query.page !== undefined;
+    const filters = {
+      specialistId: req.query.specialistId,
+      status: req.query.status,
+      search: req.query.search,
+      dateFrom: req.query.dateFrom,
+      dateTo: req.query.dateTo,
+    };
 
     if (usePagination) {
       // Parse pagination params with enforced MAX_LIMIT
@@ -75,13 +82,16 @@ r.get("/", async (req, res) => {
         page,
         limit,
         tenantId,
+        filters,
       });
 
       res.json(result);
     } else {
       // Backward compatibility: return array if no page param (with max limit for safety)
-      const appointments =
-        await AppointmentService.getAllAppointments(tenantId);
+      const appointments = await AppointmentService.getAllAppointments(
+        tenantId,
+        filters
+      );
       res.json(appointments);
     }
   } catch (err) {
@@ -114,6 +124,10 @@ r.get("/:id", async (req, res) => {
   }
 });
 r.post("/", async (req, res) => {
+  if (!req.tenantId) {
+    return res.status(403).json({ error: "Tenant context required" });
+  }
+
   const {
     specialistId,
     any,
@@ -153,7 +167,8 @@ r.post("/", async (req, res) => {
   // - reserved_unpaid appointments older than 3 minutes (expired)
   const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
   const conflict = await Appointment.findOne({
-    specialistId: Specialist._id,
+    specialistId: specialist._id,
+    tenantId: req.tenantId,
     start: { $lt: end },
     end: { $gt: start },
     $and: [
@@ -212,7 +227,7 @@ r.post("/", async (req, res) => {
   }
   const appt = await Appointment.create({
     client,
-    specialistId: Specialist._id,
+    specialistId: specialist._id,
     serviceId,
     variantName,
     start,
@@ -640,21 +655,31 @@ r.patch("/:id", async (req, res) => {
 // Delete all appointments for a specific specialist
 r.delete("/specialist/:specialistId", async (req, res) => {
   try {
+    if (!req.tenantId) {
+      return res.status(403).json({ error: "Tenant context required" });
+    }
+
     const { specialistId } = req.params;
 
     // Verify specialist exists
-    const specialist = await Specialist.findById(specialistId);
+    const specialist = await Specialist.findOne({
+      _id: specialistId,
+      tenantId: req.tenantId,
+    });
     if (!specialist) {
       return res.status(404).json({ error: "Specialist not found" });
     }
 
     // Delete all appointments for this specialist
-    const result = await Appointment.deleteMany({ specialistId });
+    const result = await Appointment.deleteMany({
+      specialistId,
+      tenantId: req.tenantId,
+    });
 
     res.json({
       success: true,
       deletedCount: result.deletedCount,
-      message: `Deleted ${result.deletedCount} appointment(s) for ${Specialist.name}`,
+      message: `Deleted ${result.deletedCount} appointment(s) for ${specialist.name}`,
     });
   } catch (err) {
     console.error("delete_beautician_appointments_err", err);
@@ -667,10 +692,17 @@ r.delete("/specialist/:specialistId", async (req, res) => {
 // Delete a specific canceled appointment
 r.delete("/:id", async (req, res) => {
   try {
+    if (!req.tenantId) {
+      return res.status(403).json({ error: "Tenant context required" });
+    }
+
     const { id } = req.params;
 
     // Find the appointment
-    const appointment = await Appointment.findById(id);
+    const appointment = await Appointment.findOne({
+      _id: id,
+      tenantId: req.tenantId,
+    });
     if (!appointment) {
       return res.status(404).json({ error: "Appointment not found" });
     }
@@ -684,7 +716,7 @@ r.delete("/:id", async (req, res) => {
     }
 
     // Delete the appointment
-    await Appointment.findByIdAndDelete(id);
+    await Appointment.deleteOne({ _id: id, tenantId: req.tenantId });
 
     res.json({
       success: true,

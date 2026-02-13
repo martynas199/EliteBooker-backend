@@ -13,11 +13,17 @@ import Settings from "../models/Settings.js";
 import HeroSection from "../models/HeroSection.js";
 import Specialist from "../models/Specialist.js";
 import Location from "../models/Location.js";
+import ReferralCode from "../models/ReferralCode.js";
+import Referral from "../models/Referral.js";
 import { requireAdmin, requireSuperAdmin } from "../middleware/requireAdmin.js";
 import { clearTenantCache } from "../middleware/resolveTenant.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import nodemailer from "nodemailer";
+import {
+  normalizeCode,
+  isValidFormat,
+} from "../utils/referralCodeGenerator.js";
 import {
   applyQueryOptimizations,
   executePaginatedQuery,
@@ -39,6 +45,7 @@ const createTenantSchema = z.object({
   adminName: z.string().min(1, "Admin name is required"),
   adminEmail: z.string().email("Invalid admin email address"),
   adminPassword: z.string().min(8, "Password must be at least 8 characters"),
+  referralCode: z.string().length(6).optional(), // Optional 6-character referral code
   address: z
     .object({
       street: z.string().optional(),
@@ -112,7 +119,7 @@ router.post("/create", async (req, res) => {
     });
     console.log(
       "[Tenant Create] Full validated data:",
-      JSON.stringify(validatedData, null, 2)
+      JSON.stringify(validatedData, null, 2),
     );
 
     const tenant = new Tenant({
@@ -173,6 +180,58 @@ router.post("/create", async (req, res) => {
     tenant.ownerId = admin._id;
     await tenant.save();
 
+    // Handle referral code if provided
+    let referralData = null;
+    if (validatedData.referralCode) {
+      try {
+        const normalizedCode = normalizeCode(validatedData.referralCode);
+
+        // Validate format
+        if (isValidFormat(normalizedCode)) {
+          // Find the referral code
+          const referralCodeDoc = await ReferralCode.findByCode(normalizedCode);
+
+          if (referralCodeDoc) {
+            // Create referral record
+            const referral = await Referral.createReferral({
+              referralCodeId: referralCodeDoc._id,
+              referredBusinessId: tenant._id,
+              referredBusinessName: tenant.businessName,
+              referredBusinessEmail: tenant.email,
+              status: "pending",
+              metadata: {
+                signupDate: new Date(),
+                trialEndsAt: tenant.trialEndsAt,
+              },
+            });
+
+            referralData = {
+              code: normalizedCode,
+              referralId: referral._id,
+            };
+
+            console.log(
+              `[Tenant Create] Referral recorded - Code: ${normalizedCode}, Referral ID: ${referral._id}`,
+            );
+          } else {
+            console.log(
+              `[Tenant Create] Referral code not found: ${normalizedCode}`,
+            );
+          }
+        } else {
+          console.log(
+            `[Tenant Create] Invalid referral code format: ${validatedData.referralCode}`,
+          );
+        }
+      } catch (referralError) {
+        console.error(
+          "[Tenant Create] Referral processing error:",
+          referralError,
+        );
+        // Don't fail registration if referral fails
+      }
+    }
+
     // Create default settings for tenant
     const settings = new Settings({
       tenantId: tenant._id,
@@ -213,7 +272,7 @@ router.post("/create", async (req, res) => {
 
     console.log(
       "[Tenant Create] Default location created:",
-      defaultLocation._id
+      defaultLocation._id,
     );
 
     // Create default specialist for the business owner
@@ -232,7 +291,7 @@ router.post("/create", async (req, res) => {
 
     console.log(
       "[Tenant Create] Default specialist created:",
-      defaultSpecialist._id
+      defaultSpecialist._id,
     );
 
     // Link the admin account to the specialist
@@ -241,7 +300,7 @@ router.post("/create", async (req, res) => {
 
     console.log(
       "[Tenant Create] Admin linked to specialist:",
-      defaultSpecialist._id
+      defaultSpecialist._id,
     );
 
     // Send notification email to admin about new registration
@@ -314,14 +373,14 @@ router.post("/create", async (req, res) => {
               <p style="margin: 0; color: #92400e;">
                 <strong>Trial Status:</strong> 14 days trial period<br>
                 <strong>Trial Ends:</strong> ${new Date(
-                  tenant.trialEndsAt
+                  tenant.trialEndsAt,
                 ).toLocaleDateString("en-GB")}
               </p>
             </div>
 
             <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 12px;">
               <p>Registration completed at: ${new Date().toLocaleString(
-                "en-GB"
+                "en-GB",
               )}</p>
               <p>Tenant ID: ${tenant._id}</p>
             </div>
@@ -351,7 +410,7 @@ Registered: ${new Date().toLocaleString("en-GB")}`,
     } catch (emailError) {
       console.error(
         "[Tenant Create] Failed to send notification email:",
-        emailError
+        emailError,
       );
       // Don't fail the registration if email fails
     }
@@ -364,7 +423,7 @@ Registered: ${new Date().toLocaleString("en-GB")}`,
         role: admin.role,
       },
       JWT_SECRET,
-      { expiresIn: JWT_EXPIRES_IN }
+      { expiresIn: JWT_EXPIRES_IN },
     );
 
     console.log("[Tenant Create] Setting accessToken cookie for admin");
@@ -403,6 +462,7 @@ Registered: ${new Date().toLocaleString("en-GB")}`,
           email: admin.email,
           role: admin.role,
         },
+        referral: referralData, // Include referral data if code was used
         token,
         onboardingUrl: `/onboarding/${tenant.slug}`,
       });
@@ -471,7 +531,7 @@ router.get("/", requireAdmin, requireSuperAdmin, async (req, res) => {
       Tenant,
       query,
       req.query,
-      { useCache: true, cacheKey }
+      { useCache: true, cacheKey },
     );
 
     res.json({
@@ -515,7 +575,7 @@ router.get("/public", async (req, res) => {
 
     const tenants = await Tenant.find(query)
       .select(
-        "name slug address description location branding services rating reviewCount"
+        "name slug address description location branding services rating reviewCount",
       )
       .sort({ createdAt: -1 })
       .limit(effectiveLimit)
@@ -524,7 +584,7 @@ router.get("/public", async (req, res) => {
     // Enrich tenants with hero image from HeroSection or Settings
     if (process.env.LOG_VERBOSE) {
       console.log(
-        `[TENANTS/PUBLIC] Enriching ${tenants.length} tenants with hero images...`
+        `[TENANTS/PUBLIC] Enriching ${tenants.length} tenants with hero images...`,
       );
     }
     const enrichedTenants = await Promise.all(
@@ -563,11 +623,11 @@ router.get("/public", async (req, res) => {
         } catch (err) {
           console.error(
             `Error fetching hero image for tenant ${tenant._id}:`,
-            err
+            err,
           );
           return tenant;
         }
-      })
+      }),
     );
 
     res.json({
@@ -716,7 +776,7 @@ router.post(
           status: "suspended",
           active: false,
         },
-        { new: true }
+        { new: true },
       );
 
       if (!tenant) {
@@ -739,7 +799,7 @@ router.post(
         message: error.message,
       });
     }
-  }
+  },
 );
 
 /**
@@ -760,7 +820,7 @@ router.post(
           status: "active",
           active: true,
         },
-        { new: true }
+        { new: true },
       );
 
       if (!tenant) {
@@ -783,7 +843,7 @@ router.post(
         message: error.message,
       });
     }
-  }
+  },
 );
 
 /**
@@ -818,7 +878,7 @@ router.delete("/:id", requireAdmin, requireSuperAdmin, async (req, res) => {
 
       // Delete all tenant-related data
       console.log(
-        `[Tenant Delete] Deleting all data for tenant: ${tenant.slug} (${id})`
+        `[Tenant Delete] Deleting all data for tenant: ${tenant.slug} (${id})`,
       );
 
       // Delete specialists (staff)
@@ -826,7 +886,7 @@ router.delete("/:id", requireAdmin, requireSuperAdmin, async (req, res) => {
         tenantId: id,
       }).session(session);
       console.log(
-        `[Tenant Delete] Deleted ${deletedSpecialists.deletedCount} specialists`
+        `[Tenant Delete] Deleted ${deletedSpecialists.deletedCount} specialists`,
       );
 
       // Delete services
@@ -834,7 +894,7 @@ router.delete("/:id", requireAdmin, requireSuperAdmin, async (req, res) => {
         tenantId: id,
       }).session(session);
       console.log(
-        `[Tenant Delete] Deleted ${deletedServices.deletedCount} services`
+        `[Tenant Delete] Deleted ${deletedServices.deletedCount} services`,
       );
 
       // Delete appointments
@@ -842,15 +902,15 @@ router.delete("/:id", requireAdmin, requireSuperAdmin, async (req, res) => {
         tenantId: id,
       }).session(session);
       console.log(
-        `[Tenant Delete] Deleted ${deletedAppointments.deletedCount} appointments`
+        `[Tenant Delete] Deleted ${deletedAppointments.deletedCount} appointments`,
       );
 
       // Delete orders
       const deletedOrders = await Order.deleteMany({ tenantId: id }).session(
-        session
+        session,
       );
       console.log(
-        `[Tenant Delete] Deleted ${deletedOrders.deletedCount} orders`
+        `[Tenant Delete] Deleted ${deletedOrders.deletedCount} orders`,
       );
 
       // Delete products
@@ -858,7 +918,7 @@ router.delete("/:id", requireAdmin, requireSuperAdmin, async (req, res) => {
         tenantId: id,
       }).session(session);
       console.log(
-        `[Tenant Delete] Deleted ${deletedProducts.deletedCount} products`
+        `[Tenant Delete] Deleted ${deletedProducts.deletedCount} products`,
       );
 
       // Delete locations
@@ -866,7 +926,7 @@ router.delete("/:id", requireAdmin, requireSuperAdmin, async (req, res) => {
         tenantId: id,
       }).session(session);
       console.log(
-        `[Tenant Delete] Deleted ${deletedLocations.deletedCount} locations`
+        `[Tenant Delete] Deleted ${deletedLocations.deletedCount} locations`,
       );
 
       // Delete settings
@@ -874,7 +934,7 @@ router.delete("/:id", requireAdmin, requireSuperAdmin, async (req, res) => {
         tenantId: id,
       }).session(session);
       console.log(
-        `[Tenant Delete] Deleted ${deletedSettings.deletedCount} settings`
+        `[Tenant Delete] Deleted ${deletedSettings.deletedCount} settings`,
       );
 
       // Delete hero sections
@@ -882,7 +942,7 @@ router.delete("/:id", requireAdmin, requireSuperAdmin, async (req, res) => {
         tenantId: id,
       }).session(session);
       console.log(
-        `[Tenant Delete] Deleted ${deletedHeroSections.deletedCount} hero sections`
+        `[Tenant Delete] Deleted ${deletedHeroSections.deletedCount} hero sections`,
       );
 
       // Delete blog posts
@@ -890,7 +950,7 @@ router.delete("/:id", requireAdmin, requireSuperAdmin, async (req, res) => {
         tenantId: id,
       }).session(session);
       console.log(
-        `[Tenant Delete] Deleted ${deletedBlogPosts.deletedCount} blog posts`
+        `[Tenant Delete] Deleted ${deletedBlogPosts.deletedCount} blog posts`,
       );
 
       // Delete gift cards
@@ -898,15 +958,15 @@ router.delete("/:id", requireAdmin, requireSuperAdmin, async (req, res) => {
         tenantId: id,
       }).session(session);
       console.log(
-        `[Tenant Delete] Deleted ${deletedGiftCards.deletedCount} gift cards`
+        `[Tenant Delete] Deleted ${deletedGiftCards.deletedCount} gift cards`,
       );
 
       // Delete admins associated with this tenant
       const deletedAdmins = await Admin.deleteMany({ tenantId: id }).session(
-        session
+        session,
       );
       console.log(
-        `[Tenant Delete] Deleted ${deletedAdmins.deletedCount} admin accounts`
+        `[Tenant Delete] Deleted ${deletedAdmins.deletedCount} admin accounts`,
       );
 
       // Finally delete the tenant itself
@@ -960,7 +1020,7 @@ router.get("/slug/:slug", async (req, res) => {
     const { slug } = req.params;
 
     const tenant = await Tenant.findOne({ slug, active: true }).select(
-      "name businessName slug branding email phone address seo features"
+      "name businessName slug branding email phone address seo features",
     );
 
     if (!tenant) {

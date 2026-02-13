@@ -1,7 +1,11 @@
 import dayjs from "dayjs";
 import mongoose from "mongoose";
 import Appointment from "../models/Appointment.js";
+import Service from "../models/Service.js";
 import AppointmentRepository from "../repositories/AppointmentRepository.js";
+
+const escapeRegex = (value = "") =>
+  `${value}`.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /**
  * Service layer for Appointment business logic
@@ -19,13 +23,20 @@ class AppointmentService {
     page = 1,
     limit = 50,
     tenantId = null,
+    filters = {},
   } = {}) {
     const skip = (page - 1) * limit;
+    const normalizedFilters = await this.buildAppointmentFilters(filters);
 
     // Fetch appointments and total count in parallel
     const [appointments, total] = await Promise.all([
-      AppointmentRepository.findAll({ skip, limit, tenantId }),
-      AppointmentRepository.count({}, tenantId),
+      AppointmentRepository.findAll({
+        skip,
+        limit,
+        filters: normalizedFilters,
+        tenantId,
+      }),
+      AppointmentRepository.count(normalizedFilters, tenantId),
     ]);
 
     // Bulk populate services for performance
@@ -50,13 +61,93 @@ class AppointmentService {
    * @param {string} tenantId - Tenant ID for filtering
    * @returns {Promise<Array>} All appointments with populated services
    */
-  async getAllAppointments(tenantId = null) {
+  async getAllAppointments(tenantId = null, filters = {}) {
+    const normalizedFilters = await this.buildAppointmentFilters(filters);
     const appointments = await AppointmentRepository.findAll({
       skip: 0,
       limit: Number.MAX_SAFE_INTEGER,
+      filters: normalizedFilters,
       tenantId,
     });
     return await this.populateServicesInBulk(appointments);
+  }
+
+  async buildAppointmentFilters({
+    specialistId,
+    status,
+    search,
+    dateFrom,
+    dateTo,
+  } = {}) {
+    const filters = {};
+
+    const specialistValue = `${specialistId || ""}`.trim();
+    if (specialistValue && mongoose.Types.ObjectId.isValid(specialistValue)) {
+      filters.specialistId = new mongoose.Types.ObjectId(specialistValue);
+    }
+
+    const normalizedStatus = `${status || ""}`.trim().toLowerCase();
+    if (normalizedStatus && normalizedStatus !== "all") {
+      if (normalizedStatus === "cancelled") {
+        filters.status = { $regex: /^cancelled_/ };
+      } else if (normalizedStatus.includes(",")) {
+        const statusValues = normalizedStatus
+          .split(",")
+          .map((item) => item.trim())
+          .filter(Boolean);
+        if (statusValues.length > 0) {
+          filters.status = { $in: statusValues };
+        }
+      } else {
+        filters.status = normalizedStatus;
+      }
+    }
+
+    const startRange = {};
+    if (dateFrom) {
+      const startDate = new Date(dateFrom);
+      if (!Number.isNaN(startDate.getTime())) {
+        startRange.$gte = startDate;
+      }
+    }
+    if (dateTo) {
+      const endDate = new Date(dateTo);
+      if (!Number.isNaN(endDate.getTime())) {
+        startRange.$lte = endDate;
+      }
+    }
+    if (Object.keys(startRange).length > 0) {
+      filters.start = startRange;
+    }
+
+    const searchValue = `${search || ""}`.trim();
+    if (!searchValue) {
+      return filters;
+    }
+
+    const searchRegex = new RegExp(escapeRegex(searchValue), "i");
+    const searchFilters = [
+      { "client.name": searchRegex },
+      { "client.email": searchRegex },
+      { "client.phone": searchRegex },
+      { variantName: searchRegex },
+    ];
+
+    const matchingServices = await Service.find({
+      $or: [{ name: searchRegex }, { description: searchRegex }],
+    })
+      .select("_id")
+      .limit(100)
+      .lean();
+
+    if (matchingServices.length > 0) {
+      const serviceIds = matchingServices.map((service) => service._id);
+      searchFilters.push({ serviceId: { $in: serviceIds } });
+      searchFilters.push({ "services.serviceId": { $in: serviceIds } });
+    }
+
+    filters.$or = searchFilters;
+    return filters;
   }
 
   /**
@@ -187,6 +278,8 @@ class AppointmentService {
     const now = dayjs();
     const startOfToday = now.startOf("day").toDate();
     const startOfTomorrow = now.add(1, "day").startOf("day").toDate();
+    const nowDate = now.toDate();
+    const endOfNextSevenDays = now.add(7, "day").endOf("day").toDate();
     const startOfThisMonth = now.startOf("month").toDate();
     const startOfNextMonth = dayjs(startOfThisMonth).add(1, "month").toDate();
     const startOfLastMonth = dayjs(startOfThisMonth)
@@ -360,6 +453,36 @@ class AppointmentService {
               ],
             },
           },
+          thisMonthNoShows: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ["$status", "no_show"] },
+                    { $gte: ["$start", startOfThisMonth] },
+                    { $lt: ["$start", startOfNextMonth] },
+                  ],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+          upcomingAppointments: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $in: ["$status", ["confirmed", "reserved_unpaid"]] },
+                    { $gte: ["$start", nowDate] },
+                    { $lte: ["$start", endOfNextSevenDays] },
+                  ],
+                },
+                1,
+                0,
+              ],
+            },
+          },
           todayAppointments: {
             $sum: {
               $cond: [
@@ -387,6 +510,8 @@ class AppointmentService {
       lastMonthRevenue: 0,
       thisMonthAppointments: 0,
       lastMonthAppointments: 0,
+      thisMonthNoShows: 0,
+      upcomingAppointments: 0,
       todayAppointments: 0,
       customers: [],
     };
@@ -417,6 +542,8 @@ class AppointmentService {
       totalAppointments: metrics.thisMonthAppointments || 0,
       appointmentsTrend,
       todayAppointments: metrics.todayAppointments || 0,
+      upcomingAppointments: metrics.upcomingAppointments || 0,
+      noShowsThisMonth: metrics.thisMonthNoShows || 0,
       uniqueCustomers: (metrics.customers || []).length,
     };
   }

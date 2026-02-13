@@ -249,6 +249,10 @@ export async function sendConfirmationEmail({
   service,
   specialist,
 }) {
+  if (process.env.NODE_ENV === "test") {
+    return;
+  }
+
   console.log(
     "[MAILER] sendConfirmationEmail called for appointment:",
     appointment?._id

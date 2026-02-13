@@ -126,20 +126,46 @@ r.post("/stripe", async (req, res) => {
 
             // Send confirmation email
             if (appointment) {
-              try {
-                await sendConfirmationEmail({
-                  appointment,
-                  service: appointment.serviceId,
-                  specialist: appointment.specialistId,
-                });
+              const hasConfirmationEmailAudit = (appointment.audit || []).some(
+                (entry) => entry?.action === "confirmation_email_sent"
+              );
+
+              if (!hasConfirmationEmailAudit && appointment.client?.email) {
+                try {
+                  await sendConfirmationEmail({
+                    appointment,
+                    service: appointment.serviceId,
+                    specialist: appointment.specialistId,
+                  });
+                  await Appointment.findByIdAndUpdate(appointment._id, {
+                    $push: {
+                      audit: {
+                        at: new Date(),
+                        action: "confirmation_email_sent",
+                        meta: {
+                          source: "stripe_webhook",
+                          eventId: event.id,
+                        },
+                      },
+                    },
+                  });
+                  console.log(
+                    "[WEBHOOK] Confirmation email sent for appointment",
+                    apptId
+                  );
+                } catch (emailErr) {
+                  console.error(
+                    "[WEBHOOK] Failed to send confirmation email:",
+                    emailErr
+                  );
+                }
+              } else if (hasConfirmationEmailAudit) {
                 console.log(
-                  "[WEBHOOK] Confirmation email sent for appointment",
-                  apptId
+                  "[WEBHOOK] Confirmation email already sent, skipping."
                 );
-              } catch (emailErr) {
-                console.error(
-                  "[WEBHOOK] Failed to send confirmation email:",
-                  emailErr
+              } else {
+                console.log(
+                  "[WEBHOOK] Missing client email, skipping confirmation email."
                 );
               }
 
@@ -277,7 +303,7 @@ r.post("/stripe", async (req, res) => {
                       beauticianItems: items,
                     });
                     console.log(
-                      `[WEBHOOK] Specialist notification sent to ${Specialist.email} for ${items.length} product(s) in order ${orderId}`
+                      `[WEBHOOK] Specialist notification sent to ${specialist.email} for ${items.length} product(s) in order ${orderId}`
                     );
                   }
                 } catch (beauticianEmailErr) {
@@ -551,20 +577,20 @@ r.post("/stripe", async (req, res) => {
           if (specialist) {
             const isComplete =
               account.details_submitted && account.charges_enabled;
-            Specialist.stripeStatus = isComplete ? "connected" : "pending";
-            Specialist.stripeOnboardingCompleted = isComplete;
+            specialist.stripeStatus = isComplete ? "connected" : "pending";
+            specialist.stripeOnboardingCompleted = isComplete;
 
             // Track payouts enabled status
             if (account.payouts_enabled !== undefined) {
-              Specialist.stripePayoutsEnabled = account.payouts_enabled;
+              specialist.stripePayoutsEnabled = account.payouts_enabled;
             }
 
-            await Specialist.save();
+            await specialist.save();
             console.log(
               "[WEBHOOK] Specialist",
-              Specialist._id,
+              specialist._id,
               "status updated to",
-              Specialist.stripeStatus,
+              specialist.stripeStatus,
               "payouts:",
               account.payouts_enabled
             );
@@ -588,12 +614,12 @@ r.post("/stripe", async (req, res) => {
             stripeAccountId: event.account,
           });
           if (specialist) {
-            Specialist.stripeStatus = "connected";
-            Specialist.stripeOnboardingCompleted = true;
-            await Specialist.save();
+            specialist.stripeStatus = "connected";
+            specialist.stripeOnboardingCompleted = true;
+            await specialist.save();
             console.log(
               "[WEBHOOK] Specialist",
-              Specialist._id,
+              specialist._id,
               "authorized platform access"
             );
           }
@@ -616,13 +642,13 @@ r.post("/stripe", async (req, res) => {
             stripeAccountId: event.account,
           });
           if (specialist) {
-            Specialist.stripeStatus = "disconnected";
-            Specialist.stripeOnboardingCompleted = false;
-            Specialist.stripeAccountId = null;
-            await Specialist.save();
+            specialist.stripeStatus = "disconnected";
+            specialist.stripeOnboardingCompleted = false;
+            specialist.stripeAccountId = null;
+            await specialist.save();
             console.log(
               "[WEBHOOK] Specialist",
-              Specialist._id,
+              specialist._id,
               "deauthorized - Stripe account disconnected"
             );
           }
@@ -647,12 +673,12 @@ r.post("/stripe", async (req, res) => {
             stripeAccountId: event.account,
           });
           if (specialist) {
-            Specialist.totalPayouts += payout.amount / 100; // Convert from pence to pounds
-            Specialist.lastPayoutDate = new Date(payout.arrival_date * 1000);
-            await Specialist.save();
+            specialist.totalPayouts += payout.amount / 100; // Convert from pence to pounds
+            specialist.lastPayoutDate = new Date(payout.arrival_date * 1000);
+            await specialist.save();
             console.log(
               "[WEBHOOK] Specialist",
-              Specialist._id,
+              specialist._id,
               "payout recorded"
             );
           }

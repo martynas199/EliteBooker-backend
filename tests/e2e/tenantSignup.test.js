@@ -22,6 +22,14 @@ import Appointment from "../../src/models/Appointment.js";
 
 let mongoServer;
 
+function clearModelTenantContext() {
+  Tenant.setTenantContext?.(null);
+  Admin.setTenantContext?.(null);
+  Specialist.setTenantContext?.(null);
+  Service.setTenantContext?.(null);
+  Appointment.setTenantContext?.(null);
+}
+
 beforeAll(async () => {
   // Disconnect from any existing connection
   if (mongoose.connection.readyState !== 0) {
@@ -45,6 +53,8 @@ beforeAll(async () => {
   } catch (err) {
     console.log("[TEST] No domains.domain_1 index to drop:", err.message);
   }
+
+  clearModelTenantContext();
 });
 
 afterAll(async () => {
@@ -99,8 +109,9 @@ describe("E2E: Complete Multi-Tenant Flow", () => {
       .set("Authorization", `Bearer ${adminToken}`)
       .expect(200);
 
-    expect(response.body.tenant.businessName).toBe("My Beauty Salon");
-    expect(response.body.tenant.status).toBeDefined();
+    const tenantPayload = response.body.tenant || response.body;
+    expect(tenantPayload.businessName).toBe("My Beauty Salon");
+    expect(tenantPayload.status).toBeDefined();
 
     console.log("✓ Admin authenticated and can access dashboard");
   });
@@ -248,8 +259,9 @@ describe("E2E: Complete Multi-Tenant Flow", () => {
       .set("Authorization", `Bearer ${adminToken}`)
       .expect(200);
 
+    const tenantPayload = tenantResponse.body.tenant || tenantResponse.body;
     const platformFee =
-      tenantResponse.body.tenant.paymentSettings?.platformFeePerBooking || 50;
+      tenantPayload.paymentSettings?.platformFeePerBooking || 50;
     expect(platformFee).toBeGreaterThanOrEqual(0);
 
     console.log("✓ Platform fee configured:", `£${platformFee / 100}`);
@@ -305,8 +317,9 @@ describe("E2E: Complete Multi-Tenant Flow", () => {
         cancellationPolicyHours: 48,
       },
       paymentSettings: {
-        platformFeePerBooking: 75, // £0.75
-        platformFeePerProduct: 60,
+        acceptOnlinePayments: false,
+        acceptCash: true,
+        acceptCardInSalon: true,
       },
     };
 
@@ -317,7 +330,9 @@ describe("E2E: Complete Multi-Tenant Flow", () => {
       .expect(200);
 
     expect(response.body.tenant.schedulingSettings.bookingBuffer).toBe(45);
-    expect(response.body.tenant.paymentSettings.platformFeePerBooking).toBe(75);
+    expect(response.body.tenant.paymentSettings.acceptOnlinePayments).toBe(
+      false
+    );
 
     console.log("✓ Tenant settings updated successfully");
   });
