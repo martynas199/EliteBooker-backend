@@ -1,5 +1,7 @@
 import express from "express";
+import mongoose from "mongoose";
 import ConsentTemplate from "../models/ConsentTemplate.js";
+import Service from "../models/Service.js";
 import requireAdmin from "../middleware/requireAdmin.js";
 
 const router = express.Router();
@@ -21,6 +23,41 @@ const migrateFrequencyValue = (template) => {
       );
     }
   }
+};
+
+const parseTenantId = (rawTenantId) => {
+  if (!rawTenantId) {
+    return null;
+  }
+
+  const tenantId = Array.isArray(rawTenantId) ? rawTenantId[0] : rawTenantId;
+  const normalizedTenantId =
+    typeof tenantId === "string" ? tenantId.trim() : String(tenantId);
+
+  return normalizedTenantId || null;
+};
+
+const resolveBusinessIdForService = async (req, serviceId) => {
+  const tenantIdFromQuery = parseTenantId(req.query.tenantId);
+  if (tenantIdFromQuery) {
+    if (!mongoose.isValidObjectId(tenantIdFromQuery)) {
+      const invalidTenantError = new Error("Invalid tenantId");
+      invalidTenantError.statusCode = 400;
+      throw invalidTenantError;
+    }
+    return tenantIdFromQuery;
+  }
+
+  if (req.tenantId) {
+    return req.tenantId;
+  }
+
+  const service = await Service.findById(serviceId).select("tenantId").lean();
+  if (service?.tenantId) {
+    return service.tenantId;
+  }
+
+  return null;
 };
 
 /**
@@ -448,11 +485,24 @@ router.delete("/:id", requireAdmin, async (req, res) => {
 router.get("/service/:serviceId", async (req, res) => {
   try {
     const { serviceId } = req.params;
+    if (!mongoose.isValidObjectId(serviceId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid service ID",
+      });
+    }
 
-    const template = await ConsentTemplate.findOne({
+    const businessId = await resolveBusinessIdForService(req, serviceId);
+
+    const query = {
       "requiredFor.services": serviceId,
       status: "published",
-    })
+    };
+    if (businessId) {
+      query.businessId = businessId;
+    }
+
+    const template = await ConsentTemplate.findOne(query)
       .select("-createdBy -updatedBy")
       .lean();
 
@@ -468,6 +518,13 @@ router.get("/service/:serviceId", async (req, res) => {
       data: template,
     });
   } catch (error) {
+    if (error.statusCode === 400) {
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
     console.error("Error fetching consent template for service:", error);
     res.status(500).json({
       success: false,
@@ -486,6 +543,13 @@ router.get("/check-required/:serviceId", async (req, res) => {
     const { serviceId } = req.params;
     const { clientId } = req.query;
 
+    if (!mongoose.isValidObjectId(serviceId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid service ID",
+      });
+    }
+
     if (!clientId) {
       return res.status(400).json({
         success: false,
@@ -493,13 +557,26 @@ router.get("/check-required/:serviceId", async (req, res) => {
       });
     }
 
-    const result = await ConsentTemplate.isConsentRequired(serviceId, clientId);
+    const businessId = await resolveBusinessIdForService(req, serviceId);
+
+    const result = await ConsentTemplate.isConsentRequired(
+      serviceId,
+      clientId,
+      businessId
+    );
 
     res.json({
       success: true,
       data: result,
     });
   } catch (error) {
+    if (error.statusCode === 400) {
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
     console.error("Error checking consent requirement:", error);
     res.status(500).json({
       success: false,

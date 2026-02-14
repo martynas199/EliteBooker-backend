@@ -288,11 +288,20 @@ consentTemplateSchema.methods.archive = async function (adminId) {
 };
 
 // Static: Get active template for service
-consentTemplateSchema.statics.getActiveForService = async function (serviceId) {
-  return this.findOne({
+consentTemplateSchema.statics.getActiveForService = async function (
+  serviceId,
+  businessId = null
+) {
+  const query = {
     "requiredFor.services": serviceId,
     status: "published",
-  }).sort({ version: -1 });
+  };
+
+  if (businessId) {
+    query.businessId = businessId;
+  }
+
+  return this.findOne(query).sort({ version: -1 });
 };
 
 // Static: Get valid consent for client/service/template
@@ -320,9 +329,13 @@ consentTemplateSchema.statics.requiresConsent = async function (appointment) {
     return { required: false, reason: "no_service", signed: false };
   }
 
+  const appointmentBusinessId =
+    appointment.businessId || appointment.tenantId?._id || appointment.tenantId;
+
   // Get active template for this service
   const template = await this.getActiveForService(
-    appointment.serviceId._id || appointment.serviceId
+    appointment.serviceId._id || appointment.serviceId,
+    appointmentBusinessId || null
   );
 
   if (!template) {
@@ -482,11 +495,12 @@ consentTemplateSchema.statics.requiresConsent = async function (appointment) {
 // Static: Check if consent required (simplified for client-facing checks)
 consentTemplateSchema.statics.isConsentRequired = async function (
   serviceId,
-  clientId
+  clientId,
+  businessId = null
 ) {
   const ConsentRecord = mongoose.model("ConsentRecord");
 
-  const template = await this.getActiveForService(serviceId);
+  const template = await this.getActiveForService(serviceId, businessId);
 
   if (!template) {
     return { required: false, signed: false };
