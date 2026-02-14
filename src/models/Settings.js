@@ -28,6 +28,14 @@ const SettingsSchema = new mongoose.Schema(
     },
     salonPhone: String,
     salonEmail: String,
+    socialLinks: {
+      instagram: String,
+      facebook: String,
+      tiktok: String,
+      youtube: String,
+      linkedin: String,
+      x: String,
+    },
 
     // Salon Images
     heroImage: {

@@ -6,6 +6,42 @@ import { attachTenantToModels } from "../middleware/multiTenantPlugin.js";
 
 const r = Router();
 
+const SOCIAL_LINK_KEYS = [
+  "instagram",
+  "facebook",
+  "tiktok",
+  "youtube",
+  "linkedin",
+  "x",
+];
+
+const normalizeSocialLink = (value) => {
+  if (value === null || value === undefined) {
+    return "";
+  }
+
+  const trimmedValue = String(value).trim();
+  if (!trimmedValue) {
+    return "";
+  }
+
+  if (/^https?:\/\//i.test(trimmedValue)) {
+    return trimmedValue;
+  }
+
+  return `https://${trimmedValue}`;
+};
+
+const sanitizeSocialLinks = (socialLinks = {}) => {
+  const sanitizedLinks = {};
+
+  for (const key of SOCIAL_LINK_KEYS) {
+    sanitizedLinks[key] = normalizeSocialLink(socialLinks[key]);
+  }
+
+  return sanitizedLinks;
+};
+
 /**
  * GET /api/settings
  * Get salon settings
@@ -31,6 +67,7 @@ r.get("/", optionalAuth, attachTenantToModels, async (req, res, next) => {
           sat: { start: "09:00", end: "13:00" },
           sun: null,
         },
+        socialLinks: sanitizeSocialLinks({}),
       });
     }
 
@@ -54,6 +91,7 @@ r.patch("/", requireAdmin, attachTenantToModels, async (req, res, next) => {
       salonPhone,
       salonEmail,
       heroImage,
+      socialLinks,
     } = req.body;
 
     // Validate working hours format if provided
@@ -75,6 +113,8 @@ r.patch("/", requireAdmin, attachTenantToModels, async (req, res, next) => {
     }
 
     let settings = await Settings.findOne({ tenantId: req.tenantId });
+    const sanitizedSocialLinks =
+      socialLinks !== undefined ? sanitizeSocialLinks(socialLinks) : undefined;
 
     if (!settings) {
       // Create new settings if none exist
@@ -87,6 +127,7 @@ r.patch("/", requireAdmin, attachTenantToModels, async (req, res, next) => {
         salonPhone,
         salonEmail,
         heroImage,
+        socialLinks: sanitizedSocialLinks || sanitizeSocialLinks({}),
       });
     } else {
       // Update existing settings
@@ -98,6 +139,9 @@ r.patch("/", requireAdmin, attachTenantToModels, async (req, res, next) => {
       if (salonPhone !== undefined) settings.salonPhone = salonPhone;
       if (salonEmail !== undefined) settings.salonEmail = salonEmail;
       if (heroImage !== undefined) settings.heroImage = heroImage;
+      if (sanitizedSocialLinks !== undefined) {
+        settings.socialLinks = sanitizedSocialLinks;
+      }
 
       await settings.save();
     }
