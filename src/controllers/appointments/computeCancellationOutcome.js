@@ -41,6 +41,9 @@ export function computeCancellationOutcome({
     appointment?.payment?.mode || inferModeFromPayment(appointment?.payment);
   const amountTotal = toInt(appointment?.payment?.amountTotal);
   const amountDeposit = toInt(appointment?.payment?.amountDeposit);
+  const depositAmount = toInt(appointment?.payment?.depositAmount);
+  const depositPercentage = Number(appointment?.payment?.depositPercentage || 0);
+  const appointmentPriceMinor = toInt(Math.round(Number(appointment?.price || 0) * 100));
   const platformFee = toInt(appointment?.payment?.stripe?.platformFee);
 
   const appliesTo = policy?.appliesTo || "auto";
@@ -63,6 +66,24 @@ export function computeCancellationOutcome({
   // This only applies to online Stripe payments where a platform fee exists.
   if (appointment?.payment?.provider === "stripe" && platformFee > 0 && base > 0) {
     base = Math.max(0, base - Math.min(platformFee, base));
+  }
+
+  // Cap refunds to service/deposit amount so booking/platform fee is never refundable,
+  // even for legacy records where platformFee was not persisted.
+  let refundableCap = 0;
+  if (mode === "deposit") {
+    if (depositAmount > 0) refundableCap = depositAmount;
+    else if (amountDeposit > 0) refundableCap = amountDeposit;
+    else if (appointmentPriceMinor > 0 && depositPercentage > 0) {
+      refundableCap = Math.round(
+        (appointmentPriceMinor * Math.max(0, Math.min(100, depositPercentage))) / 100
+      );
+    }
+  } else if (mode === "pay_now") {
+    if (appointmentPriceMinor > 0) refundableCap = appointmentPriceMinor;
+  }
+  if (refundableCap > 0) {
+    base = Math.min(base, refundableCap);
   }
 
   // Default no refund when base is 0

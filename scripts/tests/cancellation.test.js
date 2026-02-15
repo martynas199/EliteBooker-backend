@@ -112,5 +112,22 @@ const basePolicy = { freeCancelHours:24, noRefundHours:2, partialRefund:{ percen
   assert.equal(out.outcomeStatus, "cancelled_partial_refund");
 }
 
+// Legacy records without stored platformFee still cap refund to service price
+{
+  const now = new Date("2025-03-01T09:00:00Z");
+  const appt = makeAppt({
+    startISO: "2025-03-03T10:00:00Z",
+    createdAtISO: "2025-02-28T10:00:00Z",
+    mode: "pay_now",
+    total: 221,
+  });
+  appt.payment.provider = "stripe";
+  appt.price = 1.22;
+
+  const out = computeCancellationOutcome({ appointment: appt, policy: basePolicy, now, salonTz: tz });
+  assert.equal(out.refundAmount, 122);
+  assert.equal(out.outcomeStatus, "cancelled_full_refund");
+}
+
 console.log("cancellation tests passed");
 
