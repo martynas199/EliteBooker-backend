@@ -48,7 +48,38 @@ export async function refundPayment({
   connectedAccountId = null,
 }) {
   const s = getStripe(connectedAccountId);
-  const body = { amount };
+  const requestedAmount = Math.trunc(Number(amount || 0));
+  if (!Number.isFinite(requestedAmount) || requestedAmount <= 0) {
+    throw new Error("Invalid refund amount");
+  }
+
+  let safeAmount = requestedAmount;
+
+  try {
+    if (paymentIntentId) {
+      const pi = await s.paymentIntents.retrieve(paymentIntentId);
+      const paymentAmount = Math.trunc(Number(pi?.amount || 0));
+      const applicationFee = Math.trunc(Number(pi?.application_fee_amount || 0));
+      if (paymentAmount > 0 && applicationFee > 0) {
+        safeAmount = Math.min(safeAmount, Math.max(0, paymentAmount - applicationFee));
+      }
+    } else if (chargeId) {
+      const ch = await s.charges.retrieve(chargeId);
+      const chargeAmount = Math.trunc(Number(ch?.amount || 0));
+      const applicationFee = Math.trunc(Number(ch?.application_fee_amount || 0));
+      if (chargeAmount > 0 && applicationFee > 0) {
+        safeAmount = Math.min(safeAmount, Math.max(0, chargeAmount - applicationFee));
+      }
+    }
+  } catch (lookupError) {
+    console.warn("[REFUND] Could not pre-calculate fee-safe refund cap:", lookupError?.message || lookupError);
+  }
+
+  if (safeAmount <= 0) {
+    throw new Error("Refund amount is zero after excluding non-refundable application fee");
+  }
+
+  const body = { amount: safeAmount };
   if (paymentIntentId) body.payment_intent = paymentIntentId;
   if (!paymentIntentId && chargeId) body.charge = chargeId;
   if (!body.payment_intent && !body.charge)
@@ -67,9 +98,10 @@ export async function refundPayment({
     "[REFUND] Created:",
     refund.id,
     "Amount:",
-    amount,
+    safeAmount,
     "Connect:",
     {
+      requestedAmount,
       refundApplicationFee,
       reverseTransfer,
       connectedAccountId: connectedAccountId || "platform",
