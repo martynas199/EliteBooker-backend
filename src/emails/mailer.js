@@ -64,7 +64,7 @@ export async function sendCancellationEmails({
   const currency = policySnapshot?.currency || "GBP";
   const hasRefund = refundAmount && refundAmount > 0;
   const refundAmountFormatted = hasRefund
-    ? formatCurrency(refundAmount, currency)
+    ? formatCurrency(refundAmount / 100, currency)
     : null;
 
   const cust = appointment.client?.email;

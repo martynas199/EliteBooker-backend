@@ -41,6 +41,7 @@ export function computeCancellationOutcome({
     appointment?.payment?.mode || inferModeFromPayment(appointment?.payment);
   const amountTotal = toInt(appointment?.payment?.amountTotal);
   const amountDeposit = toInt(appointment?.payment?.amountDeposit);
+  const platformFee = toInt(appointment?.payment?.stripe?.platformFee);
 
   const appliesTo = policy?.appliesTo || "auto";
 
@@ -56,6 +57,12 @@ export function computeCancellationOutcome({
   } else {
     // deposit_only: always refund deposit (or amountTotal for pay_now since that's the deposit)
     base = mode === "pay_now" || mode === "deposit" ? amountDeposit : 0;
+  }
+
+  // Booking/platform fee is non-refundable; exclude it from refundable base.
+  // This only applies to online Stripe payments where a platform fee exists.
+  if (appointment?.payment?.provider === "stripe" && platformFee > 0 && base > 0) {
+    base = Math.max(0, base - Math.min(platformFee, base));
   }
 
   // Default no refund when base is 0

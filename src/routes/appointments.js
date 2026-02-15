@@ -511,8 +511,7 @@ r.post("/:id/cancel", async (req, res) => {
           (!ref.chargeType &&
             ref.beauticianStripeAccount &&
             ref.sessionAccount !== "connected");
-        const refundApplicationFee =
-          isDestinationCharge && Number(ref.platformFee || 0) > 0;
+        const refundApplicationFee = false;
         const reverseTransfer = isDestinationCharge;
 
         if (!paymentIntentId && !chargeId) {
