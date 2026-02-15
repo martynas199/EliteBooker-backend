@@ -98,6 +98,22 @@ r.post("/stripe", async (req, res) => {
                   "payment.provider": "stripe",
                   "payment.mode": paymentMode,
                   "payment.sessionId": session.id,
+                  ...(session.payment_intent
+                    ? {
+                        "payment.stripe.paymentIntentId": String(
+                          session.payment_intent
+                        ),
+                      }
+                    : {}),
+                  ...(event.account
+                    ? {
+                        "payment.stripe.sessionAccount": "connected",
+                        "payment.stripe.beauticianStripeAccount": event.account,
+                        "payment.stripe.chargeType": "direct_charge",
+                      }
+                    : {
+                        "payment.stripe.sessionAccount": "platform",
+                      }),
                   ...(session.amount_total != null
                     ? { "payment.amountTotal": Number(session.amount_total) }
                     : {}),

@@ -1,13 +1,31 @@
 import Stripe from "stripe";
 
-let stripe;
-function getStripe() {
-  if (!stripe) {
-    const stripeKey = process.env.STRIPE_SECRET;
-    if (!stripeKey) throw new Error("STRIPE_SECRET not configured");
-    stripe = new Stripe(stripeKey, { apiVersion: "2024-06-20" });
+let platformStripe;
+const connectedStripeClients = new Map();
+
+function getStripe(connectedAccountId = null) {
+  if (!connectedAccountId) {
+    if (!platformStripe) {
+      const stripeKey = process.env.STRIPE_SECRET;
+      if (!stripeKey) throw new Error("STRIPE_SECRET not configured");
+      platformStripe = new Stripe(stripeKey, { apiVersion: "2024-06-20" });
+    }
+    return platformStripe;
   }
-  return stripe;
+
+  const existingClient = connectedStripeClients.get(connectedAccountId);
+  if (existingClient) {
+    return existingClient;
+  }
+
+  const stripeKey = process.env.STRIPE_SECRET;
+  if (!stripeKey) throw new Error("STRIPE_SECRET not configured");
+  const connectedClient = new Stripe(stripeKey, {
+    apiVersion: "2024-06-20",
+    stripeAccount: connectedAccountId,
+  });
+  connectedStripeClients.set(connectedAccountId, connectedClient);
+  return connectedClient;
 }
 
 /**
@@ -27,8 +45,9 @@ export async function refundPayment({
   idempotencyKey,
   refundApplicationFee = true,
   reverseTransfer = true,
+  connectedAccountId = null,
 }) {
-  const s = getStripe();
+  const s = getStripe(connectedAccountId);
   const body = { amount };
   if (paymentIntentId) body.payment_intent = paymentIntentId;
   if (!paymentIntentId && chargeId) body.charge = chargeId;
@@ -44,10 +63,18 @@ export async function refundPayment({
   }
 
   const refund = await s.refunds.create(body, { idempotencyKey });
-  console.log("[REFUND] Created:", refund.id, "Amount:", amount, "Connect:", {
-    refundApplicationFee,
-    reverseTransfer,
-  });
+  console.log(
+    "[REFUND] Created:",
+    refund.id,
+    "Amount:",
+    amount,
+    "Connect:",
+    {
+      refundApplicationFee,
+      reverseTransfer,
+      connectedAccountId: connectedAccountId || "platform",
+    }
+  );
   return refund;
 }
 

@@ -13,6 +13,7 @@ import {
 import { autoFillCancelledSlot } from "../services/waitlistAutoFillService.js";
 import AppointmentService from "../services/appointmentService.js";
 import requireAdmin from "../middleware/requireAdmin.js";
+import { retrieveStripeCheckoutSession } from "../utils/stripeSessionResolver.js";
 import {
   applyQueryOptimizations,
   executePaginatedQuery,
@@ -438,13 +439,99 @@ r.post("/:id/cancel", async (req, res) => {
         const key = `cancel:${id}:${new Date(
           appt.updatedAt || appt.createdAt || Date.now()
         ).getTime()}`;
-        const ref = appt.payment?.stripe || {};
+        const ref = { ...(appt.payment?.stripe || {}) };
+        let paymentIntentId = ref.paymentIntentId;
+        let chargeId = ref.chargeId;
+
+        const isConnectedSession =
+          ref.sessionAccount === "connected" ||
+          ref.chargeType === "direct_charge";
+        let connectedAccountId = isConnectedSession
+          ? ref.beauticianStripeAccount || null
+          : null;
+
+        if (isConnectedSession && !connectedAccountId) {
+          const specialist = await Specialist.findById(appt.specialistId)
+            .select("stripeAccountId")
+            .lean();
+          connectedAccountId = specialist?.stripeAccountId || null;
+        }
+
+        if (
+          !paymentIntentId &&
+          !chargeId &&
+          (appt.payment?.sessionId || appt.payment?.checkoutSessionId)
+        ) {
+          const sessionId = appt.payment?.sessionId || appt.payment?.checkoutSessionId;
+          try {
+            const preferredSource =
+              ref.sessionAccount === "connected" ? "connected" : "platform";
+            const { session } = await retrieveStripeCheckoutSession({
+              sessionId: String(sessionId),
+              preferredSource,
+              connectedAccountId,
+              getPlatformStripe: () => getStripe(),
+              getConnectedStripe: (accountId) =>
+                accountId ? getStripe(accountId) : null,
+              logger: console,
+            });
+
+            const paymentIntent = session?.payment_intent;
+            paymentIntentId =
+              typeof paymentIntent === "string"
+                ? paymentIntent
+                : paymentIntent?.id || undefined;
+            chargeId =
+              typeof paymentIntent === "object"
+                ? typeof paymentIntent?.latest_charge === "string"
+                  ? paymentIntent.latest_charge
+                  : paymentIntent?.latest_charge?.id
+                : undefined;
+
+            if (paymentIntentId || chargeId) {
+              await Appointment.findByIdAndUpdate(appt._id, {
+                $set: {
+                  "payment.stripe.paymentIntentId":
+                    paymentIntentId || ref.paymentIntentId,
+                  ...(chargeId ? { "payment.stripe.chargeId": chargeId } : {}),
+                },
+              });
+            }
+          } catch (sessionLookupError) {
+            console.error("refund_reference_lookup_err", {
+              id,
+              sessionId,
+              err: sessionLookupError.message,
+            });
+          }
+        }
+
+        const isDestinationCharge =
+          ref.chargeType === "destination_charge" ||
+          (!ref.chargeType &&
+            ref.beauticianStripeAccount &&
+            ref.sessionAccount !== "connected");
+        const refundApplicationFee =
+          isDestinationCharge && Number(ref.platformFee || 0) > 0;
+        const reverseTransfer = isDestinationCharge;
+
+        if (!paymentIntentId && !chargeId) {
+          return res.status(502).json({
+            error: "Refund failed",
+            details:
+              "Missing Stripe payment reference for refund (payment_intent/charge)",
+          });
+        }
+
         try {
           const rf = await refundPayment({
-            paymentIntentId: ref.paymentIntentId,
-            chargeId: ref.chargeId,
+            paymentIntentId,
+            chargeId,
             amount: outcome.refundAmount,
             idempotencyKey: key,
+            refundApplicationFee,
+            reverseTransfer,
+            connectedAccountId,
           });
           stripeRefundId = rf.id;
         } catch (e) {
