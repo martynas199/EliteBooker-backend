@@ -1,8 +1,12 @@
 import { Router } from "express";
 import passport from "../config/passport.js";
 import jwt from "jsonwebtoken";
+import { createConsoleLogger } from "../utils/logger.js";
 
 const router = Router();
+const LOG_OAUTH =
+  process.env.LOG_OAUTH === "true" || process.env.LOG_VERBOSE === "true";
+const console = createConsoleLogger({ scope: "oauth", verbose: LOG_OAUTH });
 
 // Helper function to generate JWT token for clients
 const generateToken = (clientId) => {

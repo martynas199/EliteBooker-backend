@@ -2,9 +2,13 @@ import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 import Admin from "../models/Admin.js";
 import { applySentryRequestContext } from "./sentryContext.js";
+import { createConsoleLogger } from "../utils/logger.js";
 
 const JWT_SECRET =
   process.env.JWT_SECRET || "your-secret-key-change-this-in-production";
+const LOG_AUTH =
+  process.env.AUTH_DEBUG === "true" || process.env.LOG_VERBOSE === "true";
+const console = createConsoleLogger({ scope: "require-admin", verbose: LOG_AUTH });
 
 /**
  * Admin authentication middleware

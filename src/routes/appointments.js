@@ -10,6 +10,7 @@ import {
   sendCancellationEmails,
   sendConfirmationEmail,
 } from "../emails/mailer.js";
+import { autoFillCancelledSlot } from "../services/waitlistAutoFillService.js";
 import AppointmentService from "../services/appointmentService.js";
 import requireAdmin from "../middleware/requireAdmin.js";
 import {
@@ -278,14 +279,16 @@ r.post("/", async (req, res) => {
         },
       ];
 
-      console.log("[DEPOSIT] Creating Stripe session:", {
-        appointmentId: appt._id.toString(),
-        depositAmount,
-        platformFee,
-        totalAmount,
-        stripeAccountId: specialist.stripeAccountId,
-        customerEmail: client.email,
-      });
+      if (LOG_VERBOSE) {
+        console.log("[DEPOSIT] Creating Stripe session:", {
+          appointmentId: appt._id.toString(),
+          depositAmount,
+          platformFee,
+          totalAmount,
+          stripeAccountId: specialist.stripeAccountId,
+          customerEmail: client.email,
+        });
+      }
 
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ["card"],
@@ -309,11 +312,13 @@ r.post("/", async (req, res) => {
         },
       });
 
-      console.log("[DEPOSIT] Created Stripe session:", {
-        sessionId: session.id,
-        appointmentId: appt._id.toString(),
-        url: session.url,
-      });
+      if (LOG_VERBOSE) {
+        console.log("[DEPOSIT] Created Stripe session:", {
+          sessionId: session.id,
+          appointmentId: appt._id.toString(),
+          url: session.url,
+        });
+      }
 
       // Update appointment with checkout details
       appt.payment.checkoutSessionId = session.id;
@@ -321,7 +326,9 @@ r.post("/", async (req, res) => {
 
       try {
         await appt.save();
-        console.log("[DEPOSIT] Appointment saved with session ID:", session.id);
+        if (LOG_VERBOSE) {
+          console.log("[DEPOSIT] Appointment saved with session ID:", session.id);
+        }
       } catch (saveError) {
         console.error("[DEPOSIT] Failed to save appointment:", saveError);
         // Try to update via findByIdAndUpdate as fallback
@@ -331,7 +338,9 @@ r.post("/", async (req, res) => {
             "payment.checkoutUrl": session.url,
           },
         });
-        console.log("[DEPOSIT] Updated appointment via findByIdAndUpdate");
+        if (LOG_VERBOSE) {
+          console.log("[DEPOSIT] Updated appointment via findByIdAndUpdate");
+        }
       }
 
       // Send confirmation email with deposit payment link
@@ -502,11 +511,23 @@ r.post("/:id/cancel", async (req, res) => {
     } catch (e) {
       console.error("email_err", e.message);
     }
+
+    let waitlistAutoFill = { filled: false, reason: "not_attempted" };
+    try {
+      waitlistAutoFill = await autoFillCancelledSlot({
+        appointmentId: updated._id,
+        tenantId: req.tenantId || updated.tenantId,
+      });
+    } catch (waitlistError) {
+      console.error("waitlist_autofill_err", waitlistError);
+    }
+
     res.json({
       outcome: newStatus.replace("cancelled_", ""),
       refundAmount: outcome.refundAmount,
       status: newStatus,
       stripeRefundId,
+      waitlistAutoFill,
     });
   } catch (err) {
     console.error("cancel_err", err);

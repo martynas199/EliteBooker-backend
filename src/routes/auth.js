@@ -7,8 +7,12 @@ import bcrypt from "bcryptjs";
 import Admin from "../models/Admin.js";
 import RefreshToken from "../models/RefreshToken.js";
 import { escapeHtml, getDefaultFromEmail, sendEmail } from "../emails/transport.js";
+import { createConsoleLogger } from "../utils/logger.js";
 
 const r = Router();
+const LOG_AUTH =
+  process.env.LOG_AUTH === "true" || process.env.LOG_VERBOSE === "true";
+const console = createConsoleLogger({ scope: "auth-route", verbose: LOG_AUTH });
 
 // JWT secret from environment or default (CHANGE IN PRODUCTION!)
 const JWT_SECRET =

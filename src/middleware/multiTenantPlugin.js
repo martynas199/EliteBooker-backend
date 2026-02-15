@@ -104,11 +104,6 @@ export function multiTenantPlugin(schema, options = {}) {
     next();
   });
 
-  // Add index for better query performance
-  if (index) {
-    schema.index({ tenantId: 1 });
-  }
-
   // Add static method to set tenant context for testing
   schema.statics.setTenantContext = function (tenantId) {
     // Store tenant context in a static variable

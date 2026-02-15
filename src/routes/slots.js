@@ -54,7 +54,7 @@ r.get("/fully-booked", async (req, res) => {
   try {
     // TENANT FILTERING: REQUIRED - Multi-tenant app must always filter by tenant
     if (!req.tenantId) {
-      console.log("[SLOTS] ERROR: No tenantId found in request");
+      console.error("[SLOTS] ERROR: No tenantId found in request");
       return res.status(400).json({
         error: "Tenant context required. Please provide tenant information.",
       });
@@ -137,7 +137,7 @@ r.get("/fully-booked", async (req, res) => {
     const allMonthAppts = await Appointment.find({
       specialistId,
       start: { $gte: monthStartDate, $lt: monthEndExclusiveDate },
-      status: { $ne: "cancelled" },
+      status: { $not: /^cancelled/ },
     }).lean();
 
     // Group appointments by date for quick lookup
@@ -241,7 +241,7 @@ r.get("/fully-booked", async (req, res) => {
 r.get("/", async (req, res) => {
   // TENANT FILTERING: REQUIRED - Multi-tenant app must always filter by tenant
   if (!req.tenantId) {
-    console.log("[SLOTS] ERROR: No tenantId found in request");
+    console.error("[SLOTS] ERROR: No tenantId found in request");
     return res.status(400).json({
       error: "Tenant context required. Please provide tenant information.",
     });
@@ -287,7 +287,7 @@ r.get("/", async (req, res) => {
     const appts = await Appointment.find({
       specialistId: targetId,
       start: { $gte: dayStart, $lt: dayEnd },
-      status: { $ne: "cancelled" },
+      status: { $not: /^cancelled/ },
     }).lean();
 
     const appointmentsForSlots = appts.map((a) => ({
@@ -334,7 +334,7 @@ r.get("/", async (req, res) => {
         $gte: dayStart,
         $lt: dayEnd,
       },
-      status: { $ne: "cancelled" },
+      status: { $not: /^cancelled/ },
     }).lean();
 
     const appointmentsForSlots = appts.map((a) => ({

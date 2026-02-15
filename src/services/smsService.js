@@ -1,4 +1,9 @@
 import axios from "axios";
+import { createConsoleLogger } from "../utils/logger.js";
+
+const LOG_SMS =
+  process.env.LOG_SMS === "true" || process.env.LOG_VERBOSE === "true";
+const console = createConsoleLogger({ scope: "sms-service", verbose: LOG_SMS });
 
 /**
  * Get SMS API URL from environment or fallback

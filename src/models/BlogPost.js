@@ -56,7 +56,6 @@ const BlogPostSchema = new mongoose.Schema(
 );
 
 // Index for faster queries
-BlogPostSchema.index({ slug: 1 });
 BlogPostSchema.index({ status: 1, publishedAt: -1 });
 BlogPostSchema.index({ tags: 1 });
 

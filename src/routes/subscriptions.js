@@ -1,8 +1,16 @@
 import { Router } from "express";
 import Stripe from "stripe";
 import Subscription from "../models/Subscription.js";
+import { createConsoleLogger } from "../utils/logger.js";
 
 const router = Router();
+const LOG_SUBSCRIPTIONS =
+  process.env.LOG_SUBSCRIPTIONS === "true" ||
+  process.env.LOG_VERBOSE === "true";
+const console = createConsoleLogger({
+  scope: "subscriptions",
+  verbose: LOG_SUBSCRIPTIONS,
+});
 
 let stripeInstance = null;
 function getStripe() {

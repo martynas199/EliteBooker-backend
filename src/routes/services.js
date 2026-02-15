@@ -21,9 +21,11 @@ import multer from "multer";
 import { uploadImage, deleteImage } from "../utils/cloudinary.js";
 import fs from "fs";
 import OpenAI from "openai";
+import { createConsoleLogger } from "../utils/logger.js";
 
 const r = Router();
 const LOG_VERBOSE = process.env.LOG_VERBOSE === "true";
+const console = createConsoleLogger({ scope: "services", verbose: LOG_VERBOSE });
 
 // Initialize OpenAI (only if API key is set)
 const openai = process.env.OPENAI_API_KEY

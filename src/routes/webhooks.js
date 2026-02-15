@@ -16,8 +16,12 @@ import {
   sendSeminarConfirmationEmail,
 } from "../emails/mailer.js";
 import smsService from "../services/smsService.js";
+import { createConsoleLogger } from "../utils/logger.js";
 
 const r = Router();
+const LOG_WEBHOOK =
+  process.env.LOG_WEBHOOK === "true" || process.env.LOG_VERBOSE === "true";
+const console = createConsoleLogger({ scope: "webhooks", verbose: LOG_WEBHOOK });
 let stripeInstance = null;
 function getStripe() {
   if (!stripeInstance) {

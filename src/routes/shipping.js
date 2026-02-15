@@ -1,6 +1,13 @@
 import { Router } from "express";
+import { createConsoleLogger } from "../utils/logger.js";
 
 const router = Router();
+const LOG_SHIPPING =
+  process.env.LOG_SHIPPING === "true" || process.env.LOG_VERBOSE === "true";
+const console = createConsoleLogger({
+  scope: "shipping-route",
+  verbose: LOG_SHIPPING,
+});
 
 // Royal Mail carrier ID (you'll need to get this from your ShipEngine account)
 // For now, we'll use a fallback approach

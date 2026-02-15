@@ -1,5 +1,8 @@
+import { createLogger } from "./logger.js";
+
 const PLATFORM_SOURCE = "platform";
 const CONNECTED_SOURCE = "connected";
+const defaultLogger = createLogger({ scope: "stripe-session-resolver" });
 
 export function isStripeSessionResourceMissing(error) {
   return (
@@ -33,7 +36,7 @@ export async function retrieveStripeCheckoutSession({
   getPlatformStripe,
   getConnectedStripe,
   expand = ["payment_intent"],
-  logger = console,
+  logger = defaultLogger,
 }) {
   if (!sessionId) {
     throw new Error("Missing Stripe checkout session id");

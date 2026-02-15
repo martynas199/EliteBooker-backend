@@ -3,6 +3,7 @@ import * as Sentry from "@sentry/node";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
+import compression from "compression";
 import cookieParser from "cookie-parser";
 import passport from "./config/passport.js";
 import { requestTimer } from "./middleware/performanceMonitoring.js";
@@ -46,6 +47,7 @@ import giftCardsRouter from "./routes/giftCards.js";
 import paymentsRouter from "./routes/payments.js";
 import supportRouter from "./routes/support.js";
 import demoRouter from "./routes/demo.js";
+import waitlistRouter from "./routes/waitlist.js";
 import consentTemplatesRouter from "./routes/consentTemplates.js";
 import consentsRouter from "./routes/consents.js";
 import consentPublicRouter from "./routes/consentPublic.js";
@@ -63,6 +65,8 @@ import optionalAuth from "./middleware/optionalAuth.js";
 import { sentryContextMiddleware } from "./middleware/sentryContext.js";
 import { buildAllowedOrigins, createCorsOptions } from "./config/cors.js";
 import { notFoundHandler, errorHandler } from "./middleware/errorHandler.js";
+import { requestContextMiddleware } from "./utils/requestContext.js";
+import { rootLogger } from "./utils/logger.js";
 
 const helmetConfig = {
   contentSecurityPolicy: {
@@ -83,24 +87,32 @@ const helmetConfig = {
   crossOriginEmbedderPolicy: false,
 };
 
-export function createApp({ logger = console } = {}) {
+export function createApp({
+  logger = rootLogger.child({ scope: "app" }).toNodeLogger(),
+} = {}) {
   const app = express();
   const allowedOrigins = buildAllowedOrigins();
 
   // Trust proxy - required for Render and other reverse proxies
   app.set("trust proxy", 1);
+  app.use(requestContextMiddleware);
 
   // Security middleware
   app.use(helmet(helmetConfig));
   app.use(cors(createCorsOptions({ allowedOrigins, logger })));
 
   // Logging
-  app.use(morgan("dev"));
+  if (process.env.NODE_ENV !== "production" || process.env.LOG_HTTP === "true") {
+    app.use(morgan("dev"));
+  }
 
   // Performance monitoring (log slow requests > 750ms)
   if (process.env.NODE_ENV !== "test") {
     app.use(requestTimer(750));
   }
+
+  // Compress JSON/text payloads for faster client responses
+  app.use(compression({ threshold: 1024 }));
 
   // Cookie parser (for JWT in cookies)
   app.use(cookieParser());
@@ -193,6 +205,7 @@ export function createApp({ logger = console } = {}) {
 
   // Booking with rate limiting to prevent spam
   app.use("/api/checkout", bookingLimiter, checkoutRouter);
+  app.use("/api/waitlist", bookingLimiter, waitlistRouter);
 
   // Protected admin routes (authentication required)
   app.use("/api/appointments", appointmentsRouter);

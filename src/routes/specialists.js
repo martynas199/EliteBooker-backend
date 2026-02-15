@@ -19,8 +19,16 @@ import multer from "multer";
 import { uploadImage, deleteImage } from "../utils/cloudinary.js";
 import fs from "fs";
 import { sendSpecialistCredentialsEmail } from "../emails/mailer.js";
+import { createConsoleLogger } from "../utils/logger.js";
 
 const r = Router();
+const LOG_SPECIALISTS =
+  process.env.LOG_SPECIALISTS === "true" ||
+  process.env.LOG_VERBOSE === "true";
+const console = createConsoleLogger({
+  scope: "specialists",
+  verbose: LOG_SPECIALISTS,
+});
 
 // Multer setup: Temporary file storage
 const upload = multer({ dest: "uploads/" });

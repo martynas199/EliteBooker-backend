@@ -4,6 +4,14 @@ import pLimit from "p-limit";
 import Appointment from "../models/Appointment.js";
 import smsService from "./smsService.js";
 import { sendReminderEmail } from "../emails/mailer.js";
+import { createConsoleLogger } from "../utils/logger.js";
+
+const LOG_REMINDER =
+  process.env.LOG_REMINDER === "true" || process.env.LOG_VERBOSE === "true";
+const console = createConsoleLogger({
+  scope: "reminder-service",
+  verbose: LOG_REMINDER,
+});
 
 // Bounded concurrency limiter - process max 10 reminders concurrently
 const limit = pLimit(10);
@@ -182,6 +190,26 @@ async function processReminders() {
       `[Reminder] Found ${appointments.length} appointments needing reminders`
     );
 
+    const tenantIds = [
+      ...new Set(
+        appointments
+          .map((appointment) => appointment.tenantId?.toString())
+          .filter(Boolean)
+      ),
+    ];
+    const Tenant = mongoose.model("Tenant");
+    const tenantFeatures = tenantIds.length
+      ? await Tenant.find({ _id: { $in: tenantIds } })
+          .select("_id features.smsReminders")
+          .lean()
+      : [];
+    const smsRemindersByTenant = new Map(
+      tenantFeatures.map((tenant) => [
+        tenant._id.toString(),
+        tenant.features?.smsReminders === true,
+      ])
+    );
+
     let successCount = 0;
     let failureCount = 0;
     let emailOnlyCount = 0;
@@ -200,14 +228,9 @@ async function processReminders() {
 
       // Try to send SMS
       if (appointment.client?.phone) {
-        // Get tenant to check feature flag
-        const Tenant = mongoose.model("Tenant");
-        const tenant = await Tenant.findById(appointment.tenantId).select(
-          "features"
-        );
-
         // Check if SMS reminders feature is enabled
-        const smsRemindersEnabled = tenant?.features?.smsReminders === true;
+        const smsRemindersEnabled =
+          smsRemindersByTenant.get(appointment.tenantId?.toString()) === true;
 
         if (!smsRemindersEnabled) {
           if (process.env.LOG_VERBOSE) {

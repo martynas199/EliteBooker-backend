@@ -5,12 +5,19 @@ import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc.js";
 import timezone from "dayjs/plugin/timezone.js";
 import customParseFormat from "dayjs/plugin/customParseFormat.js";
+import { createConsoleLogger } from "../utils/logger.js";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.extend(customParseFormat);
 
 const router = express.Router();
+const LOG_TIMEOFF =
+  process.env.LOG_TIMEOFF === "true" || process.env.LOG_VERBOSE === "true";
+const console = createConsoleLogger({
+  scope: "timeoff-route",
+  verbose: LOG_TIMEOFF,
+});
 
 /**
  * GET /api/timeoff

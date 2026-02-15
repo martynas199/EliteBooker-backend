@@ -4,6 +4,15 @@ import Appointment from "../models/Appointment.js";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import mongoose from "mongoose";
+import { createConsoleLogger } from "../utils/logger.js";
+
+const LOG_CLIENT_SERVICE =
+  process.env.LOG_CLIENT_SERVICE === "true" ||
+  process.env.LOG_VERBOSE === "true";
+const console = createConsoleLogger({
+  scope: "client-service",
+  verbose: LOG_CLIENT_SERVICE,
+});
 
 /**
  * Client Service - Handles global client operations
@@ -88,21 +97,39 @@ class ClientService {
    * Update tenant-client metrics after booking
    */
   static async updateTenantClientMetrics(tenantId, clientId) {
-    const bookings = await Appointment.find({
-      tenantId,
-      clientId,
-      status: { $in: ["confirmed", "completed"] },
-    });
+    const tenantObjectId =
+      typeof tenantId === "string"
+        ? new mongoose.Types.ObjectId(tenantId)
+        : tenantId;
+    const clientObjectId =
+      typeof clientId === "string"
+        ? new mongoose.Types.ObjectId(clientId)
+        : clientId;
 
-    const totalSpend = bookings.reduce((sum, b) => sum + (b.price || 0), 0);
-    const totalVisits = bookings.length;
-    const lastVisit =
-      bookings.length > 0
-        ? bookings.sort((a, b) => b.start - a.start)[0].start
-        : null;
+    const [aggregatedMetrics] = await Appointment.aggregate([
+      {
+        $match: {
+          tenantId: tenantObjectId,
+          clientId: clientObjectId,
+          status: { $in: ["confirmed", "completed"] },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalSpend: { $sum: { $ifNull: ["$price", 0] } },
+          totalVisits: { $sum: 1 },
+          lastVisit: { $max: "$start" },
+        },
+      },
+    ]);
+
+    const totalSpend = Number(aggregatedMetrics?.totalSpend || 0);
+    const totalVisits = Number(aggregatedMetrics?.totalVisits || 0);
+    const lastVisit = aggregatedMetrics?.lastVisit || null;
 
     await TenantClient.findOneAndUpdate(
-      { tenantId, clientId },
+      { tenantId: tenantObjectId, clientId: clientObjectId },
       {
         $set: {
           totalSpend,

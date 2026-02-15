@@ -1,3 +1,7 @@
+import { rootLogger } from "../utils/logger.js";
+
+const performanceLogger = rootLogger.child({ scope: "performance" });
+
 /**
  * Request timing and performance monitoring middleware
  */
@@ -17,23 +21,19 @@ export function requestTimer(threshold = 1000) {
     res.end = function (...args) {
       const duration = Date.now() - startTime;
 
-      // Log request details
       const logData = {
         method: req.method,
         url: req.originalUrl || req.url,
         status: res.statusCode,
-        duration: `${duration}ms`,
-        timestamp: new Date().toISOString(),
+        durationMs: duration,
       };
 
-      // Warn on slow requests
       if (duration > threshold) {
-        console.warn("⚠️  Slow Request:", logData);
-      } else {
-        console.log("✓ Request:", logData);
+        performanceLogger.warn("Slow Request", logData);
+      } else if (process.env.LOG_HTTP_VERBOSE === "true") {
+        performanceLogger.debug("Request", logData);
       }
 
-      // Call original end
       originalEnd.apply(res, args);
     };
 
@@ -127,16 +127,12 @@ class PerformanceMonitor {
       const startTime = Date.now();
       const endpoint = `${req.method} ${req.route?.path || req.path}`;
 
-      // Store original end function
       const originalEnd = res.end;
 
-      // Override end function to record metrics
       res.end = (...args) => {
         const duration = Date.now() - startTime;
         const success = res.statusCode < 400;
         this.record(endpoint, duration, success);
-
-        // Call original end
         originalEnd.apply(res, args);
       };
 
@@ -145,7 +141,6 @@ class PerformanceMonitor {
   }
 }
 
-// Singleton instance
 const performanceMonitor = new PerformanceMonitor();
 
 /**
@@ -159,13 +154,22 @@ export async function measureTime(label, fn) {
   try {
     const result = await fn();
     const duration = Date.now() - startTime;
-    console.log(`⏱️  ${label}: ${duration}ms`);
+    performanceLogger.debug("Measured operation", {
+      label,
+      durationMs: duration,
+      success: true,
+    });
     return result;
   } catch (error) {
     const duration = Date.now() - startTime;
-    console.error(`❌ ${label} failed after ${duration}ms:`, error.message);
+    performanceLogger.error("Measured operation failed", {
+      label,
+      durationMs: duration,
+      error,
+    });
     throw error;
   }
 }
 
 export { performanceMonitor };
+

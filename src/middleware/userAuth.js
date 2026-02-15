@@ -1,9 +1,16 @@
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import { applySentryRequestContext } from "./sentryContext.js";
+import { createConsoleLogger } from "../utils/logger.js";
 
 const JWT_SECRET =
   process.env.JWT_SECRET || "your-secret-key-change-in-production";
+const LOG_USER_AUTH =
+  process.env.LOG_USER_AUTH === "true" || process.env.LOG_VERBOSE === "true";
+const console = createConsoleLogger({
+  scope: "user-auth-middleware",
+  verbose: LOG_USER_AUTH,
+});
 
 // Middleware to authenticate customer users
 export const authenticateUser = async (req, res, next) => {

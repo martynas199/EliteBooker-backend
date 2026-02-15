@@ -136,7 +136,6 @@ const BeauticianSchema = new mongoose.Schema(
 BeauticianSchema.index({ active: 1, createdAt: -1 }); // Active specialists
 BeauticianSchema.index({ email: 1 }); // Email lookups
 BeauticianSchema.index({ stripeStatus: 1 }); // Stripe onboarding status
-BeauticianSchema.index({ stripeAccountId: 1 }); // Already has index
 
 // Apply multi-tenant plugin
 BeauticianSchema.plugin(multiTenantPlugin);

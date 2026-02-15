@@ -3,6 +3,11 @@ import {
   getEmailTransport,
   sendEmail,
 } from "./transport.js";
+import { createConsoleLogger } from "../utils/logger.js";
+
+const LOG_EMAIL =
+  process.env.LOG_EMAIL === "true" || process.env.LOG_VERBOSE === "true";
+const console = createConsoleLogger({ scope: "mailer", verbose: LOG_EMAIL });
 
 /**
  * Format currency based on the currency code

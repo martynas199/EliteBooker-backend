@@ -14,8 +14,12 @@ import {
   executePaginatedQuery,
   MAX_LIMIT,
 } from "../utils/queryHelpers.js";
+import { createConsoleLogger } from "../utils/logger.js";
 
 const router = Router();
+const LOG_ORDERS =
+  process.env.LOG_ORDERS === "true" || process.env.LOG_VERBOSE === "true";
+const console = createConsoleLogger({ scope: "orders", verbose: LOG_ORDERS });
 
 let stripeInstance = null;
 function getStripe() {

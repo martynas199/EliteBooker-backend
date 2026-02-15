@@ -1,10 +1,15 @@
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 import Admin from "../models/Admin.js";
+import { createConsoleLogger } from "../utils/logger.js";
 
 const JWT_SECRET =
   process.env.JWT_SECRET || "your-secret-key-change-this-in-production";
 const AUTH_DEBUG = process.env.AUTH_DEBUG === "true";
+const console = createConsoleLogger({
+  scope: "optional-auth",
+  verbose: AUTH_DEBUG || process.env.LOG_VERBOSE === "true",
+});
 
 const authDebugLog = (...args) => {
   if (AUTH_DEBUG) {

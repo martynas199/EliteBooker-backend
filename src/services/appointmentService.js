@@ -12,6 +12,8 @@ const escapeRegex = (value = "") =>
  * Orchestrates data access and implements business rules
  */
 class AppointmentService {
+  static MAX_UNPAGINATED_RESULTS = 200;
+
   /**
    * Get appointments with paginated results and populated services
    * Performance optimized with bulk fetching
@@ -65,7 +67,7 @@ class AppointmentService {
     const normalizedFilters = await this.buildAppointmentFilters(filters);
     const appointments = await AppointmentRepository.findAll({
       skip: 0,
-      limit: Number.MAX_SAFE_INTEGER,
+      limit: AppointmentService.MAX_UNPAGINATED_RESULTS,
       filters: normalizedFilters,
       tenantId,
     });

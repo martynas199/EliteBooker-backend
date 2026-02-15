@@ -9,9 +9,13 @@ import { sendConfirmationEmail } from "../emails/mailer.js";
 import ClientService from "../services/clientService.js";
 import AppointmentService from "../services/appointmentService.js";
 import { retrieveStripeCheckoutSession } from "../utils/stripeSessionResolver.js";
+import { createConsoleLogger } from "../utils/logger.js";
 import jwt from "jsonwebtoken";
 import Client from "../models/Client.js";
 import smsService from "../services/smsService.js";
+
+const LOG_VERBOSE = process.env.LOG_VERBOSE === "true";
+const console = createConsoleLogger({ scope: "checkout", verbose: LOG_VERBOSE });
 
 const r = Router();
 let stripeInstance = null;
@@ -411,11 +415,27 @@ r.post("/create-session", async (req, res, next) => {
       let totalPrice = 0;
       let totalDuration = 0;
       let servicesData = [];
+      let requestedServicesMap = new Map();
 
       if (services && Array.isArray(services) && services.length > 0) {
         // Multi-service booking
+        const requestedServiceIds = [
+          ...new Set(
+            services.map((svc) => svc?.serviceId?.toString()).filter(Boolean)
+          ),
+        ];
+
+        const requestedServices = requestedServiceIds.length
+          ? await Service.find({ _id: { $in: requestedServiceIds } }).lean()
+          : [];
+        requestedServicesMap = new Map(
+          requestedServices.map((item) => [item._id.toString(), item])
+        );
+
         for (const svc of services) {
-          const fullService = await Service.findById(svc.serviceId).lean();
+          const fullService = requestedServicesMap.get(
+            svc?.serviceId?.toString()
+          );
           if (!fullService) continue;
 
           const variant = (fullService.variants || []).find(
@@ -469,7 +489,12 @@ r.post("/create-session", async (req, res, next) => {
       if (any) {
         // Get first service to find available specialists
         const firstServiceId = servicesData[0]?.serviceId || serviceId;
-        const firstService = await Service.findById(firstServiceId).lean();
+        const firstService =
+          requestedServicesMap.get(firstServiceId?.toString()) ||
+          (await Service.findById(firstServiceId).lean());
+        if (!firstService) {
+          return res.status(404).json({ error: "Service not found" });
+        }
         specialist = await Specialist.findOne({
           _id: { $in: firstService.beauticianIds },
           active: true,

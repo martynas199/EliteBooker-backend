@@ -3,6 +3,14 @@ import {
   getDefaultFromEmail,
   sendEmail,
 } from "../emails/transport.js";
+import { createConsoleLogger } from "../utils/logger.js";
+
+const LOG_EMAIL =
+  process.env.LOG_EMAIL === "true" || process.env.LOG_VERBOSE === "true";
+const console = createConsoleLogger({
+  scope: "consent-email-service",
+  verbose: LOG_EMAIL,
+});
 
 class EmailService {
   async sendConsentFormEmail({ to, clientName, templateName, pdfUrl }) {

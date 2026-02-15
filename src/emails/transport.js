@@ -1,5 +1,13 @@
 import nodemailer from "nodemailer";
 import * as Sentry from "@sentry/node";
+import { createConsoleLogger } from "../utils/logger.js";
+
+const LOG_EMAIL =
+  process.env.LOG_EMAIL === "true" || process.env.LOG_VERBOSE === "true";
+const console = createConsoleLogger({
+  scope: "email-transport",
+  verbose: LOG_EMAIL,
+});
 
 let cachedTransport = null;
 let cachedSignature = null;

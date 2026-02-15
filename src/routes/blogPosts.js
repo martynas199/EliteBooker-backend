@@ -7,8 +7,16 @@ import {
   executePaginatedQuery,
   MAX_LIMIT,
 } from "../utils/queryHelpers.js";
+import { createConsoleLogger } from "../utils/logger.js";
 
 const router = express.Router();
+const LOG_BLOG_POSTS =
+  process.env.LOG_BLOG_POSTS === "true" ||
+  process.env.LOG_VERBOSE === "true";
+const console = createConsoleLogger({
+  scope: "blog-posts-route",
+  verbose: LOG_BLOG_POSTS,
+});
 
 // Validation schemas
 const CreateBlogPostSchema = z.object({

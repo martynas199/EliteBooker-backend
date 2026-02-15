@@ -1,5 +1,14 @@
 import mongoose from "mongoose";
 import crypto from "crypto";
+import { createConsoleLogger } from "../utils/logger.js";
+
+const LOG_TENANT_MODEL =
+  process.env.LOG_TENANT_MODEL === "true" ||
+  process.env.LOG_VERBOSE === "true";
+const console = createConsoleLogger({
+  scope: "tenant-model",
+  verbose: LOG_TENANT_MODEL,
+});
 
 const BrandingSchema = new mongoose.Schema(
   {
@@ -255,10 +264,8 @@ const TenantSchema = new mongoose.Schema(
 );
 
 // Indexes for performance
-TenantSchema.index({ slug: 1 }, { unique: true });
 // Note: domains.domain index NOT defined here - managed programmatically to avoid duplicate key issues with undefined/null
 TenantSchema.index({ status: 1, active: 1 });
-TenantSchema.index({ ownerId: 1 });
 TenantSchema.index({ createdAt: -1 });
 
 // Generate slug from name if not provided

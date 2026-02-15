@@ -5,6 +5,14 @@ import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import AppleStrategy from "passport-apple";
 import Client from "../models/Client.js";
+import { createConsoleLogger } from "../utils/logger.js";
+
+const LOG_OAUTH =
+  process.env.LOG_OAUTH === "true" || process.env.LOG_VERBOSE === "true";
+const console = createConsoleLogger({
+  scope: "passport-config",
+  verbose: LOG_OAUTH,
+});
 
 // Serialize client for session
 passport.serializeUser((client, done) => {

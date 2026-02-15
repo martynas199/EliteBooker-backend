@@ -34,7 +34,7 @@ Successfully renamed all specialist terminology to specialist throughout the bac
   - Registered new endpoint: `app.use("/api/specialists", readLimiter, specialistsRouter)`
   - **Kept legacy endpoint**: `app.use("/api/specialists", readLimiter, beauticiansRouter)`
 
-### 5. Updated Model Imports (14 files)
+### 5. Updated Model Imports (13 active files)
 
 All files now import `Specialist` instead of `Specialist`:
 
@@ -48,7 +48,6 @@ All files now import `Specialist` instead of `Specialist`:
 - `src/routes/webhooks.js`
 - `src/routes/timeoff.js`
 - `src/routes/specialists.js` (legacy endpoint)
-- `src/routes/bookings.js`
 - `src/routes/salon.js`
 - `src/services/googleCalendar.js`
 

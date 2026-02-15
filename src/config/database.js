@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { startReminderCron } from "../services/reminderService.js";
+import { rootLogger } from "../utils/logger.js";
 
 const mongoOptions = {
   serverSelectionTimeoutMS: 5000,
@@ -14,7 +15,7 @@ function normalizeMongoUri(mongoUri) {
 
 export async function connectToDatabase({
   mongoUri = process.env.MONGO_URI,
-  logger = console,
+  logger = rootLogger.child({ scope: "database" }).toNodeLogger(),
   startCron = process.env.NODE_ENV !== "test",
 } = {}) {
   const normalizedMongoUri = normalizeMongoUri(mongoUri);
@@ -34,4 +35,3 @@ export async function connectToDatabase({
 
   return mongoose.connection;
 }
-

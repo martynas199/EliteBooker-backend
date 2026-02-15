@@ -4,8 +4,13 @@ import User from "../models/User.js";
 import Appointment from "../models/Appointment.js";
 import Order from "../models/Order.js";
 import { authenticateUser } from "../middleware/userAuth.js";
+import { autoFillCancelledSlot } from "../services/waitlistAutoFillService.js";
+import { createConsoleLogger } from "../utils/logger.js";
 
 const router = Router();
+const LOG_USERS =
+  process.env.LOG_USERS === "true" || process.env.LOG_VERBOSE === "true";
+const console = createConsoleLogger({ scope: "users-route", verbose: LOG_USERS });
 
 // All routes require authentication
 router.use(authenticateUser);
@@ -186,12 +191,23 @@ router.patch("/me/bookings/:id/cancel", async (req, res) => {
 
     await appointment.save();
 
+    let waitlistAutoFill = { filled: false, reason: "not_attempted" };
+    try {
+      waitlistAutoFill = await autoFillCancelledSlot({
+        appointmentId: appointment._id,
+        tenantId: appointment.tenantId,
+      });
+    } catch (waitlistError) {
+      console.error("[USER] Waitlist auto-fill error:", waitlistError);
+    }
+
     console.log(`[USER] Booking cancelled: ${id} by user ${req.userId}`);
 
     res.json({
       message: "Booking cancelled successfully",
       refundType,
       appointment: appointment.toJSON(),
+      waitlistAutoFill,
     });
   } catch (error) {
     console.error("[USER] Cancel booking error:", error);

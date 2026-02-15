@@ -149,7 +149,6 @@ const seminarSchema = new mongoose.Schema(
 // Indexes for performance
 seminarSchema.index({ specialistId: 1, status: 1 });
 seminarSchema.index({ tenantId: 1, status: 1 });
-seminarSchema.index({ slug: 1 });
 seminarSchema.index({ "sessions.date": 1 });
 
 // Generate slug from title before saving

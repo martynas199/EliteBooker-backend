@@ -2,6 +2,14 @@ import { Storage } from '@google-cloud/storage';
 import crypto from 'crypto';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createConsoleLogger } from '../utils/logger.js';
+
+const LOG_GCS_CONSENT =
+  process.env.LOG_GCS_CONSENT === 'true' || process.env.LOG_VERBOSE === 'true';
+const console = createConsoleLogger({
+  scope: 'gcs-consent-service',
+  verbose: LOG_GCS_CONSENT,
+});
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

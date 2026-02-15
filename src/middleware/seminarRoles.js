@@ -1,4 +1,13 @@
 import Seminar from "../models/Seminar.js";
+import { createConsoleLogger } from "../utils/logger.js";
+
+const LOG_SEMINAR_AUTH =
+  process.env.LOG_SEMINAR_AUTH === "true" ||
+  process.env.LOG_VERBOSE === "true";
+const console = createConsoleLogger({
+  scope: "seminar-roles",
+  verbose: LOG_SEMINAR_AUTH,
+});
 
 /**
  * Check if user is admin

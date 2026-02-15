@@ -14,9 +14,17 @@
 import Tenant from "../models/Tenant.js";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
+import { createConsoleLogger } from "../utils/logger.js";
 
 const JWT_SECRET =
   process.env.JWT_SECRET || "your-secret-key-change-this-in-production";
+const LOG_RESOLVE_TENANT =
+  process.env.LOG_RESOLVE_TENANT === "true" ||
+  process.env.LOG_VERBOSE === "true";
+const console = createConsoleLogger({
+  scope: "resolve-tenant",
+  verbose: LOG_RESOLVE_TENANT,
+});
 
 // Platform domain (configure this based on your deployment)
 const PLATFORM_DOMAINS = [

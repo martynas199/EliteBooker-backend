@@ -36,8 +36,8 @@ Complete Redis-based slot-locking mechanism for a multi-tenant booking system th
 │  └────────────────┘         └────────┬───────┘         │
 │                                       │                  │
 │  ┌────────────────┐                  │                  │
-│  │Booking Routes  │──────────────────┘                  │
-│  │ /api/bookings  │                                     │
+│  │Appointments    │──────────────────┘                  │
+│  │/api/appointments│                                     │
 │  └────────────────┘                                     │
 └────────────────────────────────┬────────────────────────┘
                                  │ ioredis
@@ -219,14 +219,14 @@ Content-Type: application/json
 }
 ```
 
-### 3. Booking Routes (`/api/bookings`)
+### 3. Booking Routes (`/api/appointments`)
 
 Enhanced booking creation with lock verification.
 
 #### Create Booking Flow
 
 ```javascript
-POST /api/bookings/create
+POST /api/appointments
 
 // Request
 {
@@ -409,7 +409,7 @@ function BookingFlow() {
   // Step 3: Create booking
   const handleConfirmBooking = async (customerData) => {
     try {
-      const response = await api.post("/bookings/create", {
+      const response = await api.post("/appointments", {
         lockId: lockData.lockId, // Include lockId from lock manager
         tenantId: tenant.id,
         specialistId: selectedSlot.specialistId,
@@ -621,7 +621,7 @@ if (!verification.valid) {
 
 ```javascript
 try {
-  await api.post('/bookings/create', { ... });
+  await api.post('/appointments', { ... });
 } catch (error) {
   if (error.response?.status === 409) {
     // Lock verification failed or slot double-booked
@@ -689,7 +689,7 @@ describe("Booking with Locks", () => {
 
     // 2. Create booking
     const bookingResult = await request(app)
-      .post("/api/bookings/create")
+      .post("/api/appointments")
       .send({ lockId, ...bookingData });
 
     expect(bookingResult.status).toBe(201);
@@ -700,7 +700,7 @@ describe("Booking with Locks", () => {
     const lockId = "expired-lock-id";
 
     const result = await request(app)
-      .post("/api/bookings/create")
+      .post("/api/appointments")
       .send({ lockId, ...bookingData });
 
     expect(result.status).toBe(409);

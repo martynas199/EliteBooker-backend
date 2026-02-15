@@ -6,8 +6,15 @@ import Tenant from "../models/Tenant.js";
 import Stripe from "stripe";
 import { z } from "zod";
 import requireAdmin from "../middleware/requireAdmin.js";
+import { createConsoleLogger } from "../utils/logger.js";
 
 const router = express.Router();
+const LOG_PAYMENTS =
+  process.env.LOG_PAYMENTS === "true" || process.env.LOG_VERBOSE === "true";
+const console = createConsoleLogger({
+  scope: "payments",
+  verbose: LOG_PAYMENTS,
+});
 
 // ==================== PUBLIC ENDPOINTS ====================
 
@@ -991,34 +998,48 @@ router.get("/appointments/today", async (req, res) => {
       .populate("specialist", "firstName lastName")
       .sort({ date: 1 });
 
-    // Calculate payment status for each appointment
-    const appointmentsWithPaymentStatus = await Promise.all(
-      appointments.map(async (apt) => {
-        const payments = await Payment.find({
-          appointment: apt._id,
-          status: { $in: ["succeeded", "processing"] },
-        });
-
-        const totalPaid = payments.reduce((sum, p) => sum + p.total, 0);
-        const appointmentTotal = apt.services.reduce(
-          (sum, s) => sum + s.service.price,
-          0
-        );
-        const remainingBalance = appointmentTotal - totalPaid;
-
-        return {
-          _id: apt._id,
-          date: apt.date,
-          client: apt.client,
-          specialist: apt.specialist,
-          services: apt.services,
-          totalPrice: appointmentTotal,
-          totalPaid,
-          remainingBalance,
-          isPaid: remainingBalance <= 0,
-        };
-      })
+    const appointmentIds = appointments.map((apt) => apt._id);
+    const paymentTotals = appointmentIds.length
+      ? await Payment.aggregate([
+          {
+            $match: {
+              appointment: { $in: appointmentIds },
+              status: { $in: ["succeeded", "processing"] },
+            },
+          },
+          {
+            $group: {
+              _id: "$appointment",
+              totalPaid: { $sum: "$total" },
+            },
+          },
+        ])
+      : [];
+    const totalPaidByAppointment = new Map(
+      paymentTotals.map((row) => [row._id?.toString(), row.totalPaid || 0])
     );
+
+    // Calculate payment status for each appointment
+    const appointmentsWithPaymentStatus = appointments.map((apt) => {
+      const totalPaid = totalPaidByAppointment.get(apt._id?.toString()) || 0;
+      const appointmentTotal = apt.services.reduce(
+        (sum, s) => sum + (s?.service?.price || 0),
+        0
+      );
+      const remainingBalance = appointmentTotal - totalPaid;
+
+      return {
+        _id: apt._id,
+        date: apt.date,
+        client: apt.client,
+        specialist: apt.specialist,
+        services: apt.services,
+        totalPrice: appointmentTotal,
+        totalPaid,
+        remainingBalance,
+        isPaid: remainingBalance <= 0,
+      };
+    });
 
     res.json({
       success: true,

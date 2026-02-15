@@ -187,7 +187,6 @@ const SpecialistSchema = new mongoose.Schema(
 SpecialistSchema.index({ active: 1, createdAt: -1 }); // Active specialists
 SpecialistSchema.index({ email: 1 }); // Email lookups
 SpecialistSchema.index({ stripeStatus: 1 }); // Stripe onboarding status
-SpecialistSchema.index({ stripeAccountId: 1 }); // Already has index
 
 // Apply multi-tenant plugin
 SpecialistSchema.plugin(multiTenantPlugin);

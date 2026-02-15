@@ -1,3 +1,5 @@
+import { rootLogger } from "../utils/logger.js";
+
 const STATIC_ALLOWED_ORIGINS = [
   "http://localhost:5173",
   "http://localhost:5174",
@@ -47,7 +49,7 @@ export function isVercelPreviewOrigin(origin) {
 
 export function createCorsOptions({
   allowedOrigins = buildAllowedOrigins(),
-  logger = console,
+  logger = rootLogger.child({ scope: "cors" }).toNodeLogger(),
 } = {}) {
   return {
     origin(origin, callback) {
@@ -75,4 +77,3 @@ export function createCorsOptions({
     optionsSuccessStatus: 200,
   };
 }
-

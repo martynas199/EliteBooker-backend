@@ -272,6 +272,7 @@ paymentSchema.index({ tenant: 1, createdAt: -1 });
 paymentSchema.index({ tenant: 1, status: 1, createdAt: -1 });
 paymentSchema.index({ tenant: 1, staff: 1, createdAt: -1 });
 paymentSchema.index({ tenant: 1, client: 1, createdAt: -1 });
+paymentSchema.index({ appointment: 1, status: 1, createdAt: -1 });
 paymentSchema.index({ "stripe.paymentIntentId": 1 });
 paymentSchema.index({ "receipt.receiptNumber": 1 });
 

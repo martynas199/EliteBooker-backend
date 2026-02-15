@@ -36,7 +36,6 @@ const referralCodeSchema = new mongoose.Schema({
 });
 
 // Add indexes
-referralCodeSchema.index({ code: 1 });
 referralCodeSchema.index({ ownerId: 1, ownerType: 1 });
 referralCodeSchema.index({ isActive: 1 });
 

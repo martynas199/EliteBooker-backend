@@ -57,11 +57,12 @@ In your `server.js` or `app.js`:
 ```javascript
 // Import routes
 const lockRoutes = require("./src/routes/locks");
-const bookingRoutes = require("./src/routes/bookings");
+const appointmentsRouter = require("./src/routes/appointments");
 
 // Register routes
 app.use("/api/locks", lockRoutes);
-app.use("/api/bookings", bookingRoutes);
+// Booking creation currently uses the existing appointments route
+app.use("/api/appointments", appointmentsRouter);
 ```
 
 ### 5. Test the System
@@ -150,7 +151,7 @@ import { api } from "@/shared/lib/apiClient";
 
 async function createBooking(bookingData, lockId) {
   try {
-    const response = await api.post("/bookings/create", {
+    const response = await api.post("/appointments", {
       lockId, // ← Include lock ID from useLockManager
       ...bookingData,
     });
@@ -216,7 +217,7 @@ Run the same command again immediately:
 ### Test Booking Creation
 
 ```bash
-curl -X POST http://localhost:4000/api/bookings/create \
+curl -X POST http://localhost:4000/api/appointments \
   -H "Content-Type: application/json" \
   -d '{
     "lockId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",

@@ -319,6 +319,49 @@ router.get("/appointment/:appointmentId", requireAdmin, async (req, res) => {
 });
 
 /**
+ * POST /api/consents/appointment-status/batch
+ * Get signed consent status for multiple appointments (admin only)
+ */
+router.post("/appointment-status/batch", requireAdmin, async (req, res) => {
+  try {
+    const appointmentIds = Array.isArray(req.body?.appointmentIds)
+      ? req.body.appointmentIds.filter(Boolean)
+      : [];
+
+    if (appointmentIds.length === 0) {
+      return res.json({ success: true, data: {} });
+    }
+
+    const signedConsents = await ConsentRecord.find({
+      appointmentId: { $in: appointmentIds },
+      status: "signed",
+    })
+      .select("_id appointmentId signedAt")
+      .sort({ signedAt: -1 })
+      .lean();
+
+    const consentsByAppointment = {};
+    for (const consent of signedConsents) {
+      const appointmentId = consent.appointmentId?.toString();
+      if (!appointmentId || consentsByAppointment[appointmentId]) continue;
+      consentsByAppointment[appointmentId] = consent;
+    }
+
+    res.json({
+      success: true,
+      data: consentsByAppointment,
+    });
+  } catch (error) {
+    console.error("Error fetching batch appointment consents:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch consent statuses",
+      error: error.message,
+    });
+  }
+});
+
+/**
  * GET /api/consents/:id
  * Get single consent record
  */

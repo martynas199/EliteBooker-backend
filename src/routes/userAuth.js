@@ -2,8 +2,15 @@ import { Router } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
+import { createConsoleLogger } from "../utils/logger.js";
 
 const router = Router();
+const LOG_USER_AUTH =
+  process.env.LOG_USER_AUTH === "true" || process.env.LOG_VERBOSE === "true";
+const console = createConsoleLogger({
+  scope: "user-auth-route",
+  verbose: LOG_USER_AUTH,
+});
 
 // JWT Secret
 const JWT_SECRET =

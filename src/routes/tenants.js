@@ -29,8 +29,12 @@ import {
   executePaginatedQuery,
   MAX_LIMIT,
 } from "../utils/queryHelpers.js";
+import { createConsoleLogger } from "../utils/logger.js";
 
 const router = Router();
+const LOG_TENANTS =
+  process.env.LOG_TENANTS === "true" || process.env.LOG_VERBOSE === "true";
+const console = createConsoleLogger({ scope: "tenants", verbose: LOG_TENANTS });
 
 const JWT_SECRET =
   process.env.JWT_SECRET || "your-secret-key-change-this-in-production";
