@@ -76,7 +76,7 @@ r.get("/", async (req, res) => {
       const page = Math.max(1, parseInt(req.query.page) || 1);
       const limit = Math.min(
         MAX_LIMIT,
-        Math.max(1, parseInt(req.query.limit) || 50)
+        Math.max(1, parseInt(req.query.limit) || 50),
       );
 
       // Use service layer for paginated results with tenant filtering
@@ -92,7 +92,7 @@ r.get("/", async (req, res) => {
       // Backward compatibility: return array if no page param (with max limit for safety)
       const appointments = await AppointmentService.getAllAppointments(
         tenantId,
-        filters
+        filters,
       );
       res.json(appointments);
     }
@@ -162,7 +162,7 @@ r.post("/", async (req, res) => {
       (variant.durationMin +
         (variant.bufferBeforeMin || 0) +
         (variant.bufferAfterMin || 0)) *
-        60000
+        60000,
   );
   // Check for conflicts, excluding:
   // - Cancelled appointments
@@ -215,7 +215,7 @@ r.post("/", async (req, res) => {
     // Get custom deposit percentage (default 30%)
     const depositPercentage = Number(req.body.depositAmount) || 30;
     const depositAmount = Math.round(
-      Number(variant.price || 0) * (depositPercentage / 100) * 100
+      Number(variant.price || 0) * (depositPercentage / 100) * 100,
     ); // in pence
     payment = {
       mode: "deposit",
@@ -328,7 +328,10 @@ r.post("/", async (req, res) => {
       try {
         await appt.save();
         if (LOG_VERBOSE) {
-          console.log("[DEPOSIT] Appointment saved with session ID:", session.id);
+          console.log(
+            "[DEPOSIT] Appointment saved with session ID:",
+            session.id,
+          );
         }
       } catch (saveError) {
         console.error("[DEPOSIT] Failed to save appointment:", saveError);
@@ -437,7 +440,7 @@ r.post("/:id/cancel", async (req, res) => {
 
       if (outcome.refundAmount > 0 && appt.payment?.provider === "stripe") {
         const key = `cancel:${id}:${new Date(
-          appt.updatedAt || appt.createdAt || Date.now()
+          appt.updatedAt || appt.createdAt || Date.now(),
         ).getTime()}`;
         const ref = { ...(appt.payment?.stripe || {}) };
         let paymentIntentId = ref.paymentIntentId;
@@ -462,7 +465,8 @@ r.post("/:id/cancel", async (req, res) => {
           !chargeId &&
           (appt.payment?.sessionId || appt.payment?.checkoutSessionId)
         ) {
-          const sessionId = appt.payment?.sessionId || appt.payment?.checkoutSessionId;
+          const sessionId =
+            appt.payment?.sessionId || appt.payment?.checkoutSessionId;
           try {
             const preferredSource =
               ref.sessionAccount === "connected" ? "connected" : "platform";
@@ -575,7 +579,7 @@ r.post("/:id/cancel", async (req, res) => {
     const updated = await Appointment.findOneAndUpdate(
       { _id: id, status: { $in: ["confirmed", "reserved_unpaid"] } },
       update,
-      { new: true }
+      { new: true },
     ).lean();
     if (!updated) {
       const cur = await Appointment.findById(id).lean();

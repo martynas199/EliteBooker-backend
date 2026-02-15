@@ -136,7 +136,7 @@ export async function sendCancellationEmails({
           <p style="margin: 0; color: #6b7280; font-size: 14px;">Best regards,</p>
           <p style="margin: 5px 0 0 0; background: linear-gradient(135deg, #7c3aed 0%, #ec4899 50%, #06b6d4 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-weight: bold; font-size: 18px;">Elite Booker</p>
           <p style="margin: 20px 0 0 0; color: #9ca3af; font-size: 11px;">Appointment ID: ${String(
-            appointment._id
+            appointment._id,
           )}</p>
         </div>
       </div>
@@ -212,7 +212,7 @@ export async function sendCancellationEmails({
           </div>
           
           <p style="color: #9ca3af; font-size: 11px; margin-top: 30px;">Appointment ID: ${String(
-            appointment._id
+            appointment._id,
           )}</p>
         </div>
       `,
@@ -220,7 +220,7 @@ export async function sendCancellationEmails({
     } catch (error) {
       console.error(
         "[MAILER] ✗ Failed to send beautician notification:",
-        error
+        error,
       );
       // Don't throw - beautician notification failure shouldn't break the flow
     }
@@ -241,7 +241,7 @@ export async function sendConfirmationEmail({
 
   console.log(
     "[MAILER] sendConfirmationEmail called for appointment:",
-    appointment?._id
+    appointment?._id,
   );
   const tx = getTransport();
   if (!tx) {
@@ -296,7 +296,7 @@ export async function sendConfirmationEmail({
             : serviceName;
         return `${i + 1}. ${displayName} (${s.duration}min - ${formatCurrency(
           s.price,
-          currency
+          currency,
         )})`;
       })
       .join("\n");
@@ -378,14 +378,14 @@ export async function sendConfirmationEmail({
     "[MAILER] Services:",
     hasMultipleServices
       ? `${appointment.services.length} services`
-      : serviceName
+      : serviceName,
   );
   console.log("[MAILER] Specialist:", beauticianName);
   console.log("[MAILER] Time:", startTime);
   console.log("[MAILER] Appointment status:", appointment.status);
   console.log(
     "[MAILER] Payment object:",
-    JSON.stringify(appointment.payment, null, 2)
+    JSON.stringify(appointment.payment, null, 2),
   );
   console.log("[MAILER] Payment mode:", appointment.payment?.mode);
   console.log("[MAILER] Determined payment status:", paymentStatus);
@@ -431,17 +431,17 @@ ${
   isDepositPayment
     ? `Deposit: ${formatCurrency(
         depositAmount,
-        currency
+        currency,
       )}\nBooking Fee: ${formatCurrency(
         bookingFee,
-        currency
+        currency,
       )}\nTotal Paid: ${formatCurrency(depositAmount + bookingFee, currency)}`
     : `Payment: ${paymentStatus}`
 }${
         isDepositPayment && remainingBalance > 0
           ? `\nRemaining Balance: ${formatCurrency(
               remainingBalance,
-              currency
+              currency,
             )} (to be paid at salon)`
           : ""
       }
@@ -479,9 +479,9 @@ Thank you for choosing us!`,
           <p style="margin: 0 0 16px 0; color: rgba(255,255,255,0.9); font-size: 14px;">Please complete your ${depositPercentage}% deposit payment to confirm your booking.</p>
           <a href="${paymentLink}" style="display: inline-block; background-color: white; color: #7c3aed; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">💳 Pay Deposit Now</a>
           <p style="margin: 16px 0 0 0; color: rgba(255,255,255,0.8); font-size: 12px;">Deposit Amount (${depositPercentage}%): ${formatCurrency(
-                depositAmount,
-                currency
-              )}</p>
+            depositAmount,
+            currency,
+          )}</p>
         </div>
         `
             : ""
@@ -500,19 +500,19 @@ Thank you for choosing us!`,
             <p style="margin: 0 0 8px 0; color: #065f46; font-weight: 600; font-size: 14px;">💳 Payment Details</p>
             <p style="margin: 4px 0; color: #047857; font-size: 14px;">Deposit: <strong>${formatCurrency(
               depositAmount,
-              currency
+              currency,
             )}</strong></p>
             ${
               bookingFee > 0
                 ? `<p style="margin: 4px 0; color: #047857; font-size: 14px;">Booking Fee: <strong>${formatCurrency(
                     bookingFee,
-                    currency
+                    currency,
                   )}</strong></p>`
                 : ""
             }
             <p style="margin: 8px 0 0 0; padding-top: 8px; border-top: 1px solid #d1fae5; color: #065f46; font-size: 15px; font-weight: 700;">Total Paid: ${formatCurrency(
               depositAmount + bookingFee,
-              currency
+              currency,
             )}</p>
           </div>
           `
@@ -525,7 +525,7 @@ Thank you for choosing us!`,
             <p style="margin: 0; color: #92400e; font-weight: 600; font-size: 14px;">💰 Remaining Balance</p>
             <p style="margin: 8px 0 0 0; color: #b45309; font-size: 15px; font-weight: 700;">${formatCurrency(
               remainingBalance,
-              currency
+              currency,
             )}</p>
             <p style="margin: 5px 0 0 0; color: #b45309; font-size: 13px;">To be paid at the salon</p>
           </div>
@@ -550,7 +550,7 @@ Thank you for choosing us!`,
     });
     console.log(
       "[MAILER] ✓ Confirmation email sent successfully. MessageId:",
-      info.messageId
+      info.messageId,
     );
   } catch (error) {
     console.error("[MAILER] ✗ Failed to send confirmation email:", error);
@@ -575,16 +575,16 @@ ${
   isDepositPayment
     ? `Deposit: ${formatCurrency(
         depositAmount,
-        currency
+        currency,
       )}\nBooking Fee: ${formatCurrency(
         bookingFee,
-        currency
+        currency,
       )}\nTotal Paid: ${formatCurrency(
         depositAmount + bookingFee,
-        currency
+        currency,
       )}\nRemaining Balance: ${formatCurrency(
         remainingBalance,
-        currency
+        currency,
       )} (to be collected at salon)`
     : `Payment: ${paymentStatus}`
 }
@@ -624,22 +624,22 @@ Please ensure you're prepared for this appointment.`;
             <p style="margin: 0 0 8px 0; color: #065f46; font-weight: 600; font-size: 14px;">💳 Payment Details</p>
             <p style="margin: 4px 0; color: #047857; font-size: 14px;">Deposit: <strong>${formatCurrency(
               depositAmount,
-              currency
+              currency,
             )}</strong></p>
             <p style="margin: 4px 0; color: #047857; font-size: 14px;">Booking Fee: <strong>${formatCurrency(
               bookingFee,
-              currency
+              currency,
             )}</strong></p>
             <p style="margin: 8px 0 0 0; padding-top: 8px; border-top: 1px solid #d1fae5; color: #065f46; font-size: 15px; font-weight: 700;">Total Paid: ${formatCurrency(
               depositAmount + bookingFee,
-              currency
+              currency,
             )}</p>
           </div>
           <div style="background-color: #fef3c7; padding: 12px; border-radius: 6px; margin-top: 12px; border-left: 3px solid #f59e0b;">
             <p style="margin: 0; color: #92400e; font-weight: 600; font-size: 14px;">💰 To Collect at Salon</p>
             <p style="margin: 8px 0 0 0; color: #b45309; font-size: 15px; font-weight: 700;">${formatCurrency(
               remainingBalance,
-              currency
+              currency,
             )}</p>
           </div>
           `
@@ -678,7 +678,7 @@ Please ensure you're prepared for this appointment.`;
 
     console.log(
       "[MAILER] Sending specialist notification to:",
-      beauticianEmail
+      beauticianEmail,
     );
     try {
       const info = await tx.sendMail({
@@ -690,12 +690,12 @@ Please ensure you're prepared for this appointment.`;
       });
       console.log(
         "[MAILER] ✓ Specialist notification email sent successfully. MessageId:",
-        info.messageId
+        info.messageId,
       );
     } catch (error) {
       console.error(
         "[MAILER] ✗ Failed to send specialist notification email:",
-        error
+        error,
       );
       // Don't throw - specialist notification failure shouldn't block the customer confirmation
     }
@@ -750,7 +750,7 @@ export async function sendReminderEmail({ appointment, service, specialist }) {
             : serviceName;
         return `${i + 1}. ${displayName} (${s.duration}min - ${formatCurrency(
           s.price,
-          currency
+          currency,
         )})`;
       })
       .join("\n");
@@ -856,7 +856,7 @@ Thank you!`,
     });
     console.log(
       "[MAILER] ✓ Reminder email sent successfully. MessageId:",
-      info.messageId
+      info.messageId,
     );
   } catch (error) {
     console.error("[MAILER] ✗ Failed to send reminder email:", error);
@@ -870,7 +870,7 @@ Thank you!`,
 export async function sendOrderConfirmationEmail({ order }) {
   console.log(
     "[MAILER] sendOrderConfirmationEmail called for order:",
-    order?._id
+    order?._id,
   );
   const tx = getTransport();
   if (!tx) {
@@ -900,7 +900,7 @@ export async function sendOrderConfirmationEmail({ order }) {
       (item) =>
         `- ${item.title}${item.size ? ` (${item.size})` : ""} x ${
           item.quantity
-        } - ${formatCurrency((item.price || 0) * item.quantity, currency)}`
+        } - ${formatCurrency((item.price || 0) * item.quantity, currency)}`,
     )
     .join("\n");
 
@@ -932,7 +932,7 @@ export async function sendOrderConfirmationEmail({ order }) {
         ${formatCurrency((item.price || 0) * item.quantity, currency)}
       </td>
     </tr>
-  `
+  `,
     )
     .join("");
 
@@ -990,7 +990,7 @@ Order ID: ${order._id}`;
         <div style="display: flex; justify-content: space-between;">
           <span style="color: #1e40af; font-weight: 600;">Order Date:</span>
           <span style="color: #6b7280;">${new Date(
-            order.createdAt
+            order.createdAt,
           ).toLocaleDateString("en-GB", {
             weekday: "long",
             year: "numeric",
@@ -1059,7 +1059,7 @@ Order ID: ${order._id}`;
         <p style="margin: 0; color: #6b7280; font-size: 14px;">Thank you for shopping with us!</p>
         <p style="margin: 5px 0 0 0; color: #9333ea; font-weight: bold;">Elite Booker</p>
         <p style="margin: 20px 0 0 0; color: #9ca3af; font-size: 11px;">Order ID: ${String(
-          order._id
+          order._id,
         )}</p>
       </div>
     </div>
@@ -1079,7 +1079,7 @@ Order ID: ${order._id}`;
     });
     console.log(
       "[MAILER] ✓ Order confirmation email sent successfully. MessageId:",
-      info.messageId
+      info.messageId,
     );
   } catch (error) {
     console.error("[MAILER] ✗ Failed to send order confirmation email:", error);
@@ -1099,12 +1099,12 @@ export async function sendBeauticianProductOrderNotification({
     "[MAILER] sendBeauticianProductOrderNotification called for order:",
     order?._id,
     "specialist:",
-    specialist?.name
+    specialist?.name,
   );
   const tx = getTransport();
   if (!tx) {
     console.warn(
-      "[MAILER] No transport - skipping specialist product notification"
+      "[MAILER] No transport - skipping specialist product notification",
     );
     return;
   }
@@ -1113,7 +1113,7 @@ export async function sendBeauticianProductOrderNotification({
   console.log("[MAILER] Specialist email:", beauticianEmail || "NOT SET");
   if (!beauticianEmail) {
     console.warn(
-      "[MAILER] No specialist email - skipping specialist product notification"
+      "[MAILER] No specialist email - skipping specialist product notification",
     );
     return;
   }
@@ -1125,7 +1125,7 @@ export async function sendBeauticianProductOrderNotification({
   // Calculate totals for specialist's items only
   const beauticianTotal = beauticianItems.reduce(
     (sum, item) => sum + (item.price || 0) * item.quantity,
-    0
+    0,
   );
   const beauticianTotalFormatted = formatCurrency(beauticianTotal, currency);
 
@@ -1134,7 +1134,7 @@ export async function sendBeauticianProductOrderNotification({
       (item) =>
         `- ${item.title}${item.size ? ` (${item.size})` : ""} x ${
           item.quantity
-        } - ${formatCurrency((item.price || 0) * item.quantity, currency)}`
+        } - ${formatCurrency((item.price || 0) * item.quantity, currency)}`,
     )
     .join("\n");
 
@@ -1144,14 +1144,14 @@ export async function sendBeauticianProductOrderNotification({
     <li style="margin: 8px 0; color: #374151; padding: 12px; background-color: #f9fafb; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
       <span>
         <strong>${item.title}</strong>${item.size ? ` (${item.size})` : ""} x ${
-        item.quantity
-      }
+          item.quantity
+        }
       </span>
       <span style="font-weight: 600; color: #9333ea;">${formatCurrency(
         (item.price || 0) * item.quantity,
-        currency
+        currency,
       )}</span>
-    </li>`
+    </li>`,
     )
     .join("");
 
@@ -1247,7 +1247,7 @@ Elite Booker Team`;
         <p style="margin: 0; color: #6b7280; font-size: 14px;">Best regards,</p>
         <p style="margin: 5px 0 0 0; color: #9333ea; font-weight: bold;">Elite Booker Team</p>
         <p style="margin: 20px 0 0 0; color: #9ca3af; font-size: 11px;">Order ID: ${String(
-          order._id
+          order._id,
         )}</p>
       </div>
     </div>
@@ -1255,7 +1255,7 @@ Elite Booker Team`;
 
   console.log(
     "[MAILER] Sending specialist product notification to:",
-    beauticianEmail
+    beauticianEmail,
   );
   console.log("[MAILER] Order number:", order.orderNumber);
   console.log("[MAILER] Specialist items count:", beauticianItems.length);
@@ -1271,12 +1271,12 @@ Elite Booker Team`;
     });
     console.log(
       "[MAILER] ✓ Specialist product notification sent successfully. MessageId:",
-      info.messageId
+      info.messageId,
     );
   } catch (error) {
     console.error(
       "[MAILER] ✗ Failed to send specialist product notification:",
-      error
+      error,
     );
     // Don't throw - specialist notification failure shouldn't block other emails
   }
@@ -1288,7 +1288,7 @@ Elite Booker Team`;
 export async function sendAdminOrderNotification({ order }) {
   console.log(
     "[MAILER] sendAdminOrderNotification called for order:",
-    order?._id
+    order?._id,
   );
   const tx = getTransport();
   if (!tx) {
@@ -1300,7 +1300,7 @@ export async function sendAdminOrderNotification({ order }) {
   console.log("[MAILER] ADMIN_NOTIFY_EMAIL:", adminEmail || "NOT SET");
   if (!adminEmail) {
     console.warn(
-      "[MAILER] No admin email configured - skipping admin notification"
+      "[MAILER] No admin email configured - skipping admin notification",
     );
     return;
   }
@@ -1310,7 +1310,7 @@ export async function sendAdminOrderNotification({ order }) {
   const currency = order.currency || "GBP";
   const totalPrice = formatCurrency(
     order.totalPrice || order.total || 0,
-    currency
+    currency,
   );
 
   const itemsList = order.items
@@ -1318,7 +1318,7 @@ export async function sendAdminOrderNotification({ order }) {
       (item) =>
         `- ${item.title}${item.size ? ` (${item.size})` : ""} x ${
           item.quantity
-        }`
+        }`,
     )
     .join("\n");
 
@@ -1387,7 +1387,7 @@ View in admin panel to process this order.`,
               (item) =>
                 `<li style="margin: 5px 0; color: #374151;">${item.title}${
                   item.size ? ` (${item.size})` : ""
-                } x ${item.quantity}</li>`
+                } x ${item.quantity}</li>`,
             )
             .join("")}
         </ul>
@@ -1411,7 +1411,7 @@ View in admin panel to process this order.`,
         </div>
         
         <p style="margin-top: 30px; color: #9ca3af; font-size: 11px;">Order ID: ${String(
-          order._id
+          order._id,
         )}</p>
       </div>
     `,
@@ -1486,7 +1486,7 @@ View in admin panel to process this order.`,
               (item) =>
                 `<li style="margin: 5px 0; color: #374151;">${item.title}${
                   item.size ? ` (${item.size})` : ""
-                } x ${item.quantity}</li>`
+                } x ${item.quantity}</li>`,
             )
             .join("")}
         </ul>
@@ -1510,14 +1510,14 @@ View in admin panel to process this order.`,
         </div>
         
         <p style="margin-top: 30px; color: #9ca3af; font-size: 11px;">Order ID: ${String(
-          order._id
+          order._id,
         )}</p>
       </div>
     `,
     });
     console.log(
       "[MAILER] ✓ Admin notification sent successfully. MessageId:",
-      info.messageId
+      info.messageId,
     );
   } catch (error) {
     console.error("[MAILER] ✗ Failed to send admin notification:", error);
@@ -1531,12 +1531,12 @@ View in admin panel to process this order.`,
 export async function sendOrderReadyForCollectionEmail({ order }) {
   console.log(
     "[MAILER] sendOrderReadyForCollectionEmail called for order:",
-    order?._id
+    order?._id,
   );
   const tx = getTransport();
   if (!tx) {
     console.warn(
-      "[MAILER] No transport - skipping collection ready notification"
+      "[MAILER] No transport - skipping collection ready notification",
     );
     return;
   }
@@ -1548,7 +1548,7 @@ export async function sendOrderReadyForCollectionEmail({ order }) {
   console.log("[MAILER] Customer email:", customerEmail || "NOT SET");
   if (!customerEmail) {
     console.warn(
-      "[MAILER] No customer email - skipping collection ready notification"
+      "[MAILER] No customer email - skipping collection ready notification",
     );
     return;
   }
@@ -1563,7 +1563,7 @@ export async function sendOrderReadyForCollectionEmail({ order }) {
       (item) =>
         `- ${item.title}${item.size ? ` (${item.size})` : ""} x ${
           item.quantity
-        }`
+        }`,
     )
     .join("\n");
 
@@ -1595,7 +1595,7 @@ export async function sendOrderReadyForCollectionEmail({ order }) {
         ${formatCurrency((item.price || 0) * item.quantity, currency)}
       </td>
     </tr>
-  `
+  `,
     )
     .join("");
 
@@ -1761,7 +1761,7 @@ Phone: +44 7928 775746`;
   try {
     console.log(
       "[MAILER] Sending collection ready notification to:",
-      customerEmail
+      customerEmail,
     );
     const info = await tx.sendMail({
       from,
@@ -1772,12 +1772,12 @@ Phone: +44 7928 775746`;
     });
     console.log(
       "[MAILER] ✓ Collection ready email sent successfully. MessageId:",
-      info.messageId
+      info.messageId,
     );
   } catch (error) {
     console.error(
       "[MAILER] ✗ Failed to send collection ready notification:",
-      error
+      error,
     );
     throw error;
   }
@@ -1795,7 +1795,7 @@ export async function sendSpecialistCredentialsEmail({
   const tx = getTransport();
   if (!tx) {
     console.log(
-      "[MAILER] No SMTP configured, skipping specialist credentials email"
+      "[MAILER] No SMTP configured, skipping specialist credentials email",
     );
     return;
   }
@@ -1903,7 +1903,7 @@ ${tenantName || "The Team"}`;
   } catch (error) {
     console.error(
       `[MAILER] ✗ Failed to send specialist credentials email to ${email}:`,
-      error
+      error,
     );
     // Don't throw - we don't want to fail specialist creation if email fails
   }
@@ -1920,7 +1920,7 @@ export async function sendSeminarConfirmationEmail({
 }) {
   console.log(
     "[MAILER] sendSeminarConfirmationEmail called for booking:",
-    booking?.bookingReference
+    booking?.bookingReference,
   );
   const tx = getTransport();
   if (!tx) {
@@ -2102,12 +2102,12 @@ ${tenantName}
       html,
     });
     console.log(
-      `[MAILER] ✓ Seminar confirmation email sent to ${attendeeEmail}`
+      `[MAILER] ✓ Seminar confirmation email sent to ${attendeeEmail}`,
     );
   } catch (error) {
     console.error(
       `[MAILER] ✗ Failed to send seminar confirmation email to ${attendeeEmail}:`,
-      error
+      error,
     );
   }
 }

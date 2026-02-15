@@ -59,24 +59,39 @@ export async function refundPayment({
     if (paymentIntentId) {
       const pi = await s.paymentIntents.retrieve(paymentIntentId);
       const paymentAmount = Math.trunc(Number(pi?.amount || 0));
-      const applicationFee = Math.trunc(Number(pi?.application_fee_amount || 0));
+      const applicationFee = Math.trunc(
+        Number(pi?.application_fee_amount || 0),
+      );
       if (paymentAmount > 0 && applicationFee > 0) {
-        safeAmount = Math.min(safeAmount, Math.max(0, paymentAmount - applicationFee));
+        safeAmount = Math.min(
+          safeAmount,
+          Math.max(0, paymentAmount - applicationFee),
+        );
       }
     } else if (chargeId) {
       const ch = await s.charges.retrieve(chargeId);
       const chargeAmount = Math.trunc(Number(ch?.amount || 0));
-      const applicationFee = Math.trunc(Number(ch?.application_fee_amount || 0));
+      const applicationFee = Math.trunc(
+        Number(ch?.application_fee_amount || 0),
+      );
       if (chargeAmount > 0 && applicationFee > 0) {
-        safeAmount = Math.min(safeAmount, Math.max(0, chargeAmount - applicationFee));
+        safeAmount = Math.min(
+          safeAmount,
+          Math.max(0, chargeAmount - applicationFee),
+        );
       }
     }
   } catch (lookupError) {
-    console.warn("[REFUND] Could not pre-calculate fee-safe refund cap:", lookupError?.message || lookupError);
+    console.warn(
+      "[REFUND] Could not pre-calculate fee-safe refund cap:",
+      lookupError?.message || lookupError,
+    );
   }
 
   if (safeAmount <= 0) {
-    throw new Error("Refund amount is zero after excluding non-refundable application fee");
+    throw new Error(
+      "Refund amount is zero after excluding non-refundable application fee",
+    );
   }
 
   const body = { amount: safeAmount };
@@ -105,7 +120,7 @@ export async function refundPayment({
       refundApplicationFee,
       reverseTransfer,
       connectedAccountId: connectedAccountId || "platform",
-    }
+    },
   );
   return refund;
 }

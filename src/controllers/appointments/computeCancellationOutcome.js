@@ -29,7 +29,7 @@ export function computeCancellationOutcome({
 }) {
   const start = dayjs(appointment.start);
   const createdAt = dayjs(
-    appointment.createdAt || appointment.updatedAt || appointment.start
+    appointment.createdAt || appointment.updatedAt || appointment.start,
   );
   const nowTz = dayjs.tz(now, salonTz);
   const startTz = dayjs.tz(start, salonTz);
@@ -42,8 +42,12 @@ export function computeCancellationOutcome({
   const amountTotal = toInt(appointment?.payment?.amountTotal);
   const amountDeposit = toInt(appointment?.payment?.amountDeposit);
   const depositAmount = toInt(appointment?.payment?.depositAmount);
-  const depositPercentage = Number(appointment?.payment?.depositPercentage || 0);
-  const appointmentPriceMinor = toInt(Math.round(Number(appointment?.price || 0) * 100));
+  const depositPercentage = Number(
+    appointment?.payment?.depositPercentage || 0,
+  );
+  const appointmentPriceMinor = toInt(
+    Math.round(Number(appointment?.price || 0) * 100),
+  );
   const platformFee = toInt(appointment?.payment?.stripe?.platformFee);
 
   const appliesTo = policy?.appliesTo || "auto";
@@ -64,7 +68,11 @@ export function computeCancellationOutcome({
 
   // Booking/platform fee is non-refundable; exclude it from refundable base.
   // This only applies to online Stripe payments where a platform fee exists.
-  if (appointment?.payment?.provider === "stripe" && platformFee > 0 && base > 0) {
+  if (
+    appointment?.payment?.provider === "stripe" &&
+    platformFee > 0 &&
+    base > 0
+  ) {
     base = Math.max(0, base - Math.min(platformFee, base));
   }
 
@@ -76,7 +84,9 @@ export function computeCancellationOutcome({
     else if (amountDeposit > 0) refundableCap = amountDeposit;
     else if (appointmentPriceMinor > 0 && depositPercentage > 0) {
       refundableCap = Math.round(
-        (appointmentPriceMinor * Math.max(0, Math.min(100, depositPercentage))) / 100
+        (appointmentPriceMinor *
+          Math.max(0, Math.min(100, depositPercentage))) /
+          100,
       );
     }
   } else if (mode === "pay_now") {
@@ -126,7 +136,7 @@ export function computeCancellationOutcome({
   let amount = 0;
   if (partial.percent != null) {
     amount = Math.round(
-      (base * Math.max(0, Math.min(100, partial.percent))) / 100
+      (base * Math.max(0, Math.min(100, partial.percent))) / 100,
     );
   } else if (partial.fixed != null) {
     amount = Math.max(0, Math.min(base, toInt(partial.fixed)));
