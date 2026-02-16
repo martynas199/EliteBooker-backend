@@ -4,6 +4,7 @@ import mongoose from "mongoose";
 import Service from "../models/Service.js";
 import Specialist from "../models/Specialist.js";
 import Appointment from "../models/Appointment.js";
+import GiftCard from "../models/GiftCard.js";
 import Tenant from "../models/Tenant.js";
 import { sendConfirmationEmail } from "../emails/mailer.js";
 import ClientService from "../services/clientService.js";
@@ -208,6 +209,50 @@ r.get("/confirm", async (req, res, next) => {
         },
       });
       console.log("[CHECKOUT CONFIRM] Appointment updated to confirmed.");
+
+      const giftCardMeta = appt?.payment?.giftCard;
+      if (giftCardMeta?.code && Number(giftCardMeta.appliedAmount) > 0) {
+        try {
+          const giftCard = await GiftCard.findOne({ code: giftCardMeta.code });
+          if (giftCard && giftCard.isValid()) {
+            await giftCard.redeem(
+              Number(giftCardMeta.appliedAmount),
+              appt.clientId,
+              appt._id
+            );
+
+            await Appointment.findByIdAndUpdate(appt._id, {
+              $set: {
+                "payment.giftCard.redemptionStatus": "redeemed",
+                "payment.giftCard.redeemedAt": new Date(),
+              },
+            });
+            console.log(
+              "[CHECKOUT CONFIRM] Gift card redeemed:",
+              giftCardMeta.code,
+              giftCardMeta.appliedAmount
+            );
+          } else {
+            await Appointment.findByIdAndUpdate(appt._id, {
+              $set: {
+                "payment.giftCard.redemptionStatus": "failed",
+                "payment.giftCard.error": "Gift card invalid during redemption",
+              },
+            });
+          }
+        } catch (giftCardError) {
+          console.error(
+            "[CHECKOUT CONFIRM] Gift card redemption failed:",
+            giftCardError
+          );
+          await Appointment.findByIdAndUpdate(appt._id, {
+            $set: {
+              "payment.giftCard.redemptionStatus": "failed",
+              "payment.giftCard.error": giftCardError.message,
+            },
+          });
+        }
+      }
     }
 
     // Update client metrics after successful booking
@@ -383,7 +428,12 @@ r.get("/confirm", async (req, res, next) => {
 
 r.post("/create-session", async (req, res, next) => {
   try {
-    const { appointmentId, mode, currency: requestedCurrency } = req.body || {};
+    const {
+      appointmentId,
+      mode,
+      currency: requestedCurrency,
+      giftCardCode,
+    } = req.body || {};
     let appt = null;
     let service = null;
 
@@ -692,6 +742,41 @@ r.post("/create-session", async (req, res, next) => {
     console.log("[CHECKOUT] Base amount:", baseAmount);
     console.log("[CHECKOUT] Amount before fee:", amountBeforeFee);
 
+    let appliedGiftCard = null;
+    if (giftCardCode && !specialist?.inSalonPayment) {
+      const normalizedCode = String(giftCardCode).trim().toUpperCase();
+      const giftCard = await GiftCard.findOne({ code: normalizedCode });
+
+      if (!giftCard) {
+        return res.status(400).json({ error: "Gift card not found" });
+      }
+
+      if (String(giftCard.tenantId) !== String(appt.tenantId)) {
+        return res
+          .status(400)
+          .json({ error: "Gift card is not valid for this business" });
+      }
+
+      if (!giftCard.isValid()) {
+        return res.status(400).json({
+          error: "Gift card is expired, already redeemed, or invalid",
+        });
+      }
+
+      const remainingBalance = Number(giftCard.getRemainingBalance() || 0);
+      const toApply = Math.min(Number(amountBeforeFee || 0), remainingBalance);
+
+      if (toApply > 0) {
+        amountBeforeFee = Math.max(0, Number(amountBeforeFee || 0) - toApply);
+        appliedGiftCard = {
+          id: giftCard._id,
+          code: giftCard.code,
+          appliedAmount: Math.round(toApply * 100) / 100,
+          remainingBeforeApply: remainingBalance,
+        };
+      }
+    }
+
     const amountToPay = amountBeforeFee + platformFee / 100; // Convert pence to pounds
 
     console.log("[CHECKOUT] Amount to pay (with fee):", amountToPay);
@@ -812,7 +897,10 @@ r.post("/create-session", async (req, res, next) => {
                   ? `Deposit payment (${depositPct}% of total ${baseAmount.toFixed(
                       2
                     )})`
-                  : `Full payment (total ${baseAmount.toFixed(2)})`),
+                  : `Full payment (total ${baseAmount.toFixed(2)})`) +
+                    (appliedGiftCard
+                      ? ` • Gift card applied: £${appliedGiftCard.appliedAmount.toFixed(2)}`
+                      : ""),
             },
           },
           quantity: 1,
@@ -880,6 +968,17 @@ r.post("/create-session", async (req, res, next) => {
           status: "pending",
           mode: isDeposit ? "deposit" : "pay_now", // Save the payment mode
           amountTotal: unit_amount, // Save intended amount in minor units (e.g. pence)
+          ...(appliedGiftCard
+            ? {
+                giftCard: {
+                  id: appliedGiftCard.id,
+                  code: appliedGiftCard.code,
+                  appliedAmount: appliedGiftCard.appliedAmount,
+                  remainingBeforeApply: appliedGiftCard.remainingBeforeApply,
+                  redemptionStatus: "pending",
+                },
+              }
+            : {}),
           stripe: {
             ...(appt.payment?.stripe || {}),
             sessionAccount: "platform",

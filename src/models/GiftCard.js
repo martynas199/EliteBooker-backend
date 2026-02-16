@@ -115,6 +115,10 @@ const giftCardSchema = new mongoose.Schema(
     },
 
     // Payment tracking
+    stripeCheckoutSessionId: {
+      type: String,
+      index: true,
+    },
     stripePaymentIntentId: String,
     stripeChargeId: String,
   },
@@ -191,6 +195,7 @@ giftCardSchema.index({ tenantId: 1, status: 1 });
 giftCardSchema.index({ purchaserEmail: 1, purchaseDate: -1 });
 giftCardSchema.index({ recipientEmail: 1, status: 1 });
 giftCardSchema.index({ expiryDate: 1, status: 1 });
+giftCardSchema.index({ stripeCheckoutSessionId: 1, status: 1 });
 
 const GiftCard = mongoose.model("GiftCard", giftCardSchema);
 
