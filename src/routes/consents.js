@@ -1,7 +1,9 @@
 import express from "express";
 import crypto from "crypto";
+import jwt from "jsonwebtoken";
 import ConsentRecord from "../models/ConsentRecord.js";
 import ConsentTemplate from "../models/ConsentTemplate.js";
+import Client from "../models/Client.js";
 import pdfGenerationService from "../services/pdfGenerationService.js";
 import gcsConsentService from "../services/gcsConsentService.js";
 import requireAdmin from "../middleware/requireAdmin.js";
@@ -9,18 +11,49 @@ import { authenticateClient } from "../middleware/clientAuth.js";
 import optionalAuth from "../middleware/optionalAuth.js";
 
 const router = express.Router();
+const JWT_SECRET =
+  process.env.JWT_SECRET || "your-secret-key-change-in-production";
 
 // Middleware to allow either admin or authenticated client
 const allowAdminOrClient = [
   optionalAuth,
-  (req, res, next) => {
+  async (req, res, next) => {
     // Check for either admin or client authentication
+    if (!req.user && !req.admin) {
+      const authHeader = req.headers.authorization;
+      const token = authHeader?.startsWith("Bearer ")
+        ? authHeader.substring(7)
+        : null;
+
+      if (token) {
+        try {
+          const decoded = jwt.verify(token, JWT_SECRET);
+
+          if (decoded?.type === "client") {
+            const client = await Client.findById(decoded.id);
+
+            if (client && client.isActive) {
+              req.client = client;
+              req.user = {
+                userId: client._id,
+                role: "client",
+                clientId: client._id,
+              };
+            }
+          }
+        } catch (error) {
+          // Fall through to unauthorized response below
+        }
+      }
+    }
+
     if (!req.user && !req.admin) {
       return res.status(401).json({
         success: false,
         message: "Authentication required",
       });
     }
+
     // Normalize to req.user for consistency
     if (!req.user && req.admin) {
       req.user = {
