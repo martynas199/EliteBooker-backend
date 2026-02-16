@@ -7,6 +7,8 @@
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "seed": "node scripts/seed.js",
+    "emails:test": "node scripts/sendTestEmails.js",
+    "emails:test:all": "node scripts/sendTestEmails.js --all",
     "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest",
     "test:unit": "cross-env NODE_OPTIONS=--experimental-vm-modules jest tests/unit",
     "test:integration": "cross-env NODE_OPTIONS=--experimental-vm-modules jest tests/integration",

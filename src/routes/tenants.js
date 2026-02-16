@@ -19,7 +19,11 @@ import { requireAdmin, requireSuperAdmin } from "../middleware/requireAdmin.js";
 import { clearTenantCache } from "../middleware/resolveTenant.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
-import { escapeHtml, getDefaultFromEmail, sendEmail } from "../emails/transport.js";
+import {
+  escapeHtml,
+  getDefaultFromEmail,
+  sendEmail,
+} from "../emails/transport.js";
 import {
   normalizeCode,
   isValidFormat,
@@ -408,7 +412,7 @@ Registered: ${new Date().toLocaleString("en-GB")}`,
 
       if (result?.skipped) {
         console.warn(
-          "[Tenant Create] SMTP not configured - notification email skipped"
+          "[Tenant Create] SMTP not configured - notification email skipped",
         );
       }
 
@@ -560,12 +564,17 @@ router.get("/", requireAdmin, requireSuperAdmin, async (req, res) => {
  */
 router.get("/public", async (req, res) => {
   try {
-    const { search, limit } = req.query;
+    const { search, limit, giftCardsOnly } = req.query;
+    const shouldFilterGiftCards = String(giftCardsOnly) === "true";
 
     const query = {
       status: { $in: ["active", "trial"] }, // Show active and trial tenants
       isPublic: { $ne: false }, // Only show public tenants (default to public if field doesn't exist)
     };
+
+    if (shouldFilterGiftCards) {
+      query["features.enableGiftCards"] = true;
+    }
 
     if (search) {
       query.$or = [
@@ -581,11 +590,32 @@ router.get("/public", async (req, res) => {
 
     const tenants = await Tenant.find(query)
       .select(
-        "name slug address description location branding services rating reviewCount",
+        "name slug address description location branding services rating reviewCount features.enableGiftCards stripeAccountId",
       )
       .sort({ createdAt: -1 })
       .limit(effectiveLimit)
       .lean();
+
+    let payoutReadyTenantIds = new Set();
+    if (shouldFilterGiftCards && tenants.length > 0) {
+      const tenantIds = tenants.map((tenant) => tenant._id);
+
+      const specialistsWithPayout = await Specialist.find({
+        tenantId: { $in: tenantIds },
+        active: { $ne: false },
+        stripeAccountId: { $exists: true, $ne: null },
+        stripeStatus: "connected",
+        stripePayoutsEnabled: true,
+      })
+        .select("tenantId")
+        .lean();
+
+      payoutReadyTenantIds = new Set(
+        specialistsWithPayout
+          .map((specialist) => specialist?.tenantId?.toString())
+          .filter(Boolean),
+      );
+    }
 
     // Enrich tenants with hero image from HeroSection or Settings
     if (process.env.LOG_VERBOSE) {
@@ -596,6 +626,19 @@ router.get("/public", async (req, res) => {
     const enrichedTenants = await Promise.all(
       tenants.map(async (tenant) => {
         try {
+          const tenantStripeReady = Boolean(
+            String(tenant?.stripeAccountId || "").trim(),
+          );
+          const specialistStripeReady = payoutReadyTenantIds.has(
+            tenant._id.toString(),
+          );
+          const giftCardPayoutReady =
+            tenantStripeReady || specialistStripeReady;
+
+          if (shouldFilterGiftCards && !giftCardPayoutReady) {
+            return null;
+          }
+
           // Use base queries to bypass multi-tenant plugin
           // Check HeroSection first (like landing pages do)
           const heroSection = await HeroSection.findOne({
@@ -616,30 +659,37 @@ router.get("/public", async (req, res) => {
           if (heroSection?.centerImage) {
             return {
               ...tenant,
+              giftCardPayoutReady,
               centerImage: heroSection.centerImage,
             };
           } else if (settings?.heroImage) {
             return {
               ...tenant,
+              giftCardPayoutReady,
               centerImage: settings.heroImage,
             };
           }
 
-          return tenant;
+          return {
+            ...tenant,
+            giftCardPayoutReady,
+          };
         } catch (err) {
           console.error(
             `Error fetching hero image for tenant ${tenant._id}:`,
             err,
           );
-          return tenant;
+          return null;
         }
       }),
     );
 
+    const filteredEnrichedTenants = enrichedTenants.filter(Boolean);
+
     res.json({
       success: true,
-      tenants: enrichedTenants,
-      count: enrichedTenants.length,
+      tenants: filteredEnrichedTenants,
+      count: filteredEnrichedTenants.length,
     });
   } catch (error) {
     console.error("Get public tenants error:", error);

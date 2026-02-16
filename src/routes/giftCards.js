@@ -29,7 +29,10 @@ const normalizeGiftCardCode = (code = "") =>
     .trim()
     .toUpperCase();
 
-const sanitizeEmail = (email = "") => String(email || "").trim().toLowerCase();
+const sanitizeEmail = (email = "") =>
+  String(email || "")
+    .trim()
+    .toLowerCase();
 
 const isValidEmail = (email = "") =>
   /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || ""));
@@ -38,6 +41,12 @@ const sanitizeAmount = (value) => {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return NaN;
   return Math.round(parsed * 100) / 100;
+};
+
+const parseDeliveryDate = (value) => {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
 };
 
 const toMinorUnits = (value) => {
@@ -50,6 +59,138 @@ const buildExpiryDate = () => {
   const expiryDate = new Date();
   expiryDate.setFullYear(expiryDate.getFullYear() + 1);
   return expiryDate;
+};
+
+const normalizePlatformFeeMinor = (amountMinor) => {
+  const configuredFee = Number(process.env.STRIPE_PLATFORM_FEE || 99);
+  if (!Number.isFinite(configuredFee) || configuredFee < 0) return 0;
+  return Math.min(Math.round(configuredFee), Math.max(0, amountMinor - 1));
+};
+
+const getGiftCardDestinationCandidates = async ({ tenantId, specialistId }) => {
+  const candidates = [];
+  const seen = new Set();
+
+  const addCandidate = (candidate) => {
+    if (!candidate?.accountId) return;
+    const key = `${candidate.recipientType}:${candidate.recipientId}:${candidate.accountId}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    candidates.push(candidate);
+  };
+
+  if (specialistId) {
+    const selectedSpecialist = await Specialist.findOne({
+      _id: specialistId,
+      tenantId,
+      active: { $ne: false },
+      stripeAccountId: { $exists: true, $ne: null },
+      stripeStatus: "connected",
+      stripePayoutsEnabled: true,
+    })
+      .select("_id stripeAccountId")
+      .lean();
+
+    if (selectedSpecialist?.stripeAccountId) {
+      addCandidate({
+        accountId: selectedSpecialist.stripeAccountId,
+        recipientType: "specialist",
+        recipientId: String(selectedSpecialist._id),
+      });
+    }
+  }
+
+  const tenant = await Tenant.findById(tenantId)
+    .select("stripeAccountId")
+    .lean();
+
+  if (tenant?.stripeAccountId) {
+    addCandidate({
+      accountId: tenant.stripeAccountId,
+      recipientType: "tenant",
+      recipientId: String(tenantId),
+    });
+  }
+
+  const fallbackSpecialists = await Specialist.find({
+    tenantId,
+    active: { $ne: false },
+    stripeAccountId: { $exists: true, $ne: null },
+    stripeStatus: "connected",
+    stripePayoutsEnabled: true,
+  })
+    .sort({ createdAt: 1 })
+    .select("_id stripeAccountId")
+    .lean();
+
+  fallbackSpecialists.forEach((specialist) => {
+    addCandidate({
+      accountId: specialist.stripeAccountId,
+      recipientType: "specialist",
+      recipientId: String(specialist._id),
+    });
+  });
+
+  return candidates;
+};
+
+const validateStripeDestinationAccount = async ({ stripe, accountId }) => {
+  const normalizedAccountId = String(accountId || "").trim();
+  if (
+    !normalizedAccountId ||
+    !/^acct_[A-Za-z0-9]+$/.test(normalizedAccountId)
+  ) {
+    return {
+      isValid: false,
+      reason: "invalid_account_id",
+    };
+  }
+
+  try {
+    const account = await stripe.accounts.retrieve(normalizedAccountId);
+
+    if (!account || account.deleted) {
+      return {
+        isValid: false,
+        reason: "account_not_found",
+      };
+    }
+
+    if (!account.charges_enabled) {
+      return {
+        isValid: false,
+        reason: "charges_not_enabled",
+      };
+    }
+
+    if (!account.payouts_enabled) {
+      return {
+        isValid: false,
+        reason: "payouts_not_enabled",
+      };
+    }
+
+    return {
+      isValid: true,
+      reason: "ok",
+    };
+  } catch (error) {
+    const isMissingAccount = error?.code === "resource_missing";
+    const isInvalidOrRevokedAccount =
+      error?.code === "account_invalid" ||
+      error?.type === "StripePermissionError" ||
+      error?.statusCode === 403;
+
+    if (isMissingAccount || isInvalidOrRevokedAccount) {
+      return {
+        isValid: false,
+        reason: isMissingAccount
+          ? "account_not_found"
+          : "account_not_accessible",
+      };
+    }
+    throw error;
+  }
 };
 
 const generateUniqueGiftCardCode = async () => {
@@ -81,23 +222,44 @@ const sendGiftCardEmails = async (giftCardId) => {
   const tenant = populatedGiftCard.tenantId;
   const specialist = populatedGiftCard.specialistId;
 
-  await Promise.all([
-    sendGiftCardPurchaseConfirmation({
+  const now = new Date();
+  const shouldSendRecipientNow =
+    populatedGiftCard.deliveryType !== "scheduled" ||
+    !populatedGiftCard.deliveryDate ||
+    new Date(populatedGiftCard.deliveryDate) <= now;
+
+  const updates = {};
+
+  if (!populatedGiftCard.purchaseConfirmationSentAt) {
+    await sendGiftCardPurchaseConfirmation({
       giftCard: populatedGiftCard,
       tenant,
       specialist,
-    }),
-    sendGiftCardToRecipient({
+    });
+    updates.purchaseConfirmationSentAt = new Date();
+  }
+
+  if (!populatedGiftCard.saleNotificationSentAt) {
+    await sendGiftCardSaleNotification({
       giftCard: populatedGiftCard,
       tenant,
       specialist,
-    }),
-    sendGiftCardSaleNotification({
+    });
+    updates.saleNotificationSentAt = new Date();
+  }
+
+  if (shouldSendRecipientNow && !populatedGiftCard.recipientEmailSentAt) {
+    await sendGiftCardToRecipient({
       giftCard: populatedGiftCard,
       tenant,
       specialist,
-    }),
-  ]);
+    });
+    updates.recipientEmailSentAt = new Date();
+  }
+
+  if (Object.keys(updates).length > 0) {
+    await GiftCard.updateOne({ _id: populatedGiftCard._id }, { $set: updates });
+  }
 };
 
 /**
@@ -145,15 +307,28 @@ router.get("/my/received", authenticateClient, async (req, res) => {
  * Create Stripe checkout session for gift card purchase
  */
 router.post("/create-session", authenticateClient, async (req, res) => {
+  let giftCard = null;
+
   try {
-    const { tenantId, specialistId, amount, recipientName, recipientEmail, message } =
-      req.body || {};
+    const {
+      tenantId,
+      specialistId,
+      amount,
+      recipientName,
+      recipientEmail,
+      message,
+      deliveryType,
+      deliveryAt,
+    } = req.body || {};
 
     const sanitizedAmount = sanitizeAmount(amount);
     const amountMinor = toMinorUnits(sanitizedAmount);
     const sanitizedRecipientName = String(recipientName || "").trim();
     const sanitizedRecipientEmail = sanitizeEmail(recipientEmail);
     const sanitizedMessage = String(message || "").trim();
+    const normalizedDeliveryType =
+      deliveryType === "scheduled" ? "scheduled" : "immediate";
+    const parsedDeliveryAt = parseDeliveryDate(deliveryAt);
 
     if (
       !tenantId ||
@@ -190,7 +365,33 @@ router.post("/create-session", authenticateClient, async (req, res) => {
         .json({ error: "Message must be 500 characters or less" });
     }
 
-    const tenant = await Tenant.findById(tenantId).select("name slug features").lean();
+    if (normalizedDeliveryType === "scheduled") {
+      if (!parsedDeliveryAt) {
+        return res
+          .status(400)
+          .json({ error: "Invalid scheduled delivery date" });
+      }
+
+      const now = Date.now();
+      const minScheduledMs = now + 5 * 60 * 1000;
+      const maxScheduledMs = now + 365 * 24 * 60 * 60 * 1000;
+
+      if (parsedDeliveryAt.getTime() < minScheduledMs) {
+        return res.status(400).json({
+          error: "Scheduled delivery must be at least 5 minutes from now",
+        });
+      }
+
+      if (parsedDeliveryAt.getTime() > maxScheduledMs) {
+        return res.status(400).json({
+          error: "Scheduled delivery cannot be more than 12 months ahead",
+        });
+      }
+    }
+
+    const tenant = await Tenant.findById(tenantId)
+      .select("name slug features stripeAccountId")
+      .lean();
     if (!tenant) {
       return res.status(404).json({ error: "Tenant not found" });
     }
@@ -202,16 +403,62 @@ router.post("/create-session", authenticateClient, async (req, res) => {
     }
 
     if (specialistId) {
-      const specialist = await Specialist.findById(specialistId).select("tenantId").lean();
+      const specialist = await Specialist.findById(specialistId)
+        .select("tenantId")
+        .lean();
       if (!specialist || String(specialist.tenantId) !== String(tenantId)) {
         return res.status(404).json({ error: "Specialist not found" });
       }
     }
 
+    const payoutCandidates = await getGiftCardDestinationCandidates({
+      tenantId,
+      specialistId,
+    });
+
+    if (payoutCandidates.length === 0) {
+      return res.status(400).json({
+        error:
+          "This business is not yet ready to receive gift card payments. Please try another business.",
+      });
+    }
+
+    const frontend = process.env.FRONTEND_URL || "http://localhost:5173";
+    const tenantPath = tenant?.slug ? `/salon/${tenant.slug}` : "";
+    const stripe = getStripe();
+    const platformFeeMinor = normalizePlatformFeeMinor(amountMinor);
+
+    let payoutDestination = null;
+    for (const candidate of payoutCandidates) {
+      const destinationValidation = await validateStripeDestinationAccount({
+        stripe,
+        accountId: candidate.accountId,
+      });
+
+      if (destinationValidation.isValid) {
+        payoutDestination = candidate;
+        break;
+      }
+
+      console.warn("[GIFT CARDS] Skipping invalid payout destination", {
+        tenantId,
+        specialistId,
+        destinationAccount: candidate.accountId,
+        reason: destinationValidation.reason,
+      });
+    }
+
+    if (!payoutDestination?.accountId) {
+      return res.status(400).json({
+        error:
+          "This business is not yet ready to receive gift card payments. Please try another business.",
+      });
+    }
+
     const code = await generateUniqueGiftCardCode();
     const expiryDate = buildExpiryDate();
 
-    const giftCard = await GiftCard.create({
+    giftCard = await GiftCard.create({
       code,
       tenantId,
       specialistId,
@@ -222,13 +469,12 @@ router.post("/create-session", authenticateClient, async (req, res) => {
       recipientName: sanitizedRecipientName,
       recipientEmail: sanitizedRecipientEmail,
       message: sanitizedMessage || undefined,
+      deliveryType: normalizedDeliveryType,
+      deliveryDate:
+        normalizedDeliveryType === "scheduled" ? parsedDeliveryAt : undefined,
       expiryDate,
       status: "pending",
     });
-
-    const frontend = process.env.FRONTEND_URL || "http://localhost:5173";
-    const tenantPath = tenant?.slug ? `/salon/${tenant.slug}` : "";
-    const stripe = getStripe();
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
@@ -241,7 +487,32 @@ router.post("/create-session", authenticateClient, async (req, res) => {
       metadata: {
         giftCardId: String(giftCard._id),
         tenantId: String(tenantId),
+        deliveryType: normalizedDeliveryType,
+        deliveryAt:
+          normalizedDeliveryType === "scheduled" && parsedDeliveryAt
+            ? parsedDeliveryAt.toISOString()
+            : "",
+        payoutRecipientType: payoutDestination.recipientType,
+        payoutRecipientId: payoutDestination.recipientId,
         type: "gift_card_purchase",
+      },
+      payment_intent_data: {
+        application_fee_amount: platformFeeMinor,
+        transfer_data: {
+          destination: payoutDestination.accountId,
+        },
+        metadata: {
+          giftCardId: String(giftCard._id),
+          tenantId: String(tenantId),
+          deliveryType: normalizedDeliveryType,
+          deliveryAt:
+            normalizedDeliveryType === "scheduled" && parsedDeliveryAt
+              ? parsedDeliveryAt.toISOString()
+              : "",
+          payoutRecipientType: payoutDestination.recipientType,
+          payoutRecipientId: payoutDestination.recipientId,
+          type: "gift_card_purchase",
+        },
       },
       line_items: [
         {
@@ -266,10 +537,43 @@ router.post("/create-session", authenticateClient, async (req, res) => {
       url: session.url,
       giftCardId: giftCard._id,
       code: giftCard.code,
+      deliveryType: giftCard.deliveryType,
+      deliveryDate: giftCard.deliveryDate,
     });
   } catch (error) {
     console.error("[GIFT CARDS] Create session error:", error);
-    res.status(500).json({ error: "Failed to create gift card checkout session" });
+
+    const isInvalidDestinationError =
+      (error?.type === "StripeInvalidRequestError" &&
+        error?.code === "resource_missing" &&
+        String(error?.param || "").includes("transfer_data")) ||
+      error?.code === "account_invalid" ||
+      error?.type === "StripePermissionError";
+
+    if (isInvalidDestinationError) {
+      if (giftCard?._id) {
+        await GiftCard.updateOne(
+          { _id: giftCard._id, status: "pending" },
+          { $set: { status: "cancelled" } },
+        );
+      }
+
+      return res.status(400).json({
+        error:
+          "This business is not yet ready to receive gift card payments. Please try another business.",
+      });
+    }
+
+    if (giftCard?._id) {
+      await GiftCard.updateOne(
+        { _id: giftCard._id, status: "pending" },
+        { $set: { status: "cancelled" } },
+      );
+    }
+
+    res
+      .status(500)
+      .json({ error: "Failed to create gift card checkout session" });
   }
 });
 
@@ -294,8 +598,7 @@ router.get("/confirm", async (req, res) => {
     }
 
     const paid =
-      session.payment_status === "paid" ||
-      session.status === "complete";
+      session.payment_status === "paid" || session.status === "complete";
 
     if (!paid) {
       return res.status(409).json({
@@ -307,9 +610,12 @@ router.get("/confirm", async (req, res) => {
       });
     }
 
-    const giftCardId = session.metadata?.giftCardId || session.client_reference_id;
+    const giftCardId =
+      session.metadata?.giftCardId || session.client_reference_id;
     if (!giftCardId) {
-      return res.status(400).json({ error: "Gift card reference missing from session" });
+      return res
+        .status(400)
+        .json({ error: "Gift card reference missing from session" });
     }
 
     const giftCard = await GiftCard.findById(giftCardId);
@@ -326,6 +632,8 @@ router.get("/confirm", async (req, res) => {
           code: giftCard.code,
           amount: giftCard.amount,
           status: giftCard.status,
+          deliveryType: giftCard.deliveryType,
+          deliveryDate: giftCard.deliveryDate,
           remainingBalance: giftCard.getRemainingBalance(),
           recipientName: giftCard.recipientName,
           recipientEmail: giftCard.recipientEmail,
@@ -342,7 +650,8 @@ router.get("/confirm", async (req, res) => {
     giftCard.sentDate = giftCard.sentDate || new Date();
     giftCard.purchaseDate = giftCard.purchaseDate || new Date();
     giftCard.stripeCheckoutSessionId = session.id;
-    giftCard.stripePaymentIntentId = paymentIntentId || giftCard.stripePaymentIntentId;
+    giftCard.stripePaymentIntentId =
+      paymentIntentId || giftCard.stripePaymentIntentId;
     if (typeof paymentIntent === "object" && paymentIntent?.latest_charge) {
       giftCard.stripeChargeId =
         typeof paymentIntent.latest_charge === "string"
@@ -366,6 +675,8 @@ router.get("/confirm", async (req, res) => {
         code: giftCard.code,
         amount: giftCard.amount,
         status: giftCard.status,
+        deliveryType: giftCard.deliveryType,
+        deliveryDate: giftCard.deliveryDate,
         remainingBalance: giftCard.getRemainingBalance(),
         recipientName: giftCard.recipientName,
         recipientEmail: giftCard.recipientEmail,
@@ -375,6 +686,70 @@ router.get("/confirm", async (req, res) => {
   } catch (error) {
     console.error("[GIFT CARDS] Confirm error:", error);
     res.status(500).json({ error: "Failed to confirm gift card purchase" });
+  }
+});
+
+/**
+ * POST /api/gift-cards/cancel
+ * Cancel pending gift card checkout when user abandons Stripe checkout
+ */
+router.post("/cancel", async (req, res) => {
+  try {
+    const giftCardId = String(req.body?.giftCardId || "").trim();
+    const sessionId = String(req.body?.session_id || "").trim();
+
+    if (!giftCardId && !sessionId) {
+      return res
+        .status(400)
+        .json({ error: "Missing giftCardId or session_id" });
+    }
+
+    let giftCard = null;
+    if (giftCardId) {
+      giftCard = await GiftCard.findById(giftCardId);
+    } else {
+      giftCard = await GiftCard.findOne({ stripeCheckoutSessionId: sessionId });
+    }
+
+    if (!giftCard) {
+      return res.status(404).json({ error: "Gift card not found" });
+    }
+
+    if (giftCard.status === "sent" || giftCard.status === "redeemed") {
+      return res.json({
+        ok: true,
+        status: giftCard.status,
+        message: "Gift card already paid and finalized",
+      });
+    }
+
+    const stripe = getStripe();
+    const sessionLookupId = sessionId || giftCard.stripeCheckoutSessionId;
+
+    if (sessionLookupId) {
+      const session = await stripe.checkout.sessions.retrieve(sessionLookupId);
+      const paid =
+        session?.payment_status === "paid" || session?.status === "complete";
+
+      if (paid) {
+        return res.status(409).json({
+          error: "Session is already paid",
+          status: "paid",
+        });
+      }
+    }
+
+    giftCard.status = "cancelled";
+    await giftCard.save();
+
+    return res.json({
+      ok: true,
+      status: giftCard.status,
+      message: "Gift card purchase cancelled",
+    });
+  } catch (error) {
+    console.error("[GIFT CARDS] Cancel error:", error);
+    res.status(500).json({ error: "Failed to cancel gift card purchase" });
   }
 });
 
@@ -485,6 +860,7 @@ router.post("/", authenticateClient, async (req, res) => {
       recipientName: sanitizedRecipientName,
       recipientEmail: sanitizedRecipientEmail,
       message: sanitizedMessage || undefined,
+      deliveryType: "immediate",
       expiryDate,
       status: "sent",
       sentDate: new Date(),
@@ -495,41 +871,10 @@ router.post("/", authenticateClient, async (req, res) => {
     // Send emails (async, don't wait for them)
     (async () => {
       try {
+        await sendGiftCardEmails(giftCard._id);
         console.log(
-          "[GIFT CARDS] Sending emails for gift card:",
-          giftCard.code
-        );
-
-        // Get populated tenant and specialist data for emails
-        const populatedGiftCard = await GiftCard.findById(giftCard._id)
-          .populate("tenantId")
-          .populate("specialistId");
-
-        const tenant = populatedGiftCard.tenantId;
-        const specialist = populatedGiftCard.specialistId;
-
-        // Send all three emails in parallel
-        await Promise.all([
-          sendGiftCardPurchaseConfirmation({
-            giftCard: populatedGiftCard,
-            tenant,
-            specialist,
-          }),
-          sendGiftCardToRecipient({
-            giftCard: populatedGiftCard,
-            tenant,
-            specialist,
-          }),
-          sendGiftCardSaleNotification({
-            giftCard: populatedGiftCard,
-            tenant,
-            specialist,
-          }),
-        ]);
-
-        console.log(
-          "[GIFT CARDS] All emails sent successfully for:",
-          giftCard.code
+          "[GIFT CARDS] Gift card emails processed for:",
+          giftCard.code,
         );
       } catch (emailError) {
         console.error("[GIFT CARDS] Email sending failed:", emailError);

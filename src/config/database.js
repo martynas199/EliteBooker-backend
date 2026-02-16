@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { startReminderCron } from "../services/reminderService.js";
+import { startGiftCardDeliveryCron } from "../services/giftCardDeliveryService.js";
 import { rootLogger } from "../utils/logger.js";
 
 const mongoOptions = {
@@ -31,6 +32,8 @@ export async function connectToDatabase({
   if (startCron) {
     logger.log("Starting appointment reminder cron job...");
     startReminderCron();
+    logger.log("Starting scheduled gift card delivery cron job...");
+    startGiftCardDeliveryCron();
   }
 
   return mongoose.connection;

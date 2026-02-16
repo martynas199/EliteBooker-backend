@@ -39,13 +39,13 @@ export async function sendGiftCardPurchaseConfirmation({
 }) {
   console.log(
     "[GIFT-CARD-MAILER] Sending purchase confirmation for:",
-    giftCard.code
+    giftCard.code,
   );
 
   const tx = getTransport();
   if (!tx) {
     console.warn(
-      "[GIFT-CARD-MAILER] No transport - skipping purchase confirmation"
+      "[GIFT-CARD-MAILER] No transport - skipping purchase confirmation",
     );
     return;
   }
@@ -58,7 +58,7 @@ export async function sendGiftCardPurchaseConfirmation({
       year: "numeric",
       month: "long",
       day: "numeric",
-    }
+    },
   );
   const expiryDate = new Date(giftCard.expiryDate).toLocaleDateString("en-GB", {
     year: "numeric",
@@ -117,7 +117,7 @@ ${businessName}`;
           
           <!-- Header -->
           <tr>
-            <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 30px; text-align: center;">
+            <td bgcolor="#667eea" style="background-color: #667eea; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 30px; text-align: center;">
               <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 600;">
                 🎁 Gift Card Purchased!
               </h1>
@@ -141,7 +141,7 @@ ${businessName}`;
               </p>
 
               <!-- Gift Card Code Box -->
-              <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 30px; text-align: center; margin: 30px 0;">
+              <div style="background-color: #667eea; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 30px; text-align: center; margin: 30px 0;">
                 <p style="margin: 0 0 10px; color: #ffffff; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.9;">
                   Gift Card Code
                 </p>
@@ -256,12 +256,12 @@ ${businessName}`;
     });
     console.log(
       "[GIFT-CARD-MAILER] Purchase confirmation sent to:",
-      giftCard.purchaserEmail
+      giftCard.purchaserEmail,
     );
   } catch (error) {
     console.error(
       "[GIFT-CARD-MAILER] Failed to send purchase confirmation:",
-      error
+      error,
     );
     throw error;
   }
@@ -277,13 +277,13 @@ export async function sendGiftCardToRecipient({
 }) {
   console.log(
     "[GIFT-CARD-MAILER] Sending gift card to recipient:",
-    giftCard.recipientEmail
+    giftCard.recipientEmail,
   );
 
   const tx = getTransport();
   if (!tx) {
     console.warn(
-      "[GIFT-CARD-MAILER] No transport - skipping recipient notification"
+      "[GIFT-CARD-MAILER] No transport - skipping recipient notification",
     );
     return;
   }
@@ -358,7 +358,7 @@ ${businessName}`;
           
           <!-- Header -->
           <tr>
-            <td style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 40px 30px; text-align: center;">
+            <td bgcolor="#f5576c" style="background-color: #f5576c; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 40px 30px; text-align: center;">
               <div style="font-size: 60px; margin-bottom: 15px;">🎁</div>
               <h1 style="margin: 0; color: #ffffff; font-size: 32px; font-weight: 600;">
                 You've Received a Gift Card!
@@ -386,7 +386,7 @@ ${businessName}`;
                 giftCard.message
                   ? `
               <!-- Personal Message -->
-              <div style="background: linear-gradient(135deg, #fff5f5 0%, #ffe5e5 100%); border-left: 4px solid #f5576c; border-radius: 8px; padding: 20px; margin: 30px 0;">
+              <div style="background-color: #fff5f5; background: linear-gradient(135deg, #fff5f5 0%, #ffe5e5 100%); border-left: 4px solid #f5576c; border-radius: 8px; padding: 20px; margin: 30px 0;">
                 <p style="margin: 0 0 10px; color: #999999; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">
                   Personal Message
                 </p>
@@ -399,7 +399,7 @@ ${businessName}`;
               }
 
               <!-- Gift Card Display -->
-              <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 12px; padding: 40px 30px; text-align: center; margin: 30px 0; box-shadow: 0 8px 16px rgba(245, 87, 108, 0.3);">
+              <div style="background-color: #f5576c; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 12px; padding: 40px 30px; text-align: center; margin: 30px 0; box-shadow: 0 8px 16px rgba(245, 87, 108, 0.3);">
                 <p style="margin: 0 0 15px; color: #ffffff; font-size: 14px; text-transform: uppercase; letter-spacing: 2px; opacity: 0.9;">
                   Your Gift Card Code
                 </p>
@@ -424,21 +424,21 @@ ${businessName}`;
                 <table style="width: 100%;">
                   <tr>
                     <td style="padding: 12px 0; vertical-align: top; width: 40px;">
-                      <div style="width: 32px; height: 32px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #ffffff; font-weight: 600; font-size: 16px;">
+                      <div style="width: 32px; height: 32px; background-color: #f5576c; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #ffffff; font-weight: 600; font-size: 16px;">
                         1
                       </div>
                     </td>
                     <td style="padding: 12px 0; color: #666666; font-size: 15px; line-height: 1.6;">
                       Visit ${businessName}${
-    bookingUrl
-      ? ` at <a href="${bookingUrl}" style="color: #f5576c; text-decoration: none; font-weight: 600;">${bookingUrl}</a>`
-      : ""
-  }
+                        bookingUrl
+                          ? ` at <a href="${bookingUrl}" style="color: #f5576c; text-decoration: none; font-weight: 600;">${bookingUrl}</a>`
+                          : ""
+                      }
                     </td>
                   </tr>
                   <tr>
                     <td style="padding: 12px 0; vertical-align: top;">
-                      <div style="width: 32px; height: 32px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #ffffff; font-weight: 600; font-size: 16px;">
+                      <div style="width: 32px; height: 32px; background-color: #f5576c; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #ffffff; font-weight: 600; font-size: 16px;">
                         2
                       </div>
                     </td>
@@ -448,7 +448,7 @@ ${businessName}`;
                   </tr>
                   <tr>
                     <td style="padding: 12px 0; vertical-align: top;">
-                      <div style="width: 32px; height: 32px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #ffffff; font-weight: 600; font-size: 16px;">
+                      <div style="width: 32px; height: 32px; background-color: #f5576c; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #ffffff; font-weight: 600; font-size: 16px;">
                         3
                       </div>
                     </td>
@@ -458,7 +458,7 @@ ${businessName}`;
                   </tr>
                   <tr>
                     <td style="padding: 12px 0; vertical-align: top;">
-                      <div style="width: 32px; height: 32px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #ffffff; font-weight: 600; font-size: 16px;">
+                      <div style="width: 32px; height: 32px; background-color: #f5576c; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #ffffff; font-weight: 600; font-size: 16px;">
                         4
                       </div>
                     </td>
@@ -474,7 +474,7 @@ ${businessName}`;
                   ? `
               <!-- CTA Button -->
               <div style="text-align: center; margin: 30px 0;">
-                <a href="${bookingUrl}" style="display: inline-block; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 12px rgba(245, 87, 108, 0.3);">
+                <a href="${bookingUrl}" style="display: inline-block; background-color: #f5576c; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 12px rgba(245, 87, 108, 0.3);">
                   Book Your Appointment
                 </a>
               </div>
@@ -530,7 +530,7 @@ ${businessName}`;
     });
     console.log(
       "[GIFT-CARD-MAILER] Gift card sent to recipient:",
-      giftCard.recipientEmail
+      giftCard.recipientEmail,
     );
   } catch (error) {
     console.error("[GIFT-CARD-MAILER] Failed to send to recipient:", error);
@@ -548,13 +548,13 @@ export async function sendGiftCardSaleNotification({
 }) {
   console.log(
     "[GIFT-CARD-MAILER] Sending sale notification for:",
-    giftCard.code
+    giftCard.code,
   );
 
   const tx = getTransport();
   if (!tx) {
     console.warn(
-      "[GIFT-CARD-MAILER] No transport - skipping sale notification"
+      "[GIFT-CARD-MAILER] No transport - skipping sale notification",
     );
     return;
   }
@@ -569,7 +569,7 @@ export async function sendGiftCardSaleNotification({
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
-    }
+    },
   );
   const amount = formatCurrency(giftCard.amount, giftCard.currency);
   const businessName = tenant?.businessName || tenant?.name || "Your Salon";
@@ -626,7 +626,7 @@ Booking System`;
           
           <!-- Header -->
           <tr>
-            <td style="background: linear-gradient(135deg, #43cea2 0%, #185a9d 100%); padding: 40px 30px; text-align: center;">
+            <td bgcolor="#185a9d" style="background-color: #185a9d; background: linear-gradient(135deg, #43cea2 0%, #185a9d 100%); padding: 40px 30px; text-align: center;">
               <div style="font-size: 60px; margin-bottom: 15px;">💰</div>
               <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 600;">
                 New Gift Card Sale!
@@ -649,7 +649,7 @@ Booking System`;
               </p>
 
               <!-- Sale Amount Box -->
-              <div style="background: linear-gradient(135deg, #43cea2 0%, #185a9d 100%); border-radius: 12px; padding: 30px; text-align: center; margin: 30px 0;">
+              <div style="background-color: #185a9d; background: linear-gradient(135deg, #43cea2 0%, #185a9d 100%); border-radius: 12px; padding: 30px; text-align: center; margin: 30px 0;">
                 <p style="margin: 0 0 10px; color: #ffffff; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.9;">
                   Sale Amount
                 </p>
@@ -738,12 +738,12 @@ Booking System`;
     });
     console.log(
       "[GIFT-CARD-MAILER] Sale notification sent to:",
-      recipientEmail
+      recipientEmail,
     );
   } catch (error) {
     console.error(
       "[GIFT-CARD-MAILER] Failed to send sale notification:",
-      error
+      error,
     );
     throw error;
   }

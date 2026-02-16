@@ -96,14 +96,14 @@ export async function sendCancellationEmails({
     // HTML version
     let htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #7c3aed 0%, #ec4899 50%, #06b6d4 100%); padding: 30px 20px; border-radius: 12px 12px 0 0; margin: -20px -20px 20px -20px;">
+        <div style="background-color: #7c3aed; background: linear-gradient(135deg, #7c3aed 0%, #ec4899 50%, #06b6d4 100%); padding: 30px 20px; border-radius: 12px 12px 0 0; margin: -20px -20px 20px -20px;">
           <h2 style="color: white; margin: 0; font-size: 24px; text-align: center;">Appointment Cancelled</h2>
         </div>
         <p>Hi ${appointment.client?.name || ""},</p>
         <p>Your appointment has been cancelled.</p>
         
-        <div style="background: linear-gradient(135deg, rgba(124, 58, 237, 0.05) 0%, rgba(236, 72, 153, 0.05) 100%); padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #7c3aed;">
-          <h3 style="margin-top: 0; background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Appointment Details</h3>
+        <div style="background-color: #f7f3ff; background: linear-gradient(135deg, rgba(124, 58, 237, 0.05) 0%, rgba(236, 72, 153, 0.05) 100%); padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #7c3aed;">
+          <h3 style="margin-top: 0; color: #7c3aed;">Appointment Details</h3>
           <p style="margin: 8px 0;"><strong>Service:</strong> ${serviceName}</p>
           <p style="margin: 8px 0;"><strong>Date & Time:</strong> ${startDate}</p>
           ${
@@ -134,7 +134,7 @@ export async function sendCancellationEmails({
         
         <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid rgba(124, 58, 237, 0.2);">
           <p style="margin: 0; color: #6b7280; font-size: 14px;">Best regards,</p>
-          <p style="margin: 5px 0 0 0; background: linear-gradient(135deg, #7c3aed 0%, #ec4899 50%, #06b6d4 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-weight: bold; font-size: 18px;">Elite Booker</p>
+          <p style="margin: 5px 0 0 0; color: #7c3aed; font-weight: bold; font-size: 18px;">Elite Booker</p>
           <p style="margin: 20px 0 0 0; color: #9ca3af; font-size: 11px;">Appointment ID: ${String(
             appointment._id,
           )}</p>
@@ -177,7 +177,7 @@ export async function sendCancellationEmails({
         }\n\nAppointment ID: ${String(appointment._id)}`,
         html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="background: linear-gradient(135deg, #7c3aed 0%, #ec4899 50%, #06b6d4 100%); padding: 30px 20px; border-radius: 12px 12px 0 0; margin: -20px -20px 20px -20px;">
+          <div style="background-color: #7c3aed; background: linear-gradient(135deg, #7c3aed 0%, #ec4899 50%, #06b6d4 100%); padding: 30px 20px; border-radius: 12px 12px 0 0; margin: -20px -20px 20px -20px;">
             <h2 style="color: white; margin: 0; font-size: 24px; text-align: center;">📅 Appointment Cancelled - Slot Freed</h2>
           </div>
           
@@ -474,7 +474,7 @@ Thank you for choosing us!`,
         ${
           paymentLink
             ? `
-        <div style="background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%); padding: 20px; border-radius: 12px; margin: 20px 0; text-align: center;">
+        <div style="background-color: #7c3aed; background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%); padding: 20px; border-radius: 12px; margin: 20px 0; text-align: center;">
           <p style="margin: 0 0 12px 0; color: white; font-size: 16px; font-weight: 600;">⏰ Deposit Payment Required</p>
           <p style="margin: 0 0 16px 0; color: rgba(255,255,255,0.9); font-size: 14px;">Please complete your ${depositPercentage}% deposit payment to confirm your booking.</p>
           <a href="${paymentLink}" style="display: inline-block; background-color: white; color: #7c3aed; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">💳 Pay Deposit Now</a>
@@ -487,7 +487,7 @@ Thank you for choosing us!`,
             : ""
         }
         
-        <div style="background: linear-gradient(135deg, rgba(124, 58, 237, 0.05) 0%, rgba(236, 72, 153, 0.05) 100%); padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #7c3aed;">
+        <div style="background-color: #f7f3ff; background: linear-gradient(135deg, rgba(124, 58, 237, 0.05) 0%, rgba(236, 72, 153, 0.05) 100%); padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #7c3aed;">
           <h3 style="margin-top: 0; margin-bottom: 16px; color: #7c3aed; font-size: 18px;">Booking Details</h3>
           ${servicesHtml}
           <p style="margin: 8px 0; color: #374151;"><strong>With:</strong> ${beauticianName}</p>
@@ -603,14 +603,14 @@ Please ensure you're prepared for this appointment.`;
 
     const beauticianHtmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #7c3aed 0%, #ec4899 50%, #06b6d4 100%); padding: 30px 20px; border-radius: 12px 12px 0 0; margin: -20px -20px 20px -20px;">
+        <div style="background-color: #7c3aed; background: linear-gradient(135deg, #7c3aed 0%, #ec4899 50%, #06b6d4 100%); padding: 30px 20px; border-radius: 12px 12px 0 0; margin: -20px -20px 20px -20px;">
           <h2 style="color: white; margin: 0; font-size: 24px; text-align: center;">📅 New Booking Received</h2>
         </div>
         <p>Hi ${beauticianName},</p>
         <p style="font-size: 16px; color: #374151; font-weight: 600;">You have a new booking!</p>
         
-        <div style="background: linear-gradient(135deg, rgba(124, 58, 237, 0.05) 0%, rgba(236, 72, 153, 0.05) 100%); padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #7c3aed;">
-          <h3 style="margin-top: 0; background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Appointment Details</h3>
+        <div style="background-color: #f7f3ff; background: linear-gradient(135deg, rgba(124, 58, 237, 0.05) 0%, rgba(236, 72, 153, 0.05) 100%); padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #7c3aed;">
+          <h3 style="margin-top: 0; color: #7c3aed;">Appointment Details</h3>
           <p style="margin: 8px 0;"><strong>Service:</strong> ${serviceName}</p>
           <p style="margin: 8px 0;"><strong>Client:</strong> ${
             appointment.client?.name || "Unknown"
@@ -824,14 +824,14 @@ Appointment ID: ${appointment._id}
 Thank you!`,
       html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #f59e0b 0%, #ec4899 50%, #06b6d4 100%); padding: 30px 20px; border-radius: 12px 12px 0 0; margin: -20px -20px 20px -20px;">
+        <div style="background-color: #f59e0b; background: linear-gradient(135deg, #f59e0b 0%, #ec4899 50%, #06b6d4 100%); padding: 30px 20px; border-radius: 12px 12px 0 0; margin: -20px -20px 20px -20px;">
           <h2 style="color: white; margin: 0; font-size: 24px; text-align: center;">⏰ Appointment Reminder</h2>
         </div>
         <p>Hi ${appointment.client?.name || ""},</p>
         <p style="font-size: 16px; color: #111827;">This is a friendly reminder about your upcoming appointment <strong>tomorrow</strong>!</p>
         
-        <div style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.05) 0%, rgba(236, 72, 153, 0.05) 100%); padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
-          <h3 style="margin-top: 0; margin-bottom: 16px; background: linear-gradient(135deg, #f59e0b 0%, #ec4899 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-size: 18px;">Appointment Details</h3>
+        <div style="background-color: #fff8eb; background: linear-gradient(135deg, rgba(245, 158, 11, 0.05) 0%, rgba(236, 72, 153, 0.05) 100%); padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+          <h3 style="margin-top: 0; margin-bottom: 16px; color: #f59e0b; font-size: 18px;">Appointment Details</h3>
           ${servicesHtml}
           <p style="margin: 8px 0;"><strong>With:</strong> ${beauticianName}</p>
           <p style="margin: 8px 0;"><strong>Date & Time:</strong> ${startTime}</p>
@@ -970,7 +970,7 @@ Order ID: ${order._id}`;
 
   const htmlContent = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-      <div style="background: linear-gradient(135deg, #7c3aed 0%, #ec4899 50%, #06b6d4 100%); padding: 40px 20px; border-radius: 12px 12px 0 0; margin: -20px -20px 30px -20px; text-align: center;">
+      <div style="background-color: #7c3aed; background: linear-gradient(135deg, #7c3aed 0%, #ec4899 50%, #06b6d4 100%); padding: 40px 20px; border-radius: 12px 12px 0 0; margin: -20px -20px 30px -20px; text-align: center;">
         <h1 style="color: white; margin: 0; font-size: 28px;">🎉 Order Confirmed!</h1>
         <p style="color: rgba(255, 255, 255, 0.9); margin: 10px 0 0 0; font-size: 16px;">Thank you for your purchase</p>
       </div>
@@ -980,7 +980,7 @@ Order ID: ${order._id}`;
         <p style="margin: 0; color: #374151;">Your order has been confirmed and we're getting it ready for shipment.</p>
       </div>
       
-      <div style="background: linear-gradient(135deg, rgba(124, 58, 237, 0.1) 0%, rgba(236, 72, 153, 0.1) 100%); padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #7c3aed;">
+      <div style="background-color: #f2ebff; background: linear-gradient(135deg, rgba(124, 58, 237, 0.1) 0%, rgba(236, 72, 153, 0.1) 100%); padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #7c3aed;">
         <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
           <span style="color: #1e40af; font-weight: 600;">Order Number:</span>
           <span style="color: #1f2937; font-weight: 700;">${
@@ -1000,7 +1000,7 @@ Order ID: ${order._id}`;
         </div>
       </div>
       
-      <h3 style="background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; border-bottom: 2px solid rgba(124, 58, 237, 0.3); padding-bottom: 10px; margin-top: 30px; font-size: 20px;">Order Items</h3>
+      <h3 style="color: #7c3aed; border-bottom: 2px solid rgba(124, 58, 237, 0.3); padding-bottom: 10px; margin-top: 30px; font-size: 20px;">Order Items</h3>
       <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
         <thead>
           <tr style="background-color: #f9fafb;">
@@ -1639,7 +1639,7 @@ Phone: +44 7928 775746`;
       <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f3f4f6;">
         <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
           <!-- Header -->
-          <div style="background: linear-gradient(135deg, #fad24e 0%, #d4a710 100%); padding: 40px 20px; text-align: center;">
+          <div style="background-color: #d4a710; background: linear-gradient(135deg, #fad24e 0%, #d4a710 100%); padding: 40px 20px; text-align: center;">
             <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: bold; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">
               🎉 Your Order is Ready!
             </h1>
@@ -1840,7 +1840,7 @@ ${tenantName || "The Team"}`;
       <style>
         body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
         .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+        .header { background-color: #667eea; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
         .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
         .credentials { background: white; padding: 20px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #667eea; }
         .warning { background: #fff3cd; border: 1px solid #ffc107; padding: 15px; border-radius: 6px; margin: 20px 0; }
@@ -1994,7 +1994,7 @@ ${tenantName}
         <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
           <!-- Header -->
           <tr>
-            <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+            <td bgcolor="#667eea" style="background-color: #667eea; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
               <h1 style="color: #ffffff; margin: 0; font-size: 24px;">Booking Confirmed!</h1>
             </td>
           </tr>

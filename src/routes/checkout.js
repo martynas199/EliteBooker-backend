@@ -16,7 +16,10 @@ import Client from "../models/Client.js";
 import smsService from "../services/smsService.js";
 
 const LOG_VERBOSE = process.env.LOG_VERBOSE === "true";
-const console = createConsoleLogger({ scope: "checkout", verbose: LOG_VERBOSE });
+const console = createConsoleLogger({
+  scope: "checkout",
+  verbose: LOG_VERBOSE,
+});
 
 const r = Router();
 let stripeInstance = null;
@@ -78,19 +81,18 @@ r.get("/confirm", async (req, res, next) => {
         ? "connected"
         : "platform";
 
-    const { session, source: sessionSource } = await retrieveStripeCheckoutSession(
-      {
+    const { session, source: sessionSource } =
+      await retrieveStripeCheckoutSession({
         sessionId: String(session_id),
         preferredSource,
         connectedAccountId,
         getPlatformStripe: () => getStripe(),
         getConnectedStripe: (accountId) => getStripe(accountId),
         logger: console,
-      }
-    );
+      });
 
     console.log(
-      `[CHECKOUT CONFIRM] Stripe session retrieved from ${sessionSource} account`
+      `[CHECKOUT CONFIRM] Stripe session retrieved from ${sessionSource} account`,
     );
 
     const isCancelled = [
@@ -100,14 +102,14 @@ r.get("/confirm", async (req, res, next) => {
     ].includes(appt.status);
     const wasAlreadyConfirmed = appt.status === "confirmed";
     const hasConfirmationEmailAudit = (appt.audit || []).some(
-      (entry) => entry?.action === "confirmation_email_sent"
+      (entry) => entry?.action === "confirmation_email_sent",
     );
 
     // If cancelled, exit early
     if (isCancelled) {
       console.log(
         "[CHECKOUT CONFIRM] Appointment cancelled, status:",
-        appt.status
+        appt.status,
       );
       return res.json({ ok: true, status: appt.status });
     }
@@ -120,7 +122,7 @@ r.get("/confirm", async (req, res, next) => {
       "payment_status:",
       session.payment_status,
       "status:",
-      session.status
+      session.status,
     );
     if (!paid)
       return res.status(409).json({
@@ -135,7 +137,7 @@ r.get("/confirm", async (req, res, next) => {
     const amountTotal = Number(
       session.amount_total ||
         appt.payment?.amountTotal ||
-        Math.round(Number(appt.price || 0) * 100)
+        Math.round(Number(appt.price || 0) * 100),
     );
     console.log("[CHECKOUT CONFIRM] amountTotal:", amountTotal);
 
@@ -149,8 +151,8 @@ r.get("/confirm", async (req, res, next) => {
         typeof pi === "object" && pi?.id
           ? pi.id
           : typeof session.payment_intent === "string"
-          ? session.payment_intent
-          : undefined,
+            ? session.payment_intent
+            : undefined,
     };
 
     // Capture payment error details if payment intent has an error
@@ -165,7 +167,7 @@ r.get("/confirm", async (req, res, next) => {
       console.log(
         "[CHECKOUT CONFIRM] Payment error captured:",
         error.code,
-        error.decline_code
+        error.decline_code,
       );
     }
 
@@ -215,11 +217,27 @@ r.get("/confirm", async (req, res, next) => {
         try {
           const giftCard = await GiftCard.findOne({ code: giftCardMeta.code });
           if (giftCard && giftCard.isValid()) {
-            await giftCard.redeem(
-              Number(giftCardMeta.appliedAmount),
-              appt.clientId,
-              appt._id
-            );
+            try {
+              await giftCard.consumeReservation({
+                appointmentId: appt._id,
+                amount: Number(giftCardMeta.appliedAmount),
+                clientId: appt.clientId,
+              });
+            } catch (reservationError) {
+              const isMissingReservation =
+                reservationError?.message ===
+                "No active gift card reservation found";
+
+              if (!isMissingReservation) {
+                throw reservationError;
+              }
+
+              await giftCard.redeem(
+                Number(giftCardMeta.appliedAmount),
+                appt.clientId,
+                appt._id,
+              );
+            }
 
             await Appointment.findByIdAndUpdate(appt._id, {
               $set: {
@@ -230,7 +248,7 @@ r.get("/confirm", async (req, res, next) => {
             console.log(
               "[CHECKOUT CONFIRM] Gift card redeemed:",
               giftCardMeta.code,
-              giftCardMeta.appliedAmount
+              giftCardMeta.appliedAmount,
             );
           } else {
             await Appointment.findByIdAndUpdate(appt._id, {
@@ -243,7 +261,7 @@ r.get("/confirm", async (req, res, next) => {
         } catch (giftCardError) {
           console.error(
             "[CHECKOUT CONFIRM] Gift card redemption failed:",
-            giftCardError
+            giftCardError,
           );
           await Appointment.findByIdAndUpdate(appt._id, {
             $set: {
@@ -260,13 +278,13 @@ r.get("/confirm", async (req, res, next) => {
       try {
         await ClientService.updateTenantClientMetrics(
           appt.tenantId,
-          appt.clientId
+          appt.clientId,
         );
         console.log("[CHECKOUT CONFIRM] Client metrics updated");
       } catch (error) {
         console.error(
           "[CHECKOUT CONFIRM] Failed to update client metrics:",
-          error.message
+          error.message,
         );
         // Don't fail the request if metrics update fails
       }
@@ -276,7 +294,7 @@ r.get("/confirm", async (req, res, next) => {
     console.log("[CHECKOUT CONFIRM] About to send confirmation email...");
     try {
       console.log(
-        "[CHECKOUT CONFIRM] Loading appointment with populated data..."
+        "[CHECKOUT CONFIRM] Loading appointment with populated data...",
       );
       const confirmedAppt = await Appointment.findById(appt._id)
         .populate("serviceId")
@@ -285,7 +303,7 @@ r.get("/confirm", async (req, res, next) => {
         "[CHECKOUT CONFIRM] Loaded appointment:",
         confirmedAppt._id,
         "Client email:",
-        confirmedAppt.client?.email
+        confirmedAppt.client?.email,
       );
 
       if (!hasConfirmationEmailAudit && confirmedAppt.client?.email) {
@@ -328,11 +346,11 @@ r.get("/confirm", async (req, res, next) => {
         console.log("[CHECKOUT CONFIRM] Confirmation email sent.");
       } else if (hasConfirmationEmailAudit) {
         console.log(
-          "[CHECKOUT CONFIRM] Confirmation email already sent, skipping."
+          "[CHECKOUT CONFIRM] Confirmation email already sent, skipping.",
         );
       } else {
         console.log(
-          "[CHECKOUT CONFIRM] Missing client email, skipping confirmation email."
+          "[CHECKOUT CONFIRM] Missing client email, skipping confirmation email.",
         );
       }
 
@@ -368,12 +386,12 @@ r.get("/confirm", async (req, res, next) => {
         // Check if specialist has active SMS subscription AND tenant has SMS enabled
         const Specialist = mongoose.model("Specialist");
         const specialist = await Specialist.findById(
-          confirmedAppt.specialistId
+          confirmedAppt.specialistId,
         ).select("subscription");
 
         const Tenant = mongoose.model("Tenant");
         const tenant = await Tenant.findById(confirmedAppt.tenantId).select(
-          "features"
+          "features",
         );
 
         const hasActiveSmsSubscription =
@@ -384,11 +402,11 @@ r.get("/confirm", async (req, res, next) => {
           console.log(
             "[CHECKOUT CONFIRM] Specialist does not have active SMS subscription (enabled=" +
               specialist?.subscription?.smsConfirmations?.enabled +
-              "), skipping SMS"
+              "), skipping SMS",
           );
         } else if (!tenantSmsEnabled) {
           console.log(
-            "[CHECKOUT CONFIRM] Tenant SMS feature is disabled, skipping SMS"
+            "[CHECKOUT CONFIRM] Tenant SMS feature is disabled, skipping SMS",
           );
         } else {
           smsService
@@ -401,11 +419,11 @@ r.get("/confirm", async (req, res, next) => {
             .then(() =>
               console.log(
                 "[CHECKOUT CONFIRM] SMS confirmation sent to:",
-                confirmedAppt.client.phone
-              )
+                confirmedAppt.client.phone,
+              ),
             )
             .catch((err) =>
-              console.error("[CHECKOUT CONFIRM] SMS failed:", err.message)
+              console.error("[CHECKOUT CONFIRM] SMS failed:", err.message),
             );
         }
       } else {
@@ -414,7 +432,7 @@ r.get("/confirm", async (req, res, next) => {
     } catch (emailErr) {
       console.error(
         "[CHECKOUT CONFIRM] Failed to send confirmation email:",
-        emailErr
+        emailErr,
       );
       // Don't fail the request if email fails
     }
@@ -427,6 +445,9 @@ r.get("/confirm", async (req, res, next) => {
 });
 
 r.post("/create-session", async (req, res, next) => {
+  let reservationContext = null;
+  let stripeSessionCreated = false;
+
   try {
     const {
       appointmentId,
@@ -471,7 +492,7 @@ r.post("/create-session", async (req, res, next) => {
         // Multi-service booking
         const requestedServiceIds = [
           ...new Set(
-            services.map((svc) => svc?.serviceId?.toString()).filter(Boolean)
+            services.map((svc) => svc?.serviceId?.toString()).filter(Boolean),
           ),
         ];
 
@@ -479,17 +500,17 @@ r.post("/create-session", async (req, res, next) => {
           ? await Service.find({ _id: { $in: requestedServiceIds } }).lean()
           : [];
         requestedServicesMap = new Map(
-          requestedServices.map((item) => [item._id.toString(), item])
+          requestedServices.map((item) => [item._id.toString(), item]),
         );
 
         for (const svc of services) {
           const fullService = requestedServicesMap.get(
-            svc?.serviceId?.toString()
+            svc?.serviceId?.toString(),
           );
           if (!fullService) continue;
 
           const variant = (fullService.variants || []).find(
-            (v) => v.name === svc.variantName
+            (v) => v.name === svc.variantName,
           );
           if (!variant) continue;
 
@@ -516,7 +537,7 @@ r.post("/create-session", async (req, res, next) => {
         if (!service)
           return res.status(404).json({ error: "Service not found" });
         const variant = (service.variants || []).find(
-          (v) => v.name === variantName
+          (v) => v.name === variantName,
         );
         if (!variant)
           return res.status(404).json({ error: "Variant not found" });
@@ -609,7 +630,7 @@ r.post("/create-session", async (req, res, next) => {
           if (decoded.type === "client" && decoded.clientId) {
             globalClient = await Client.findById(decoded.clientId);
             console.log(
-              `[Checkout] Using logged-in client: ${globalClient._id} (${globalClient.email})`
+              `[Checkout] Using logged-in client: ${globalClient._id} (${globalClient.email})`,
             );
           }
         } catch (err) {
@@ -625,7 +646,7 @@ r.post("/create-session", async (req, res, next) => {
           phone: client.phone,
         });
         console.log(
-          `[Checkout] Created/found client by email: ${globalClient._id} (${globalClient.email})`
+          `[Checkout] Created/found client by email: ${globalClient._id} (${globalClient.email})`,
         );
       }
 
@@ -633,7 +654,7 @@ r.post("/create-session", async (req, res, next) => {
       await ClientService.findOrCreateTenantClient(
         req.tenantId,
         globalClient._id,
-        { name: globalClient.name }
+        { name: globalClient.name },
       );
 
       appt = await Appointment.create({
@@ -656,7 +677,7 @@ r.post("/create-session", async (req, res, next) => {
       });
 
       console.log(
-        `[Checkout] Created appointment with clientId: ${globalClient._id}, appointmentId: ${appt._id}`
+        `[Checkout] Created appointment with clientId: ${globalClient._id}, appointmentId: ${appt._id}`,
       );
 
       appt = appt.toObject();
@@ -693,7 +714,7 @@ r.post("/create-session", async (req, res, next) => {
 
     console.log(
       "[CHECKOUT] Specialist has no-fee subscription:",
-      hasNoFeeSubscription
+      hasNoFeeSubscription,
     );
 
     // Require Stripe connection for online payments UNLESS specialist has no-fee subscription
@@ -745,7 +766,7 @@ r.post("/create-session", async (req, res, next) => {
     let appliedGiftCard = null;
     if (giftCardCode && !specialist?.inSalonPayment) {
       const normalizedCode = String(giftCardCode).trim().toUpperCase();
-      const giftCard = await GiftCard.findOne({ code: normalizedCode });
+      let giftCard = await GiftCard.findOne({ code: normalizedCode });
 
       if (!giftCard) {
         return res.status(400).json({ error: "Gift card not found" });
@@ -763,10 +784,71 @@ r.post("/create-session", async (req, res, next) => {
         });
       }
 
+      giftCard.cleanupExpiredReservations();
+
       const remainingBalance = Number(giftCard.getRemainingBalance() || 0);
       const toApply = Math.min(Number(amountBeforeFee || 0), remainingBalance);
 
       if (toApply > 0) {
+        let reserved = false;
+        let reserveError = null;
+
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try {
+            await giftCard.reserveForAppointment({
+              appointmentId: appt._id,
+              amount: toApply,
+            });
+            reserved = true;
+            break;
+          } catch (error) {
+            const isVersionError = error?.name === "VersionError";
+
+            if (isVersionError && attempt === 0) {
+              giftCard = await GiftCard.findById(giftCard._id);
+              if (!giftCard) {
+                reserveError = new Error("Gift card not found");
+                break;
+              }
+
+              giftCard.cleanupExpiredReservations();
+              const refreshedRemaining = Number(
+                giftCard.getRemainingBalance() || 0,
+              );
+              if (toApply > refreshedRemaining) {
+                reserveError = new Error(
+                  `Insufficient balance. Remaining: ${refreshedRemaining}`,
+                );
+                break;
+              }
+
+              continue;
+            }
+
+            reserveError = error;
+            break;
+          }
+        }
+
+        if (!reserved) {
+          const message =
+            reserveError?.message || "Unable to reserve gift card balance";
+
+          if (/Insufficient balance/i.test(message)) {
+            return res.status(400).json({ error: message });
+          }
+
+          return res.status(409).json({
+            error:
+              "Gift card is currently being used in another checkout. Please try again.",
+          });
+        }
+
+        reservationContext = {
+          giftCardId: giftCard._id,
+          appointmentId: appt._id,
+        };
+
         amountBeforeFee = Math.max(0, Number(amountBeforeFee || 0) - toApply);
         appliedGiftCard = {
           id: giftCard._id,
@@ -793,9 +875,8 @@ r.post("/create-session", async (req, res, next) => {
     if (appt.services && appt.services.length > 0) {
       // Multi-service booking - use bulk service fetch for performance
       const serviceIds = appt.services.map((s) => s.serviceId).filter(Boolean);
-      const serviceMap = await AppointmentService.getServiceMapByIds(
-        serviceIds
-      );
+      const serviceMap =
+        await AppointmentService.getServiceMapByIds(serviceIds);
 
       if (appt.services.length === 1) {
         const svc = serviceMap.get(appt.services[0].serviceId.toString());
@@ -837,7 +918,7 @@ r.post("/create-session", async (req, res, next) => {
           stripeCustomerId = existingCustomers.data[0].id;
           console.log(
             "[CHECKOUT] Using existing Stripe customer:",
-            stripeCustomerId
+            stripeCustomerId,
           );
 
           // Update existing customer with latest info
@@ -863,7 +944,7 @@ r.post("/create-session", async (req, res, next) => {
           stripeCustomerId = customer.id;
           console.log(
             "[CHECKOUT] Created new Stripe customer:",
-            stripeCustomerId
+            stripeCustomerId,
           );
         }
       } catch (err) {
@@ -895,12 +976,12 @@ r.post("/create-session", async (req, res, next) => {
                 serviceDescription ||
                 (isDeposit
                   ? `Deposit payment (${depositPct}% of total ${baseAmount.toFixed(
-                      2
+                      2,
                     )})`
                   : `Full payment (total ${baseAmount.toFixed(2)})`) +
-                    (appliedGiftCard
-                      ? ` • Gift card applied: £${appliedGiftCard.appliedAmount.toFixed(2)}`
-                      : ""),
+                  (appliedGiftCard
+                    ? ` • Gift card applied: £${appliedGiftCard.appliedAmount.toFixed(2)}`
+                    : ""),
             },
           },
           quantity: 1,
@@ -953,12 +1034,27 @@ r.post("/create-session", async (req, res, next) => {
         "[CHECKOUT] Creating destination charge (platform -> connected account):",
         specialist.stripeAccountId,
         "Platform fee:",
-        platformFee
+        platformFee,
       );
     }
 
     // Create session using the stripe instance already created above
     const session = await stripe.checkout.sessions.create(sessionConfig);
+    stripeSessionCreated = true;
+
+    if (appliedGiftCard) {
+      await GiftCard.updateOne(
+        {
+          _id: appliedGiftCard.id,
+          "pendingRedemptions.appointmentId": appt._id,
+        },
+        {
+          $set: {
+            "pendingRedemptions.$.sessionId": session.id,
+          },
+        },
+      );
+    }
 
     await Appointment.findByIdAndUpdate(appt._id, {
       $set: {
@@ -993,6 +1089,22 @@ r.post("/create-session", async (req, res, next) => {
 
     res.json({ url: session.url, sessionId: session.id });
   } catch (err) {
+    if (reservationContext && !stripeSessionCreated) {
+      try {
+        const giftCard = await GiftCard.findById(reservationContext.giftCardId);
+        if (giftCard) {
+          await giftCard.releaseReservation({
+            appointmentId: reservationContext.appointmentId,
+          });
+        }
+      } catch (releaseErr) {
+        console.error(
+          "[CHECKOUT] Failed to release gift card reservation after create-session error:",
+          releaseErr,
+        );
+      }
+    }
+
     next(err);
   }
 });
@@ -1016,11 +1128,19 @@ r.delete("/cancel-appointment/:appointmentId", async (req, res, next) => {
       });
     }
 
+    const giftCardCode = appointment?.payment?.giftCard?.code;
+    if (giftCardCode) {
+      const giftCard = await GiftCard.findOne({ code: giftCardCode });
+      if (giftCard) {
+        await giftCard.releaseReservation({ appointmentId: appointment._id });
+      }
+    }
+
     // Delete the appointment to free up the timeslot
     await Appointment.findByIdAndDelete(appointmentId);
 
     console.log(
-      `[CHECKOUT CANCEL] Deleted unpaid appointment ${appointmentId}`
+      `[CHECKOUT CANCEL] Deleted unpaid appointment ${appointmentId}`,
     );
 
     res.json({

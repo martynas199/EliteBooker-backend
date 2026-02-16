@@ -5,6 +5,7 @@ import Appointment from "../models/Appointment.js";
 import Specialist from "../models/Specialist.js";
 import Order from "../models/Order.js";
 import Payment from "../models/Payment.js";
+import GiftCard from "../models/GiftCard.js";
 import Seminar from "../models/Seminar.js";
 import SeminarBooking from "../models/SeminarBooking.js";
 import Tenant from "../models/Tenant.js";
@@ -15,13 +16,21 @@ import {
   sendBeauticianProductOrderNotification,
   sendSeminarConfirmationEmail,
 } from "../emails/mailer.js";
+import {
+  sendGiftCardPurchaseConfirmation,
+  sendGiftCardToRecipient,
+  sendGiftCardSaleNotification,
+} from "../emails/giftCardMailer.js";
 import smsService from "../services/smsService.js";
 import { createConsoleLogger } from "../utils/logger.js";
 
 const r = Router();
 const LOG_WEBHOOK =
   process.env.LOG_WEBHOOK === "true" || process.env.LOG_VERBOSE === "true";
-const console = createConsoleLogger({ scope: "webhooks", verbose: LOG_WEBHOOK });
+const console = createConsoleLogger({
+  scope: "webhooks",
+  verbose: LOG_WEBHOOK,
+});
 let stripeInstance = null;
 function getStripe() {
   if (!stripeInstance) {
@@ -30,6 +39,72 @@ function getStripe() {
     stripeInstance = new Stripe(key, { apiVersion: "2024-06-20" });
   }
   return stripeInstance;
+}
+
+async function sendGiftCardEmails(giftCardId) {
+  const populatedGiftCard = await GiftCard.findById(giftCardId)
+    .populate("tenantId")
+    .populate("specialistId");
+
+  if (!populatedGiftCard) return;
+
+  const tenant = populatedGiftCard.tenantId;
+  const specialist = populatedGiftCard.specialistId;
+
+  const now = new Date();
+  const shouldSendRecipientNow =
+    populatedGiftCard.deliveryType !== "scheduled" ||
+    !populatedGiftCard.deliveryDate ||
+    new Date(populatedGiftCard.deliveryDate) <= now;
+
+  const updates = {};
+
+  if (!populatedGiftCard.purchaseConfirmationSentAt) {
+    await sendGiftCardPurchaseConfirmation({
+      giftCard: populatedGiftCard,
+      tenant,
+      specialist,
+    });
+    updates.purchaseConfirmationSentAt = new Date();
+  }
+
+  if (!populatedGiftCard.saleNotificationSentAt) {
+    await sendGiftCardSaleNotification({
+      giftCard: populatedGiftCard,
+      tenant,
+      specialist,
+    });
+    updates.saleNotificationSentAt = new Date();
+  }
+
+  if (shouldSendRecipientNow && !populatedGiftCard.recipientEmailSentAt) {
+    await sendGiftCardToRecipient({
+      giftCard: populatedGiftCard,
+      tenant,
+      specialist,
+    });
+    updates.recipientEmailSentAt = new Date();
+  }
+
+  if (Object.keys(updates).length > 0) {
+    await GiftCard.updateOne({ _id: populatedGiftCard._id }, { $set: updates });
+  }
+}
+
+async function releaseGiftCardReservationForAppointment(appointmentId) {
+  if (!appointmentId) return;
+
+  const appointment = await Appointment.findById(appointmentId)
+    .select("payment.giftCard")
+    .lean();
+
+  const giftCardCode = appointment?.payment?.giftCard?.code;
+  if (!giftCardCode) return;
+
+  const giftCard = await GiftCard.findOne({ code: giftCardCode });
+  if (!giftCard) return;
+
+  await giftCard.releaseReservation({ appointmentId });
 }
 
 // Note: This route expects the raw request body. Ensure server mounts it with express.raw for this path.
@@ -41,7 +116,7 @@ r.post("/stripe", async (req, res) => {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   console.log(
     "[WEBHOOK] Webhook secret configured:",
-    webhookSecret ? "YES" : "NO"
+    webhookSecret ? "YES" : "NO",
   );
   if (!process.env.STRIPE_SECRET || !webhookSecret) {
     console.error("[WEBHOOK] Stripe not configured");
@@ -63,11 +138,13 @@ r.post("/stripe", async (req, res) => {
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object;
-        const apptId =
-          session.client_reference_id || session.metadata?.appointmentId;
+        const bookingType = session.metadata?.type;
+        const isGiftCardPurchase = bookingType === "gift_card_purchase";
+        const apptId = isGiftCardPurchase
+          ? null
+          : session.client_reference_id || session.metadata?.appointmentId;
         const orderId = session.metadata?.orderId;
         const seminarId = session.metadata?.seminarId;
-        const bookingType = session.metadata?.type;
 
         console.log(
           "[WEBHOOK] checkout.session.completed - apptId:",
@@ -79,8 +156,60 @@ r.post("/stripe", async (req, res) => {
           "type:",
           bookingType,
           "session:",
-          session.id
+          session.id,
         );
+
+        if (isGiftCardPurchase) {
+          const giftCardId =
+            session.metadata?.giftCardId || session.client_reference_id;
+
+          if (!giftCardId) {
+            console.error(
+              "[WEBHOOK] Gift card checkout completed without giftCardId",
+              session.id,
+            );
+            break;
+          }
+
+          try {
+            const giftCard = await GiftCard.findById(giftCardId);
+            if (!giftCard) {
+              console.error("[WEBHOOK] Gift card not found:", giftCardId);
+              break;
+            }
+
+            if (giftCard.status === "sent" || giftCard.status === "redeemed") {
+              console.log(
+                "[WEBHOOK] Gift card already finalized:",
+                giftCard.code,
+              );
+              break;
+            }
+
+            giftCard.status = "sent";
+            giftCard.sentDate = giftCard.sentDate || new Date();
+            giftCard.purchaseDate = giftCard.purchaseDate || new Date();
+            giftCard.stripeCheckoutSessionId =
+              session.id || giftCard.stripeCheckoutSessionId;
+            giftCard.stripePaymentIntentId =
+              session.payment_intent || giftCard.stripePaymentIntentId;
+            await giftCard.save();
+
+            try {
+              await sendGiftCardEmails(giftCard._id);
+              console.log("[WEBHOOK] Gift card emails sent:", giftCard.code);
+            } catch (emailError) {
+              console.error(
+                "[WEBHOOK] Gift card email sending failed:",
+                emailError,
+              );
+            }
+          } catch (giftCardErr) {
+            console.error("[WEBHOOK] Gift card finalize error:", giftCardErr);
+          }
+
+          break;
+        }
 
         // Handle appointment confirmation
         if (apptId) {
@@ -101,7 +230,7 @@ r.post("/stripe", async (req, res) => {
                   ...(session.payment_intent
                     ? {
                         "payment.stripe.paymentIntentId": String(
-                          session.payment_intent
+                          session.payment_intent,
                         ),
                       }
                     : {}),
@@ -120,7 +249,7 @@ r.post("/stripe", async (req, res) => {
                   ...(isDepositPayment && session.metadata?.depositPercentage
                     ? {
                         "payment.depositPercentage": Number(
-                          session.metadata.depositPercentage
+                          session.metadata.depositPercentage,
                         ),
                       }
                     : {}),
@@ -133,7 +262,7 @@ r.post("/stripe", async (req, res) => {
                   },
                 },
               },
-              { new: true }
+              { new: true },
             )
               .populate("serviceId")
               .populate("specialistId", "name email subscription");
@@ -141,13 +270,82 @@ r.post("/stripe", async (req, res) => {
             console.log(
               "[WEBHOOK] Appointment",
               apptId,
-              "updated to confirmed"
+              "updated to confirmed",
             );
 
             // Send confirmation email
             if (appointment) {
+              const giftCardMeta = appointment?.payment?.giftCard;
+              if (
+                giftCardMeta?.code &&
+                Number(giftCardMeta.appliedAmount) > 0 &&
+                giftCardMeta?.redemptionStatus !== "redeemed"
+              ) {
+                try {
+                  const giftCard = await GiftCard.findOne({
+                    code: giftCardMeta.code,
+                  });
+
+                  if (giftCard && giftCard.isValid()) {
+                    try {
+                      await giftCard.consumeReservation({
+                        appointmentId: appointment._id,
+                        amount: Number(giftCardMeta.appliedAmount),
+                        clientId: appointment.clientId,
+                      });
+                    } catch (reservationError) {
+                      const isMissingReservation =
+                        reservationError?.message ===
+                        "No active gift card reservation found";
+
+                      if (!isMissingReservation) {
+                        throw reservationError;
+                      }
+
+                      await giftCard.redeem(
+                        Number(giftCardMeta.appliedAmount),
+                        appointment.clientId,
+                        appointment._id,
+                      );
+                    }
+
+                    await Appointment.findByIdAndUpdate(appointment._id, {
+                      $set: {
+                        "payment.giftCard.redemptionStatus": "redeemed",
+                        "payment.giftCard.redeemedAt": new Date(),
+                      },
+                    });
+                    console.log(
+                      "[WEBHOOK] Gift card redeemed for appointment",
+                      appointment._id,
+                      giftCardMeta.code,
+                      giftCardMeta.appliedAmount,
+                    );
+                  } else {
+                    await Appointment.findByIdAndUpdate(appointment._id, {
+                      $set: {
+                        "payment.giftCard.redemptionStatus": "failed",
+                        "payment.giftCard.error":
+                          "Gift card invalid during webhook redemption",
+                      },
+                    });
+                  }
+                } catch (giftCardError) {
+                  console.error(
+                    "[WEBHOOK] Gift card redemption failed:",
+                    giftCardError,
+                  );
+                  await Appointment.findByIdAndUpdate(appointment._id, {
+                    $set: {
+                      "payment.giftCard.redemptionStatus": "failed",
+                      "payment.giftCard.error": giftCardError.message,
+                    },
+                  });
+                }
+              }
+
               const hasConfirmationEmailAudit = (appointment.audit || []).some(
-                (entry) => entry?.action === "confirmation_email_sent"
+                (entry) => entry?.action === "confirmation_email_sent",
               );
 
               if (!hasConfirmationEmailAudit && appointment.client?.email) {
@@ -171,21 +369,21 @@ r.post("/stripe", async (req, res) => {
                   });
                   console.log(
                     "[WEBHOOK] Confirmation email sent for appointment",
-                    apptId
+                    apptId,
                   );
                 } catch (emailErr) {
                   console.error(
                     "[WEBHOOK] Failed to send confirmation email:",
-                    emailErr
+                    emailErr,
                   );
                 }
               } else if (hasConfirmationEmailAudit) {
                 console.log(
-                  "[WEBHOOK] Confirmation email already sent, skipping."
+                  "[WEBHOOK] Confirmation email already sent, skipping.",
                 );
               } else {
                 console.log(
-                  "[WEBHOOK] Missing client email, skipping confirmation email."
+                  "[WEBHOOK] Missing client email, skipping confirmation email.",
                 );
               }
 
@@ -201,12 +399,12 @@ r.post("/stripe", async (req, res) => {
                 // Check if specialist has active SMS subscription AND tenant has SMS enabled
                 const Specialist = mongoose.model("Specialist");
                 const specialist = await Specialist.findById(
-                  appointment.specialistId
+                  appointment.specialistId,
                 ).select("subscription");
 
                 const Tenant = mongoose.model("Tenant");
                 const tenant = await Tenant.findById(
-                  appointment.tenantId
+                  appointment.tenantId,
                 ).select("features");
 
                 const hasActiveSmsSubscription =
@@ -218,11 +416,11 @@ r.post("/stripe", async (req, res) => {
                   console.log(
                     "[WEBHOOK] Specialist does not have active SMS subscription (enabled=" +
                       specialist?.subscription?.smsConfirmations?.enabled +
-                      "), skipping SMS"
+                      "), skipping SMS",
                   );
                 } else if (!tenantSmsEnabled) {
                   console.log(
-                    "[WEBHOOK] Tenant SMS feature is disabled, skipping SMS"
+                    "[WEBHOOK] Tenant SMS feature is disabled, skipping SMS",
                   );
                 } else {
                   smsService
@@ -237,11 +435,11 @@ r.post("/stripe", async (req, res) => {
                     .then(() =>
                       console.log(
                         "[WEBHOOK] SMS confirmation sent to:",
-                        appointment.client.phone
-                      )
+                        appointment.client.phone,
+                      ),
                     )
                     .catch((err) =>
-                      console.error("[WEBHOOK] SMS failed:", err.message)
+                      console.error("[WEBHOOK] SMS failed:", err.message),
                     );
                 }
               } else {
@@ -264,7 +462,7 @@ r.post("/stripe", async (req, res) => {
                   status: "processing",
                 },
               },
-              { new: true }
+              { new: true },
             );
 
             console.log("[WEBHOOK] Order", orderId, "updated to paid");
@@ -275,12 +473,12 @@ r.post("/stripe", async (req, res) => {
                 await sendOrderConfirmationEmail({ order });
                 console.log(
                   "[WEBHOOK] Order confirmation email sent to customer for order",
-                  orderId
+                  orderId,
                 );
               } catch (emailErr) {
                 console.error(
                   "[WEBHOOK] Failed to send order confirmation email:",
-                  emailErr
+                  emailErr,
                 );
               }
 
@@ -289,12 +487,12 @@ r.post("/stripe", async (req, res) => {
                 await sendAdminOrderNotification({ order });
                 console.log(
                   "[WEBHOOK] Admin notification sent for order",
-                  orderId
+                  orderId,
                 );
               } catch (emailErr) {
                 console.error(
                   "[WEBHOOK] Failed to send admin notification:",
-                  emailErr
+                  emailErr,
                 );
               }
 
@@ -312,7 +510,7 @@ r.post("/stripe", async (req, res) => {
               }
 
               for (const [specialistId, items] of Object.entries(
-                itemsByBeautician
+                itemsByBeautician,
               )) {
                 try {
                   const specialist = await Specialist.findById(specialistId);
@@ -323,13 +521,13 @@ r.post("/stripe", async (req, res) => {
                       beauticianItems: items,
                     });
                     console.log(
-                      `[WEBHOOK] Specialist notification sent to ${specialist.email} for ${items.length} product(s) in order ${orderId}`
+                      `[WEBHOOK] Specialist notification sent to ${specialist.email} for ${items.length} product(s) in order ${orderId}`,
                     );
                   }
                 } catch (beauticianEmailErr) {
                   console.error(
                     `[WEBHOOK] Failed to send specialist notification to ${specialistId}:`,
-                    beauticianEmailErr
+                    beauticianEmailErr,
                   );
                   // Continue with other specialists
                 }
@@ -407,7 +605,7 @@ r.post("/stripe", async (req, res) => {
 
             console.log(
               "[WEBHOOK] Seminar booking created:",
-              booking.bookingReference
+              booking.bookingReference,
             );
 
             // Send confirmation email
@@ -421,12 +619,12 @@ r.post("/stripe", async (req, res) => {
               });
               console.log(
                 "[WEBHOOK] Seminar confirmation email sent to",
-                attendeeEmail
+                attendeeEmail,
               );
             } catch (emailErr) {
               console.error(
                 "[WEBHOOK] Failed to send seminar confirmation email:",
-                emailErr
+                emailErr,
               );
             }
           } catch (e) {
@@ -436,7 +634,7 @@ r.post("/stripe", async (req, res) => {
 
         if (!apptId && !orderId && !seminarId) {
           console.warn(
-            "[WEBHOOK] checkout.session.completed missing apptId, orderId, and seminarId"
+            "[WEBHOOK] checkout.session.completed missing apptId, orderId, and seminarId",
           );
         }
         break;
@@ -455,7 +653,7 @@ r.post("/stripe", async (req, res) => {
           "tenantId:",
           tenantId,
           "pi:",
-          pi.id
+          pi.id,
         );
 
         // Track platform fee if present
@@ -463,7 +661,7 @@ r.post("/stripe", async (req, res) => {
           console.log(
             `[WEBHOOK] Platform fee collected: £${
               pi.application_fee_amount / 100
-            } for tenant ${tenantId}`
+            } for tenant ${tenantId}`,
           );
         }
 
@@ -498,7 +696,7 @@ r.post("/stripe", async (req, res) => {
             const appointment = await Appointment.findByIdAndUpdate(
               apptId,
               updateData,
-              { new: true }
+              { new: true },
             )
               .populate("serviceId")
               .populate("specialistId");
@@ -506,7 +704,7 @@ r.post("/stripe", async (req, res) => {
             console.log(
               "[WEBHOOK] Appointment",
               apptId,
-              "updated to confirmed via PI"
+              "updated to confirmed via PI",
             );
 
             // Note: Confirmation email is sent in checkout.session.completed
@@ -547,7 +745,7 @@ r.post("/stripe", async (req, res) => {
           "[WEBHOOK] charge.refunded - apptId:",
           apptId,
           "orderId:",
-          orderId
+          orderId,
         );
 
         if (apptId) {
@@ -612,7 +810,7 @@ r.post("/stripe", async (req, res) => {
               "status updated to",
               specialist.stripeStatus,
               "payouts:",
-              account.payouts_enabled
+              account.payouts_enabled,
             );
           }
         } catch (e) {
@@ -626,7 +824,7 @@ r.post("/stripe", async (req, res) => {
         const application = event.data.object;
         console.log(
           "[WEBHOOK] account.application.authorized - account:",
-          event.account
+          event.account,
         );
 
         try {
@@ -640,7 +838,7 @@ r.post("/stripe", async (req, res) => {
             console.log(
               "[WEBHOOK] Specialist",
               specialist._id,
-              "authorized platform access"
+              "authorized platform access",
             );
           }
         } catch (e) {
@@ -649,12 +847,88 @@ r.post("/stripe", async (req, res) => {
         break;
       }
 
+      case "checkout.session.expired": {
+        const session = event.data.object;
+        const bookingType = session.metadata?.type;
+        const isGiftCardPurchase = bookingType === "gift_card_purchase";
+        const apptId = isGiftCardPurchase
+          ? null
+          : session.client_reference_id || session.metadata?.appointmentId;
+
+        console.log(
+          "[WEBHOOK] checkout.session.expired - apptId:",
+          apptId,
+          "type:",
+          bookingType,
+          "session:",
+          session.id,
+        );
+
+        if (isGiftCardPurchase) {
+          try {
+            const giftCardId =
+              session.metadata?.giftCardId || session.client_reference_id;
+            if (!giftCardId) {
+              break;
+            }
+
+            const giftCard = await GiftCard.findById(giftCardId);
+            if (!giftCard) {
+              break;
+            }
+
+            if (giftCard.status === "pending") {
+              giftCard.status = "cancelled";
+              giftCard.stripeCheckoutSessionId =
+                session.id || giftCard.stripeCheckoutSessionId;
+              await giftCard.save();
+              console.log(
+                "[WEBHOOK] Gift card marked cancelled after expired checkout:",
+                giftCard.code,
+              );
+            }
+          } catch (giftCardExpiryErr) {
+            console.error(
+              "[WEBHOOK] Failed to process expired gift card checkout:",
+              giftCardExpiryErr,
+            );
+          }
+
+          break;
+        }
+
+        if (apptId) {
+          try {
+            await releaseGiftCardReservationForAppointment(apptId);
+            await Appointment.findByIdAndUpdate(apptId, {
+              $set: {
+                "payment.status": "expired",
+              },
+              $push: {
+                audit: {
+                  at: new Date(),
+                  action: "checkout_session_expired",
+                  meta: {
+                    eventId: event.id,
+                    sessionId: session.id,
+                  },
+                },
+              },
+            });
+          } catch (expiredErr) {
+            console.error("[WEBHOOK] checkout.session.expired err", expiredErr);
+          }
+        }
+
+        break;
+      }
+
       case "account.application.deauthorized": {
         // Specialist revoked platform access to their Connect account
         const application = event.data.object;
         console.log(
           "[WEBHOOK] account.application.deauthorized - account:",
-          event.account
+          event.account,
         );
 
         try {
@@ -669,7 +943,7 @@ r.post("/stripe", async (req, res) => {
             console.log(
               "[WEBHOOK] Specialist",
               specialist._id,
-              "deauthorized - Stripe account disconnected"
+              "deauthorized - Stripe account disconnected",
             );
           }
         } catch (e) {
@@ -685,7 +959,7 @@ r.post("/stripe", async (req, res) => {
           "[WEBHOOK] payout.paid - amount:",
           payout.amount,
           "account:",
-          event.account
+          event.account,
         );
 
         try {
@@ -699,7 +973,7 @@ r.post("/stripe", async (req, res) => {
             console.log(
               "[WEBHOOK] Specialist",
               specialist._id,
-              "payout recorded"
+              "payout recorded",
             );
           }
         } catch (e) {
@@ -720,7 +994,7 @@ r.post("/stripe", async (req, res) => {
           orderId,
           "error:",
           pi.last_payment_error?.code,
-          pi.last_payment_error?.decline_code
+          pi.last_payment_error?.decline_code,
         );
 
         if (apptId) {
@@ -751,6 +1025,17 @@ r.post("/stripe", async (req, res) => {
             }
 
             await Appointment.findByIdAndUpdate(apptId, updateData);
+
+            await releaseGiftCardReservationForAppointment(apptId);
+
+            await Appointment.findByIdAndUpdate(apptId, {
+              $set: {
+                "payment.giftCard.redemptionStatus": "failed",
+                "payment.giftCard.error":
+                  pi.last_payment_error?.message ||
+                  "Payment failed before gift card redemption",
+              },
+            });
           } catch (e) {
             console.error("[WEBHOOK] payment failed update err", e);
           }
@@ -790,7 +1075,7 @@ r.post("/stripe", async (req, res) => {
           "customer:",
           subscription.customer,
           "status:",
-          subscription.status
+          subscription.status,
         );
 
         // Check if this is a no_fee_bookings subscription
@@ -816,7 +1101,7 @@ r.post("/stripe", async (req, res) => {
               subscription.status === "incomplete"
             ) {
               console.log(
-                "[WEBHOOK] Skipping subscription.created - already has active status (race condition avoided)"
+                "[WEBHOOK] Skipping subscription.created - already has active status (race condition avoided)",
               );
               break;
             }
@@ -831,10 +1116,10 @@ r.post("/stripe", async (req, res) => {
               stripePriceId: subscription.items.data[0].price.id,
               status: subscription.status,
               currentPeriodStart: new Date(
-                subscription.current_period_start * 1000
+                subscription.current_period_start * 1000,
               ),
               currentPeriodEnd: new Date(
-                subscription.current_period_end * 1000
+                subscription.current_period_end * 1000,
               ),
             };
 
@@ -845,7 +1130,7 @@ r.post("/stripe", async (req, res) => {
               "status:",
               subscription.status,
               "enabled:",
-              specialist.subscription.noFeeBookings.enabled
+              specialist.subscription.noFeeBookings.enabled,
             );
           } catch (err) {
             console.error("[WEBHOOK] subscription creation error:", err);
@@ -861,7 +1146,7 @@ r.post("/stripe", async (req, res) => {
           "[WEBHOOK] customer.subscription.updated - subscription:",
           subscription.id,
           "status:",
-          subscription.status
+          subscription.status,
         );
 
         try {
@@ -883,7 +1168,7 @@ r.post("/stripe", async (req, res) => {
           if (!specialist && subscription.customer) {
             console.log(
               "[WEBHOOK] Subscription ID lookup failed, trying customer ID:",
-              subscription.customer
+              subscription.customer,
             );
             specialist = await Specialist.findOne({
               stripeCustomerId: subscription.customer,
@@ -894,17 +1179,17 @@ r.post("/stripe", async (req, res) => {
           if (!specialist && subscription.metadata?.specialistId) {
             console.log(
               "[WEBHOOK] Customer ID lookup failed, trying metadata specialistId:",
-              subscription.metadata.specialistId
+              subscription.metadata.specialistId,
             );
             specialist = await Specialist.findById(
-              subscription.metadata.specialistId
+              subscription.metadata.specialistId,
             );
           }
 
           if (!specialist) {
             console.error(
               "[WEBHOOK] Specialist not found for subscription:",
-              subscription.id
+              subscription.id,
             );
             break;
           }
@@ -925,7 +1210,7 @@ r.post("/stripe", async (req, res) => {
             "[WEBHOOK] Detected subscription type:",
             subscriptionType,
             "for price:",
-            priceId
+            priceId,
           );
 
           // Update the appropriate subscription
@@ -938,10 +1223,10 @@ r.post("/stripe", async (req, res) => {
               subscription.id;
             specialist.subscription.noFeeBookings.stripePriceId = priceId;
             specialist.subscription.noFeeBookings.currentPeriodStart = new Date(
-              subscription.current_period_start * 1000
+              subscription.current_period_start * 1000,
             );
             specialist.subscription.noFeeBookings.currentPeriodEnd = new Date(
-              subscription.current_period_end * 1000
+              subscription.current_period_end * 1000,
             );
 
             if (subscription.cancel_at_period_end) {
@@ -983,7 +1268,7 @@ r.post("/stripe", async (req, res) => {
                 await tenant.save();
                 console.log(
                   "[WEBHOOK] Auto-enabled SMS features for tenant:",
-                  tenant._id
+                  tenant._id,
                 );
               }
             }
@@ -996,7 +1281,7 @@ r.post("/stripe", async (req, res) => {
             "type:",
             subscriptionType,
             "status:",
-            subscription.status
+            subscription.status,
           );
         } catch (err) {
           console.error("[WEBHOOK] subscription update error:", err);
@@ -1009,7 +1294,7 @@ r.post("/stripe", async (req, res) => {
         const subscription = event.data.object;
         console.log(
           "[WEBHOOK] customer.subscription.deleted - subscription:",
-          subscription.id
+          subscription.id,
         );
 
         try {
@@ -1031,7 +1316,7 @@ r.post("/stripe", async (req, res) => {
           if (!specialist && subscription.customer) {
             console.log(
               "[WEBHOOK] Subscription ID lookup failed for deletion, trying customer ID:",
-              subscription.customer
+              subscription.customer,
             );
             specialist = await Specialist.findOne({
               stripeCustomerId: subscription.customer,
@@ -1041,7 +1326,7 @@ r.post("/stripe", async (req, res) => {
           if (!specialist) {
             console.error(
               "[WEBHOOK] Specialist not found for subscription:",
-              subscription.id
+              subscription.id,
             );
             break;
           }
@@ -1056,14 +1341,14 @@ r.post("/stripe", async (req, res) => {
             specialist.subscription.noFeeBookings.status = "canceled";
             console.log(
               "[WEBHOOK] No Fee Bookings subscription ended for specialist:",
-              specialist._id
+              specialist._id,
             );
           } else if (priceId === smsPriceId) {
             specialist.subscription.smsConfirmations.enabled = false;
             specialist.subscription.smsConfirmations.status = "canceled";
             console.log(
               "[WEBHOOK] SMS Confirmations subscription ended for specialist:",
-              specialist._id
+              specialist._id,
             );
 
             // Automatically disable feature flags when subscription is cancelled
@@ -1075,7 +1360,7 @@ r.post("/stripe", async (req, res) => {
               await tenant.save();
               console.log(
                 "[WEBHOOK] Auto-disabled SMS features for tenant:",
-                tenant._id
+                tenant._id,
               );
             }
           }
@@ -1103,7 +1388,7 @@ r.post("/stripe", async (req, res) => {
           if (!payment) {
             console.log(
               "[WEBHOOK] Payment not found for intent:",
-              paymentIntent.id
+              paymentIntent.id,
             );
             break;
           }
@@ -1135,7 +1420,7 @@ r.post("/stripe", async (req, res) => {
                     charge.balance_transaction,
                     {
                       stripeAccount: payment.stripe.connectedAccountId,
-                    }
+                    },
                   );
 
                 payment.fees.stripe = Math.abs(balanceTransaction.fee);
@@ -1145,7 +1430,7 @@ r.post("/stripe", async (req, res) => {
               } catch (feeError) {
                 console.error(
                   "[WEBHOOK] Error fetching balance transaction:",
-                  feeError
+                  feeError,
                 );
               }
             }
@@ -1154,7 +1439,7 @@ r.post("/stripe", async (req, res) => {
           // Generate receipt number
           if (!payment.receipt.receiptNumber) {
             payment.receipt.receiptNumber = await Payment.generateReceiptNumber(
-              payment.tenant._id
+              payment.tenant._id,
             );
           }
 
@@ -1173,11 +1458,11 @@ r.post("/stripe", async (req, res) => {
 
               const totalPaid = allPayments.reduce(
                 (sum, p) => sum + p.total,
-                0
+                0,
               );
               const appointmentTotal = appointment.services.reduce(
                 (sum, s) => sum + (s.price || 0),
-                0
+                0,
               );
 
               if (totalPaid >= appointmentTotal) {
@@ -1204,7 +1489,7 @@ r.post("/stripe", async (req, res) => {
               await appointment.save();
               console.log(
                 "[WEBHOOK] Appointment payment status updated:",
-                appointment._id
+                appointment._id,
               );
             }
           }
@@ -1222,9 +1507,8 @@ r.post("/stripe", async (req, res) => {
             }
 
             if (deliveryOptions.email || deliveryOptions.phone) {
-              const { sendReceipt } = await import(
-                "../services/receiptService.js"
-              );
+              const { sendReceipt } =
+                await import("../services/receiptService.js");
               const results = await sendReceipt(payment, deliveryOptions);
 
               console.log("[WEBHOOK] Receipt delivery results:", {
@@ -1237,7 +1521,7 @@ r.post("/stripe", async (req, res) => {
               });
             } else {
               console.log(
-                "[WEBHOOK] No email or phone available for receipt delivery"
+                "[WEBHOOK] No email or phone available for receipt delivery",
               );
             }
           } catch (receiptError) {
@@ -1262,7 +1546,7 @@ r.post("/stripe", async (req, res) => {
           if (!payment) {
             console.log(
               "[WEBHOOK] Payment not found for intent:",
-              paymentIntent.id
+              paymentIntent.id,
             );
             break;
           }
@@ -1288,6 +1572,35 @@ r.post("/stripe", async (req, res) => {
         const paymentIntent = event.data.object;
         console.log("[WEBHOOK] Payment intent canceled:", paymentIntent.id);
 
+        const apptId = paymentIntent.metadata?.appointmentId;
+        if (apptId) {
+          try {
+            await releaseGiftCardReservationForAppointment(apptId);
+            await Appointment.findByIdAndUpdate(apptId, {
+              $set: {
+                "payment.giftCard.redemptionStatus": "failed",
+                "payment.giftCard.error":
+                  "Payment canceled before gift card redemption",
+              },
+              $push: {
+                audit: {
+                  at: new Date(),
+                  action: "payment_canceled",
+                  meta: {
+                    eventId: event.id,
+                    paymentIntentId: paymentIntent.id,
+                  },
+                },
+              },
+            });
+          } catch (cancelErr) {
+            console.error(
+              "[WEBHOOK] Failed to release gift card reservation on payment cancellation:",
+              cancelErr,
+            );
+          }
+        }
+
         try {
           const payment = await Payment.findOne({
             "stripe.paymentIntentId": paymentIntent.id,
@@ -1296,7 +1609,7 @@ r.post("/stripe", async (req, res) => {
           if (!payment) {
             console.log(
               "[WEBHOOK] Payment not found for intent:",
-              paymentIntent.id
+              paymentIntent.id,
             );
             break;
           }
@@ -1307,7 +1620,7 @@ r.post("/stripe", async (req, res) => {
         } catch (error) {
           console.error(
             "[WEBHOOK] Error handling payment cancellation:",
-            error
+            error,
           );
         }
         break;

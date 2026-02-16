@@ -128,3 +128,14 @@ The password reset flow:
 ---
 
 **Note**: The email functionality is fully implemented and working. You just need to configure your SMTP credentials in the `.env` file.
+
+## Test Email Template Rendering
+
+Use these commands to send template previews to your own inbox:
+
+- Gift-card templates only:
+  - `npm run emails:test -- --to=you@example.com`
+- Gift-card + booking + order templates:
+  - `npm run emails:test:all -- --to=you@example.com`
+
+If `--to` is omitted, the script uses `TEST_EMAIL_TO` (or falls back to `SMTP_USER`).
