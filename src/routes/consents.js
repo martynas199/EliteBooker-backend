@@ -9,10 +9,9 @@ import gcsConsentService from "../services/gcsConsentService.js";
 import requireAdmin from "../middleware/requireAdmin.js";
 import { authenticateClient } from "../middleware/clientAuth.js";
 import optionalAuth from "../middleware/optionalAuth.js";
+import { JWT_SECRET } from "../config/security.js";
 
 const router = express.Router();
-const JWT_SECRET =
-  process.env.JWT_SECRET || "your-secret-key-change-in-production";
 
 // Middleware to allow either admin or authenticated client
 const allowAdminOrClient = [
@@ -101,7 +100,7 @@ router.post("/sign", async (req, res) => {
     // Get template
     const template = await ConsentTemplate.findById(consentTemplateId).populate(
       "requiredFor.services",
-      "name"
+      "name",
     );
 
     if (!template) {
@@ -201,12 +200,12 @@ router.post("/sign", async (req, res) => {
 
       // Generate signed URL for immediate access
       pdfUrl = await gcsConsentService.generateSignedUrl(
-        uploadResult.gcsObjectPath
+        uploadResult.gcsObjectPath,
       );
     } catch (gcsError) {
       console.warn(
         "GCS upload failed, consent saved without PDF storage:",
-        gcsError.message
+        gcsError.message,
       );
     }
 
@@ -219,7 +218,7 @@ router.post("/sign", async (req, res) => {
             gcsObjectPath: finalGcsPath,
             status: "signed",
           },
-        }
+        },
       );
       consentRecord.gcsObjectPath = finalGcsPath;
       consentRecord.status = "signed";
@@ -299,7 +298,7 @@ router.get("/client/:clientId", requireAdmin, async (req, res) => {
 
     const consents = await ConsentRecord.getClientConsents(
       clientId,
-      includeRevoked === "true"
+      includeRevoked === "true",
     );
 
     res.json({
@@ -551,13 +550,13 @@ router.get("/:id/pdf", allowAdminOrClient, async (req, res) => {
     const filename =
       `${consent.templateName}_v${consent.templateVersion}_${consent.clientId.name}.pdf`.replace(
         /[^a-z0-9._-]/gi,
-        "_"
+        "_",
       );
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
       "Content-Disposition",
-      download === "true" ? `attachment; filename="${filename}"` : "inline"
+      download === "true" ? `attachment; filename="${filename}"` : "inline",
     );
     res.setHeader("Content-Length", pdfBuffer.length);
     res.setHeader("Accept-Ranges", "bytes");
@@ -572,7 +571,7 @@ router.get("/:id/pdf", allowAdminOrClient, async (req, res) => {
       //   req.ip
       // );
       console.log(
-        `PDF accessed by user ${req.user.userId} for consent ${consent._id}`
+        `PDF accessed by user ${req.user.userId} for consent ${consent._id}`,
       );
     } catch (logError) {
       // Log error but don't fail the request
@@ -688,7 +687,7 @@ router.get("/expiring-soon", requireAdmin, async (req, res) => {
     const { days = 30 } = req.query;
 
     const consents = await ConsentRecord.getConsentsExpiringsSoon(
-      parseInt(days)
+      parseInt(days),
     );
 
     res.json({
@@ -734,13 +733,12 @@ router.post("/:id/email", requireAdmin, async (req, res) => {
     // Generate signed URL (longer expiry for email)
     const signedUrl = await gcsConsentService.generateSignedUrl(
       consent.gcsObjectPath,
-      60
+      60,
     );
 
     // Send email (integrate with your email service)
-    const { default: emailService } = await import(
-      "../services/emailService.js"
-    );
+    const { default: emailService } =
+      await import("../services/emailService.js");
     await emailService.sendConsentFormEmail({
       to: consent.clientId.email,
       clientName: consent.clientId.name,
@@ -789,7 +787,7 @@ router.post("/:id/verify", requireAdmin, async (req, res) => {
 
     const isValid = await gcsConsentService.verifyPDFIntegrity(
       consent.gcsObjectPath,
-      consent.pdfHash
+      consent.pdfHash,
     );
 
     res.json({

@@ -10,11 +10,9 @@ import smsService from "../services/smsService.js";
 import { sendConfirmationEmail } from "../emails/mailer.js";
 import { resetReminderOnReschedule } from "../services/reminderService.js";
 import { updateCalendarEvent } from "../services/googleCalendar.js";
+import { JWT_SECRET } from "../config/security.js";
 
 const router = express.Router();
-
-const JWT_SECRET =
-  process.env.JWT_SECRET || "your-secret-key-change-in-production";
 
 /**
  * Middleware to authenticate client
@@ -26,17 +24,7 @@ const authenticateClient = async (req, res, next) => {
     const headerToken = req.headers.authorization?.replace("Bearer ", "");
     const token = cookieToken || headerToken;
 
-    console.log(
-      "[Client Auth] Cookie token:",
-      cookieToken ? "present" : "missing"
-    );
-    console.log(
-      "[Client Auth] Header token:",
-      headerToken ? "present" : "missing"
-    );
-
     if (!token) {
-      console.log("[Client Auth] No token found - returning 401");
       return res.status(401).json({
         success: false,
         error: "Authentication required",
@@ -110,7 +98,7 @@ router.post("/register", async (req, res) => {
         type: "client",
       },
       JWT_SECRET,
-      { expiresIn: "30d" }
+      { expiresIn: "30d" },
     );
 
     // Keep cookie for backward compatibility, but also return token
@@ -167,7 +155,7 @@ router.post("/login", async (req, res) => {
         type: "client",
       },
       JWT_SECRET,
-      { expiresIn: "30d" }
+      { expiresIn: "30d" },
     );
 
     // Keep cookie for backward compatibility, but also return token
@@ -204,8 +192,6 @@ router.post("/login", async (req, res) => {
  * IMPORTANT: clearCookie options must EXACTLY match the cookie() options used when setting it
  */
 router.post("/logout", (req, res) => {
-  console.log("[Client Logout] Clearing all auth cookies");
-
   // Must use EXACT same options as when cookie was set (see oauth.js)
   const cookieOptions = {
     httpOnly: true,
@@ -217,12 +203,6 @@ router.post("/logout", (req, res) => {
   // Clear both clientToken and refreshToken
   res.clearCookie("clientToken", cookieOptions);
   res.clearCookie("refreshToken", cookieOptions);
-
-  console.log("[Client Logout] Cookies cleared:", {
-    clientToken: "cleared",
-    refreshToken: "cleared",
-    options: cookieOptions,
-  });
 
   res.json({
     success: true,
@@ -310,7 +290,7 @@ router.patch("/profile", authenticateClient, async (req, res) => {
     const client = await Client.findByIdAndUpdate(
       clientId,
       { $set: updates },
-      { new: true }
+      { new: true },
     );
 
     res.json({
@@ -578,7 +558,7 @@ router.post(
       await resetReminderOnReschedule(
         appointment._id,
         oldStart,
-        new Date(newStart)
+        new Date(newStart),
       );
 
       // Update Google Calendar if integrated
@@ -590,7 +570,7 @@ router.post(
           await updateCalendarEvent(
             appointment.specialistId._id,
             appointment.googleCalendarEventId,
-            appointment
+            appointment,
           );
         } catch (calErr) {
           console.error("[Reschedule] Google Calendar update failed:", calErr);
@@ -603,7 +583,7 @@ router.post(
         // Check if specialist has active SMS subscription AND tenant has SMS enabled
         const Specialist = mongoose.model("Specialist");
         const specialist = await Specialist.findById(
-          appointment.specialistId
+          appointment.specialistId,
         ).select("subscription");
 
         const hasActiveSmsSubscription =
@@ -614,17 +594,17 @@ router.post(
           console.log(
             "[Reschedule] Specialist does not have active SMS subscription (enabled=" +
               specialist?.subscription?.smsConfirmations?.enabled +
-              "), skipping SMS"
+              "), skipping SMS",
           );
         } else if (!tenantSmsEnabled) {
           console.log(
-            "[Reschedule] Tenant SMS feature is disabled, skipping SMS"
+            "[Reschedule] Tenant SMS feature is disabled, skipping SMS",
           );
         } else if (appointment.client?.phone) {
           await smsService.sendBookingRescheduled(
             appointment,
             oldDate,
-            oldTime
+            oldTime,
           );
         }
 
@@ -667,7 +647,7 @@ router.post(
         error: error.message || "Failed to reschedule appointment",
       });
     }
-  }
+  },
 );
 
 export default router;

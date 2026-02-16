@@ -2,9 +2,7 @@ import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 import Admin from "../models/Admin.js";
 import { createConsoleLogger } from "../utils/logger.js";
-
-const JWT_SECRET =
-  process.env.JWT_SECRET || "your-secret-key-change-this-in-production";
+import { JWT_SECRET } from "../config/security.js";
 const AUTH_DEBUG = process.env.AUTH_DEBUG === "true";
 const console = createConsoleLogger({
   scope: "optional-auth",
@@ -59,13 +57,13 @@ export async function optionalAuth(req, res, next) {
       decoded = jwt.verify(token, JWT_SECRET);
       authDebugLog(
         "[optionalAuth] Token verified, decoded admin ID:",
-        decoded.id
+        decoded.id,
       );
     } catch (jwtError) {
       // Invalid token - continue as guest
       authDebugLog(
         "[optionalAuth] Token verification failed:",
-        jwtError.message
+        jwtError.message,
       );
       return next();
     }
@@ -137,7 +135,7 @@ export async function optionalAuth(req, res, next) {
           existing: req.tenantId.toString(),
           adminTenant: admin.tenantId?.toString(),
           adminEmail: admin.email,
-        }
+        },
       );
     }
 
@@ -145,7 +143,7 @@ export async function optionalAuth(req, res, next) {
     if (admin.role === "super_admin") {
       req.isSuperAdmin = true;
       authDebugLog(
-        "[optionalAuth] Super admin status set (but tenantId still set from token)"
+        "[optionalAuth] Super admin status set (but tenantId still set from token)",
       );
     }
 
