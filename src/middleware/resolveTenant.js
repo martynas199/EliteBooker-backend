@@ -15,9 +15,7 @@ import Tenant from "../models/Tenant.js";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 import { createConsoleLogger } from "../utils/logger.js";
-
-const JWT_SECRET =
-  process.env.JWT_SECRET || "your-secret-key-change-this-in-production";
+import { JWT_SECRET } from "../config/security.js";
 const LOG_RESOLVE_TENANT =
   process.env.LOG_RESOLVE_TENANT === "true" ||
   process.env.LOG_VERBOSE === "true";
@@ -226,7 +224,9 @@ export async function resolveTenant(req, res, next) {
         }
       } catch (error) {
         // Invalid token - continue without tenant context
-        console.error("Token verification failed in resolveTenant:", error);
+        if (LOG_RESOLVE_TENANT) {
+          console.log("Token verification failed in resolveTenant:", error.message);
+        }
       }
     }
 

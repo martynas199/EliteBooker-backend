@@ -7,9 +7,7 @@
 import jwt from "jsonwebtoken";
 import Client from "../models/Client.js";
 import Admin from "../models/Admin.js";
-
-const JWT_SECRET =
-  process.env.JWT_SECRET || "your-secret-key-change-in-production";
+import { JWT_SECRET } from "../config/security.js";
 
 /**
  * Authenticates either Client or Tenant

@@ -2,9 +2,8 @@ import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import { applySentryRequestContext } from "./sentryContext.js";
 import { createConsoleLogger } from "../utils/logger.js";
+import { JWT_SECRET } from "../config/security.js";
 
-const JWT_SECRET =
-  process.env.JWT_SECRET || "your-secret-key-change-in-production";
 const LOG_USER_AUTH =
   process.env.LOG_USER_AUTH === "true" || process.env.LOG_VERBOSE === "true";
 const console = createConsoleLogger({
@@ -27,36 +26,23 @@ export const authenticateUser = async (req, res, next) => {
     let decoded;
     try {
       decoded = jwt.verify(token, JWT_SECRET);
-      console.log("[USER AUTH] Token decoded:", {
-        id: decoded.id,
-        type: decoded.type,
-        userId: decoded.userId,
-      });
     } catch (err) {
-      console.log("[USER AUTH] Token verification failed:", err.message);
+      if (LOG_USER_AUTH) {
+        console.log("[USER AUTH] Token verification failed:", err.message);
+      }
       return res.status(401).json({ error: "Invalid or expired token" });
     }
 
     // Ensure it's a customer token
     if (decoded.type !== "customer") {
-      console.log("[USER AUTH] Invalid token type:", decoded.type);
       return res.status(403).json({ error: "Invalid token type" });
     }
 
     // Get user
-    console.log("[USER AUTH] Looking for user with id:", decoded.id);
     const user = await User.findById(decoded.id);
     if (!user || !user.isActive) {
-      console.log(
-        "[USER AUTH] User not found or inactive. Found:",
-        !!user,
-        "Active:",
-        user?.isActive
-      );
       return res.status(401).json({ error: "User not found or inactive" });
     }
-
-    console.log("[USER AUTH] User authenticated:", user.email);
 
     // Attach user to request
     req.user = user;
@@ -96,7 +82,9 @@ export const optionalAuth = async (req, res, next) => {
       }
     } catch (err) {
       // Invalid token - continue as guest
-      console.log("[OPTIONAL AUTH] Invalid token, continuing as guest");
+      if (LOG_USER_AUTH) {
+        console.log("[OPTIONAL AUTH] Invalid token, continuing as guest");
+      }
     }
 
     next();
