@@ -623,66 +623,59 @@ router.get("/public", async (req, res) => {
         `[TENANTS/PUBLIC] Enriching ${tenants.length} tenants with hero images...`,
       );
     }
-    const enrichedTenants = await Promise.all(
-      tenants.map(async (tenant) => {
-        try {
-          const tenantStripeReady = Boolean(
-            String(tenant?.stripeAccountId || "").trim(),
-          );
-          const specialistStripeReady = payoutReadyTenantIds.has(
-            tenant._id.toString(),
-          );
-          const giftCardPayoutReady =
-            tenantStripeReady || specialistStripeReady;
+    const tenantIds = tenants.map((tenant) => tenant._id);
 
-          if (shouldFilterGiftCards && !giftCardPayoutReady) {
-            return null;
-          }
+    const [heroSections, settingsRows] =
+      tenantIds.length > 0
+        ? await Promise.all([
+            HeroSection.find({ tenantId: { $in: tenantIds } })
+              .select("tenantId centerImage order")
+              .sort({ order: 1 })
+              .lean(),
+            Settings.find({ tenantId: { $in: tenantIds } })
+              .select("tenantId heroImage")
+              .lean(),
+          ])
+        : [[], []];
 
-          // Use base queries to bypass multi-tenant plugin
-          // Check HeroSection first (like landing pages do)
-          const heroSection = await HeroSection.findOne({
-            tenantId: tenant._id,
-          })
-            .select("centerImage")
-            .sort({ order: 1 })
-            .lean()
-            .exec();
+    const heroByTenant = new Map();
+    for (const row of heroSections) {
+      const tenantKey = row?.tenantId?.toString();
+      if (!tenantKey || heroByTenant.has(tenantKey)) continue;
+      if (row?.centerImage) {
+        heroByTenant.set(tenantKey, row.centerImage);
+      }
+    }
 
-          // Then check Settings as fallback
-          const settings = await Settings.findOne({ tenantId: tenant._id })
-            .select("heroImage")
-            .lean()
-            .exec();
-
-          // Add centerImage directly to tenant (simpler structure)
-          if (heroSection?.centerImage) {
-            return {
-              ...tenant,
-              giftCardPayoutReady,
-              centerImage: heroSection.centerImage,
-            };
-          } else if (settings?.heroImage) {
-            return {
-              ...tenant,
-              giftCardPayoutReady,
-              centerImage: settings.heroImage,
-            };
-          }
-
-          return {
-            ...tenant,
-            giftCardPayoutReady,
-          };
-        } catch (err) {
-          console.error(
-            `Error fetching hero image for tenant ${tenant._id}:`,
-            err,
-          );
-          return null;
-        }
-      }),
+    const settingsHeroByTenant = new Map(
+      settingsRows
+        .filter((row) => row?.tenantId && row?.heroImage)
+        .map((row) => [row.tenantId.toString(), row.heroImage]),
     );
+
+    const enrichedTenants = tenants.map((tenant) => {
+      const tenantStripeReady = Boolean(
+        String(tenant?.stripeAccountId || "").trim(),
+      );
+      const specialistStripeReady = payoutReadyTenantIds.has(
+        tenant._id.toString(),
+      );
+      const giftCardPayoutReady = tenantStripeReady || specialistStripeReady;
+
+      if (shouldFilterGiftCards && !giftCardPayoutReady) {
+        return null;
+      }
+
+      const tenantKey = tenant._id.toString();
+      const centerImage =
+        heroByTenant.get(tenantKey) || settingsHeroByTenant.get(tenantKey);
+
+      return {
+        ...tenant,
+        giftCardPayoutReady,
+        ...(centerImage ? { centerImage } : {}),
+      };
+    });
 
     const filteredEnrichedTenants = enrichedTenants.filter(Boolean);
 

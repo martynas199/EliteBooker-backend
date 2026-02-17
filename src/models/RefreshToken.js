@@ -43,7 +43,7 @@ const refreshTokenSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 // Index for cleanup of expired tokens
@@ -92,7 +92,7 @@ refreshTokenSchema.statics.createForAdmin = async function (adminId, ip) {
 refreshTokenSchema.statics.revokeAllForAdmin = async function (
   adminId,
   ip,
-  reason
+  reason,
 ) {
   return this.updateMany(
     { adminId, revokedAt: null },
@@ -102,7 +102,7 @@ refreshTokenSchema.statics.revokeAllForAdmin = async function (
         revokedByIp: ip,
         revokedReason: reason,
       },
-    }
+    },
   );
 };
 

@@ -136,7 +136,7 @@ router.post("/", async (req, res) => {
     }
 
     const variantExists = (service.variants || []).some(
-      (variant) => variant.name === body.variantName
+      (variant) => variant.name === body.variantName,
     );
     if (!variantExists) {
       return res.status(400).json({ error: "Service variant not found" });
@@ -254,21 +254,35 @@ router.get("/", requireAdmin, async (req, res) => {
       query.status = requestedStatus;
     }
 
-    const [entries, total, activeCount, convertedCount, expiredCount, removedCount] =
-      await Promise.all([
-        WaitlistEntry.find(query)
-          .populate("serviceId", "name")
-          .populate("specialistId", "name")
-          .sort({ priority: -1, createdAt: 1 })
-          .skip(skip)
-          .limit(limit)
-          .lean(),
-        WaitlistEntry.countDocuments(query),
-        WaitlistEntry.countDocuments({ ...baseQuery, status: "active" }),
-        WaitlistEntry.countDocuments({ ...baseQuery, status: "converted" }),
-        WaitlistEntry.countDocuments({ ...baseQuery, status: "expired" }),
-        WaitlistEntry.countDocuments({ ...baseQuery, status: "removed" }),
-      ]);
+    const [entries, total, statusBuckets] = await Promise.all([
+      WaitlistEntry.find(query)
+        .populate("serviceId", "name")
+        .populate("specialistId", "name")
+        .sort({ priority: -1, createdAt: 1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      WaitlistEntry.countDocuments(query),
+      WaitlistEntry.aggregate([
+        { $match: baseQuery },
+        {
+          $group: {
+            _id: "$status",
+            count: { $sum: 1 },
+          },
+        },
+      ]),
+    ]);
+
+    const statusCounts = statusBuckets.reduce(
+      (acc, bucket) => {
+        if (bucket?._id) {
+          acc[bucket._id] = bucket.count;
+        }
+        return acc;
+      },
+      { active: 0, converted: 0, expired: 0, removed: 0 },
+    );
 
     const pages = Math.max(Math.ceil(total / limit), 1);
     const hasMore = page < pages;
@@ -276,10 +290,10 @@ router.get("/", requireAdmin, async (req, res) => {
     res.json({
       entries,
       counts: {
-        active: activeCount,
-        converted: convertedCount,
-        expired: expiredCount,
-        removed: removedCount,
+        active: statusCounts.active || 0,
+        converted: statusCounts.converted || 0,
+        expired: statusCounts.expired || 0,
+        removed: statusCounts.removed || 0,
       },
       pagination: {
         page,
@@ -301,55 +315,81 @@ router.get("/analytics", requireAdmin, async (req, res) => {
 
     const timelineLimit = Math.min(
       Math.max(Number(req.query.limit) || 12, 5),
-      50
+      50,
     );
     const baseQuery = { tenantId: req.tenantId };
 
-    const [
-      totalCount,
-      activeCount,
-      convertedCount,
-      expiredCount,
-      removedCount,
-      autoFilledCount,
-      avgConversionResult,
-      recentEntries,
-    ] = await Promise.all([
-      WaitlistEntry.countDocuments(baseQuery),
-      WaitlistEntry.countDocuments({ ...baseQuery, status: "active" }),
-      WaitlistEntry.countDocuments({ ...baseQuery, status: "converted" }),
-      WaitlistEntry.countDocuments({ ...baseQuery, status: "expired" }),
-      WaitlistEntry.countDocuments({ ...baseQuery, status: "removed" }),
-      WaitlistEntry.countDocuments({
-        ...baseQuery,
-        status: "converted",
-        convertedAppointmentId: { $exists: true, $ne: null },
-      }),
-      WaitlistEntry.aggregate([
-        {
-          $match: {
-            tenantId: req.tenantId,
-            createdAt: { $type: "date" },
-            convertedAt: { $type: "date" },
+    const [summaryBuckets, avgConversionResult, recentEntries] =
+      await Promise.all([
+        WaitlistEntry.aggregate([
+          { $match: baseQuery },
+          {
+            $group: {
+              _id: null,
+              total: { $sum: 1 },
+              active: {
+                $sum: { $cond: [{ $eq: ["$status", "active"] }, 1, 0] },
+              },
+              converted: {
+                $sum: { $cond: [{ $eq: ["$status", "converted"] }, 1, 0] },
+              },
+              expired: {
+                $sum: { $cond: [{ $eq: ["$status", "expired"] }, 1, 0] },
+              },
+              removed: {
+                $sum: { $cond: [{ $eq: ["$status", "removed"] }, 1, 0] },
+              },
+              autoFilled: {
+                $sum: {
+                  $cond: [
+                    {
+                      $and: [
+                        { $eq: ["$status", "converted"] },
+                        { $ne: ["$convertedAppointmentId", null] },
+                      ],
+                    },
+                    1,
+                    0,
+                  ],
+                },
+              },
+            },
           },
-        },
-        {
-          $project: {
-            diffMs: { $subtract: ["$convertedAt", "$createdAt"] },
+        ]),
+        WaitlistEntry.aggregate([
+          {
+            $match: {
+              tenantId: req.tenantId,
+              createdAt: { $type: "date" },
+              convertedAt: { $type: "date" },
+            },
           },
-        },
-        { $match: { diffMs: { $gte: 0 } } },
-        { $group: { _id: null, avgMs: { $avg: "$diffMs" } } },
-      ]),
-      WaitlistEntry.find(baseQuery)
-        .populate("serviceId", "name")
-        .sort({ updatedAt: -1 })
-        .limit(Math.max(timelineLimit * 5, 40))
-        .select(
-          "client serviceId variantName status createdAt updatedAt convertedAt notifiedAt convertedAppointmentId audit"
-        )
-        .lean(),
-    ]);
+          {
+            $project: {
+              diffMs: { $subtract: ["$convertedAt", "$createdAt"] },
+            },
+          },
+          { $match: { diffMs: { $gte: 0 } } },
+          { $group: { _id: null, avgMs: { $avg: "$diffMs" } } },
+        ]),
+        WaitlistEntry.find(baseQuery)
+          .populate("serviceId", "name")
+          .sort({ updatedAt: -1 })
+          .limit(Math.max(timelineLimit * 5, 40))
+          .select(
+            "client serviceId variantName status createdAt updatedAt convertedAt notifiedAt convertedAppointmentId audit",
+          )
+          .lean(),
+      ]);
+
+    const summary = summaryBuckets?.[0] || {
+      total: 0,
+      active: 0,
+      converted: 0,
+      expired: 0,
+      removed: 0,
+      autoFilled: 0,
+    };
 
     const timelineEvents = [];
 
@@ -446,15 +486,17 @@ router.get("/analytics", requireAdmin, async (req, res) => {
 
     res.json({
       totals: {
-        total: totalCount,
-        active: activeCount,
-        converted: convertedCount,
-        expired: expiredCount,
-        removed: removedCount,
+        total: summary.total,
+        active: summary.active,
+        converted: summary.converted,
+        expired: summary.expired,
+        removed: summary.removed,
       },
       conversionRate:
-        totalCount > 0 ? Number(((convertedCount / totalCount) * 100).toFixed(1)) : 0,
-      autoFilledConversions: autoFilledCount,
+        summary.total > 0
+          ? Number(((summary.converted / summary.total) * 100).toFixed(1))
+          : 0,
+      autoFilledConversions: summary.autoFilled,
       averageConversionHours,
       timeline: timelineEvents.slice(0, timelineLimit),
       generatedAt: new Date().toISOString(),
@@ -488,7 +530,7 @@ router.post("/bulk-status", requireAdmin, async (req, res) => {
         _id: { $in: uniqueIds },
         tenantId: req.tenantId,
       },
-      update
+      update,
     );
 
     res.json({
@@ -527,7 +569,7 @@ router.patch("/:id/status", requireAdmin, async (req, res) => {
           meta: { status },
         }),
       }),
-      { new: true }
+      { new: true },
     ).lean();
 
     if (!updated) {

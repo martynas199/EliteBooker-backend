@@ -12,6 +12,34 @@ const DEFAULT_SORT = "-createdAt";
 const countCache = new Map();
 const COUNT_CACHE_TTL = 60 * 1000; // 60 seconds
 
+function normalizeCacheValue(value) {
+  if (value === null || value === undefined) return value;
+  if (value instanceof Date) return value.toISOString();
+  if (Array.isArray(value)) return value.map(normalizeCacheValue);
+  if (typeof value === "object") {
+    if (typeof value.toHexString === "function") {
+      return value.toHexString();
+    }
+    const normalized = {};
+    for (const key of Object.keys(value).sort()) {
+      normalized[key] = normalizeCacheValue(value[key]);
+    }
+    return normalized;
+  }
+  return value;
+}
+
+function buildCountCacheKey({ model, filter, cacheKey, tenantId }) {
+  const scopedTenantId = tenantId ? String(tenantId) : "global";
+  if (cacheKey) {
+    return `count:${scopedTenantId}:${cacheKey}`;
+  }
+
+  const modelName = model?.modelName || "model";
+  const filterSignature = JSON.stringify(normalizeCacheValue(filter || {}));
+  return `count:${scopedTenantId}:${modelName}:${filterSignature}`;
+}
+
 /**
  * Get or set cached count with TTL
  * @param {String} key - Cache key
@@ -174,10 +202,10 @@ export async function executePaginatedQuery(
   model,
   filter,
   params,
-  options = {}
+  options = {},
 ) {
   const { limit, page } = parsePagination(params, { maxLimit: MAX_LIMIT });
-  const { useCache = true, cacheKey = null } = options;
+  const { useCache = true, cacheKey = null, tenantId = null } = options;
 
   // Execute query and count in parallel
   const dataPromise = query;
@@ -185,7 +213,24 @@ export async function executePaginatedQuery(
   let totalPromise;
   if (useCache && cacheKey) {
     // Use cached count if available
-    totalPromise = getCachedCount(cacheKey, () => model.countDocuments(filter));
+    const effectiveCacheKey = buildCountCacheKey({
+      model,
+      filter,
+      cacheKey,
+      tenantId,
+    });
+    totalPromise = getCachedCount(effectiveCacheKey, () =>
+      model.countDocuments(filter),
+    );
+  } else if (useCache) {
+    const effectiveCacheKey = buildCountCacheKey({
+      model,
+      filter,
+      tenantId,
+    });
+    totalPromise = getCachedCount(effectiveCacheKey, () =>
+      model.countDocuments(filter),
+    );
   } else {
     totalPromise = model.countDocuments(filter);
   }

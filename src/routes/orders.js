@@ -45,7 +45,7 @@ router.get("/", async (req, res) => {
     // Build optimized query with lean and select
     let orderQuery = Order.find(filter)
       .select(
-        "orderNumber userId items subtotal shipping total orderStatus paymentStatus createdAt shippingAddress"
+        "orderNumber userId items subtotal shipping total orderStatus paymentStatus createdAt shippingAddress",
       )
       .lean();
 
@@ -64,7 +64,7 @@ router.get("/", async (req, res) => {
         Order,
         filter,
         req.query,
-        { useCache: true, cacheKey }
+        { useCache: true, cacheKey, tenantId: req.tenantId },
       );
 
       res.json(result);
@@ -135,18 +135,18 @@ router.get("/confirm-checkout", async (req, res) => {
             });
 
             console.log(
-              `[PRODUCT ORDER] Direct payment processed for specialist ${Specialist._id} - amount: £${payment.amount}`
+              `[PRODUCT ORDER] Direct payment processed for specialist ${Specialist._id} - amount: £${payment.amount}`,
             );
           } catch (error) {
             console.error(
               `[PRODUCT ORDER] Payment processing failed for specialist ${Specialist._id}:`,
-              error
+              error,
             );
             payment.status = "failed";
           }
         } else {
           console.log(
-            `[PRODUCT ORDER] Specialist ${payment.specialistId} not connected to Stripe`
+            `[PRODUCT ORDER] Specialist ${payment.specialistId} not connected to Stripe`,
           );
           payment.status = "failed";
         }
@@ -176,18 +176,18 @@ router.get("/confirm-checkout", async (req, res) => {
     try {
       // Reload order with populated product data for emails
       const populatedOrder = await Order.findById(order._id).populate(
-        "items.productId"
+        "items.productId",
       );
       console.log(
         "[ORDER CONFIRM] Loaded order with products. Customer email:",
-        populatedOrder.customer?.email
+        populatedOrder.customer?.email,
       );
 
       // Send customer confirmation email
       await sendOrderConfirmationEmail({ order: populatedOrder });
       console.log(
         "[ORDER CONFIRM] Customer confirmation email sent to:",
-        populatedOrder.customer?.email
+        populatedOrder.customer?.email,
       );
 
       // Send admin notification email
@@ -215,13 +215,13 @@ router.get("/confirm-checkout", async (req, res) => {
               beauticianItems: items,
             });
             console.log(
-              `[ORDER CONFIRM] Specialist notification sent to ${Specialist.email} for ${items.length} product(s)`
+              `[ORDER CONFIRM] Specialist notification sent to ${Specialist.email} for ${items.length} product(s)`,
             );
           }
         } catch (beauticianEmailErr) {
           console.error(
             `[ORDER CONFIRM] Failed to send specialist notification to ${specialistId}:`,
-            beauticianEmailErr
+            beauticianEmailErr,
           );
           // Continue with other specialists
         }
@@ -294,7 +294,7 @@ router.post("/checkout", async (req, res) => {
 
     for (const item of items) {
       const product = await Product.findById(item.productId).populate(
-        "specialistId"
+        "specialistId",
       );
       if (!product) {
         return res
@@ -464,7 +464,7 @@ router.post("/checkout", async (req, res) => {
       const firstItem = items[0];
       const itemsTotal = items.reduce(
         (sum, item) => sum + item.price * item.quantity,
-        0
+        0,
       );
 
       stripeConnectPayments.push({
@@ -602,7 +602,7 @@ router.post("/checkout", async (req, res) => {
       };
 
       console.log(
-        `[PRODUCT CHECKOUT] Payment with ${platformFee}p platform fee to specialist ${payment.specialistId}`
+        `[PRODUCT CHECKOUT] Payment with ${platformFee}p platform fee to specialist ${payment.specialistId}`,
       );
     }
 
@@ -768,7 +768,7 @@ router.patch("/:id/ready-for-collection", async (req, res) => {
   try {
     console.log(
       "[ORDERS] Marking order as ready for collection:",
-      req.params.id
+      req.params.id,
     );
 
     const order = await Order.findById(req.params.id);
@@ -812,7 +812,7 @@ router.patch("/:id/ready-for-collection", async (req, res) => {
     } catch (emailError) {
       console.error(
         "[ORDERS] ✗ Failed to send collection ready email:",
-        emailError
+        emailError,
       );
       // Don't fail the request if email fails
     }
@@ -910,7 +910,7 @@ router.post("/:id/refund", async (req, res) => {
     const { reason } = req.body;
 
     const order = await Order.findById(req.params.id).populate(
-      "items.productId"
+      "items.productId",
     );
     if (!order) {
       return res.status(404).json({ error: "Order not found" });
@@ -1011,7 +1011,7 @@ router.delete("/:id", async (req, res) => {
     await Order.findByIdAndDelete(req.params.id);
 
     console.log(
-      `[ORDER DELETE] Order ${order._id} (${order.orderNumber}) deleted`
+      `[ORDER DELETE] Order ${order._id} (${order.orderNumber}) deleted`,
     );
     res.json({
       success: true,

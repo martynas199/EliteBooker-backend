@@ -25,7 +25,10 @@ import { createConsoleLogger } from "../utils/logger.js";
 
 const r = Router();
 const LOG_VERBOSE = process.env.LOG_VERBOSE === "true";
-const console = createConsoleLogger({ scope: "services", verbose: LOG_VERBOSE });
+const console = createConsoleLogger({
+  scope: "services",
+  verbose: LOG_VERBOSE,
+});
 
 // Initialize OpenAI (only if API key is set)
 const openai = process.env.OPENAI_API_KEY
@@ -94,7 +97,7 @@ r.get("/", optionalAuth, attachTenantToModels, async (req, res, next) => {
         if (LOG_VERBOSE) {
           console.log(
             "[SERVICES] Super admin/support querying tenant:",
-            tenantId
+            tenantId,
           );
         }
       } else {
@@ -140,7 +143,7 @@ r.get("/", optionalAuth, attachTenantToModels, async (req, res, next) => {
       if (req.admin.role === "specialist" && req.admin.specialistId) {
         if (LOG_VERBOSE) {
           console.log(
-            `[SERVICES] Filtering for SPECIALIST: ${req.admin.specialistId}`
+            `[SERVICES] Filtering for SPECIALIST: ${req.admin.specialistId}`,
           );
         }
         // Override any existing $or filter to enforce role-based access
@@ -155,7 +158,7 @@ r.get("/", optionalAuth, attachTenantToModels, async (req, res, next) => {
       else if (req.admin.role === "admin" && req.admin.specialistId) {
         if (LOG_VERBOSE) {
           console.log(
-            `[SERVICES] Filtering for BEAUTICIAN admin: ${req.admin.specialistId}`
+            `[SERVICES] Filtering for BEAUTICIAN admin: ${req.admin.specialistId}`,
           );
         }
         // Override any existing $or filter to enforce role-based access
@@ -210,7 +213,7 @@ r.get("/", optionalAuth, attachTenantToModels, async (req, res, next) => {
         Service,
         query,
         req.query,
-        { useCache: true, cacheKey }
+        { useCache: true, cacheKey, tenantId: req.tenantId },
       );
       res.json(result);
     } else {
@@ -274,7 +277,7 @@ r.post("/", requireAdmin, async (req, res, next) => {
     });
     console.log(
       "[SERVICE CREATE] Request body:",
-      JSON.stringify(req.body, null, 2)
+      JSON.stringify(req.body, null, 2),
     );
 
     // Validate request body
@@ -290,7 +293,7 @@ r.post("/", requireAdmin, async (req, res, next) => {
 
     console.log(
       "[SERVICE CREATE] Validation passed. Data:",
-      JSON.stringify(validation.data, null, 2)
+      JSON.stringify(validation.data, null, 2),
     );
 
     // BEAUTICIAN role: Can only create services for themselves
@@ -334,7 +337,7 @@ r.post("/", requireAdmin, async (req, res, next) => {
 
     console.log(
       "[SERVICE CREATE] ✓ Success! Returning service:",
-      populated._id
+      populated._id,
     );
     res.status(201).json(populated);
   } catch (err) {
@@ -383,7 +386,7 @@ r.patch(
       const updated = await Service.findByIdAndUpdate(
         req.params.id,
         { $set: validation.data },
-        { new: true, runValidators: true }
+        { new: true, runValidators: true },
       )
         .populate({
           path: "primaryBeauticianId",
@@ -403,7 +406,7 @@ r.patch(
     } catch (err) {
       next(err);
     }
-  }
+  },
 );
 
 /**
@@ -436,7 +439,7 @@ r.delete(
     } catch (err) {
       next(err);
     }
-  }
+  },
 );
 
 /**
@@ -474,7 +477,7 @@ r.post(
         // Upload new image to Cloudinary
         const result = await uploadImage(
           req.file.path,
-          "beauty-salon/services"
+          "beauty-salon/services",
         );
 
         // Delete old image from Cloudinary if exists
@@ -513,7 +516,7 @@ r.post(
       if (req.file) deleteLocalFile(req.file.path);
       next(err);
     }
-  }
+  },
 );
 
 /**
@@ -555,7 +558,7 @@ r.post(
           try {
             const result = await uploadImage(
               file.path,
-              "beauty-salon/services/gallery"
+              "beauty-salon/services/gallery",
             );
             uploadedImages.push({
               provider: "cloudinary",
@@ -592,7 +595,7 @@ r.post(
       }
       next(err);
     }
-  }
+  },
 );
 
 /**
@@ -728,13 +731,13 @@ Be specific and educational. Don't just repeat the service name - actually expla
 
       const lowerDescription = generatedDescription.toLowerCase();
       const foundForbiddenWords = forbiddenWords.filter((word) =>
-        lowerDescription.includes(word.toLowerCase())
+        lowerDescription.includes(word.toLowerCase()),
       );
 
       if (foundForbiddenWords.length > 0) {
         console.warn(
           "⚠️ Generated description contains forbidden words:",
-          foundForbiddenWords
+          foundForbiddenWords,
         );
         console.log("🔄 Retrying with stricter instructions...");
 
@@ -742,7 +745,7 @@ Be specific and educational. Don't just repeat the service name - actually expla
         const retryPrompt = `${userPrompt}
 
 CRITICAL: Your previous response contained forbidden words (${foundForbiddenWords.join(
-          ", "
+          ", ",
         )}). 
 DO NOT use these words or make any permanent/guaranteed claims. 
 Focus on describing the process and experience, NOT the results or duration of effects.
@@ -764,12 +767,12 @@ For PMU/cosmetic procedures, describe the technique and what happens during the 
         // Check again
         const retryLower = retryDescription.toLowerCase();
         const stillForbidden = forbiddenWords.filter((word) =>
-          retryLower.includes(word.toLowerCase())
+          retryLower.includes(word.toLowerCase()),
         );
 
         if (stillForbidden.length > 0) {
           console.warn(
-            "⚠️ Retry still contains forbidden words. Using fallback."
+            "⚠️ Retry still contains forbidden words. Using fallback.",
           );
           return res.status(200).json({
             success: true,
@@ -836,7 +839,7 @@ For PMU/cosmetic procedures, describe the technique and what happens during the 
         error: error.message,
       });
     }
-  }
+  },
 );
 
 export default r;

@@ -19,6 +19,17 @@ const r = Router();
 // Cache for fully-booked endpoint (5 minutes TTL for better performance)
 const fullyBookedCache = new Map();
 const CACHE_TTL = 300000; // 5 minutes (was 60 seconds)
+const MAX_CACHE_ENTRIES = 1000;
+
+function setFullyBookedCache(cacheKey, data) {
+  if (fullyBookedCache.size >= MAX_CACHE_ENTRIES) {
+    const firstKey = fullyBookedCache.keys().next().value;
+    if (firstKey) {
+      fullyBookedCache.delete(firstKey);
+    }
+  }
+  fullyBookedCache.set(cacheKey, { data, timestamp: Date.now() });
+}
 
 /**
  * Normalize specialist object for slot computation
@@ -77,10 +88,9 @@ r.get("/fully-booked", async (req, res) => {
     }
 
     // Check cache
-    const cacheKey = `${specialistId}:${year}-${String(monthNum).padStart(
-      2,
-      "0"
-    )}`;
+    const cacheKey = `${req.tenantId}:${specialistId}:${year}-${String(
+      monthNum,
+    ).padStart(2, "0")}`;
     const cached = fullyBookedCache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
       return res.json({ fullyBooked: cached.data });
@@ -106,16 +116,16 @@ r.get("/fully-booked", async (req, res) => {
     if (services.length === 0) {
       // No services = all days fully booked
       const daysInMonth = dayjs(
-        `${year}-${String(monthNum).padStart(2, "0")}-01`
+        `${year}-${String(monthNum).padStart(2, "0")}-01`,
       ).daysInMonth();
       const allDates = Array.from(
         { length: daysInMonth },
         (_, i) =>
           `${year}-${String(monthNum).padStart(2, "0")}-${String(
-            i + 1
-          ).padStart(2, "0")}`
+            i + 1,
+          ).padStart(2, "0")}`,
       );
-      fullyBookedCache.set(cacheKey, { data: allDates, timestamp: Date.now() });
+      setFullyBookedCache(cacheKey, allDates);
       return res.json({ fullyBooked: allDates });
     }
 
@@ -160,7 +170,7 @@ r.get("/fully-booked", async (req, res) => {
     const daysInMonth = monthStart.daysInMonth();
     for (let day = 1; day <= daysInMonth; day++) {
       const dateStr = `${year}-${String(monthNum).padStart(2, "0")}-${String(
-        day
+        day,
       ).padStart(2, "0")}`;
       const dateObj = dayjs.tz(dateStr, salonTz);
 
@@ -174,7 +184,7 @@ r.get("/fully-booked", async (req, res) => {
       const dayOfWeek = dateObj.day();
       const worksThisDay = specialist.workingHours?.some(
         (wh) =>
-          wh && typeof wh.dayOfWeek === "number" && wh.dayOfWeek === dayOfWeek
+          wh && typeof wh.dayOfWeek === "number" && wh.dayOfWeek === dayOfWeek,
       );
 
       if (!worksThisDay) {
@@ -226,7 +236,7 @@ r.get("/fully-booked", async (req, res) => {
     const result = Array.from(fullyBookedSet).sort();
 
     // Cache result
-    fullyBookedCache.set(cacheKey, { data: result, timestamp: Date.now() });
+    setFullyBookedCache(cacheKey, result);
 
     res.json({ fullyBooked: result });
   } catch (error) {

@@ -264,7 +264,7 @@ const paymentSchema = new mongoose.Schema(
   },
   {
     timestamps: true, // Adds createdAt and updatedAt
-  }
+  },
 );
 
 // Indexes for performance
@@ -366,7 +366,7 @@ paymentSchema.statics.generateReceiptNumber = async function (tenant) {
   if (lastPayment?.receipt?.receiptNumber) {
     const lastNumber = parseInt(
       lastPayment.receipt.receiptNumber.split("-").pop(),
-      10
+      10,
     );
     nextNumber = lastNumber + 1;
   }
@@ -391,7 +391,7 @@ paymentSchema.statics.getByAppointment = function (appointmentId) {
  */
 paymentSchema.statics.getDailySummary = async function (
   tenant,
-  date = new Date()
+  date = new Date(),
 ) {
   const startOfDay = new Date(date);
   startOfDay.setHours(0, 0, 0, 0);

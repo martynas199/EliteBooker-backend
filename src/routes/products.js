@@ -38,8 +38,8 @@ router.get("/", async (req, res) => {
 
     // Pagination support
     const usePagination = page !== undefined;
-    const pageNum = Math.max(1, parseInt(page) || 1);
-    const pageLimit = Math.min(100, Math.max(1, parseInt(limit) || 50));
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const pageLimit = Math.min(100, Math.max(1, parseInt(limit, 10) || 50));
     const skip = (pageNum - 1) * pageLimit;
 
     if (usePagination) {
@@ -47,7 +47,7 @@ router.get("/", async (req, res) => {
       const [products, total] = await Promise.all([
         Product.find(filter)
           .select(
-            "_id title brand description price originalPrice image category featured active variants specialistId"
+            "_id title brand description price originalPrice image category featured active variants specialistId",
           )
           .sort({ order: 1, createdAt: -1 })
           .skip(skip)
@@ -67,9 +67,13 @@ router.get("/", async (req, res) => {
         },
       });
     } else {
-      // Legacy: return all products
+      // Legacy: return array shape, but keep bounded for performance safety
       const products = await Product.find(filter)
+        .select(
+          "_id title brand description price originalPrice image category featured active variants specialistId",
+        )
         .sort({ order: 1, createdAt: -1 })
+        .limit(pageLimit)
         .lean();
       res.json(products);
     }
@@ -101,8 +105,8 @@ router.post("/", async (req, res) => {
       keyBenefits: Array.isArray(req.body.keyBenefits)
         ? req.body.keyBenefits
         : req.body.keyBenefits
-        ? req.body.keyBenefits.split("\n").filter((b) => b.trim())
-        : [],
+          ? req.body.keyBenefits.split("\n").filter((b) => b.trim())
+          : [],
     };
 
     const product = new Product(productData);
@@ -264,7 +268,7 @@ router.post(
       }
       res.status(500).json({ error: error.message });
     }
-  }
+  },
 );
 
 // DELETE /api/products/:id/images/:imageIndex - Delete a specific gallery image

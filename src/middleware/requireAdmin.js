@@ -7,7 +7,10 @@ import { JWT_SECRET } from "../config/security.js";
 
 const LOG_AUTH =
   process.env.AUTH_DEBUG === "true" || process.env.LOG_VERBOSE === "true";
-const console = createConsoleLogger({ scope: "require-admin", verbose: LOG_AUTH });
+const console = createConsoleLogger({
+  scope: "require-admin",
+  verbose: LOG_AUTH,
+});
 
 /**
  * Admin authentication middleware
@@ -84,7 +87,7 @@ export async function requireAdmin(req, res, next) {
     if (admin.role === "super_admin") {
       req.isSuperAdmin = true;
       console.log(
-        "[requireAdmin] Super admin status set (but tenantId still set from token)"
+        "[requireAdmin] Super admin status set (but tenantId still set from token)",
       );
     }
 

@@ -1,4 +1,5 @@
 import express from "express";
+import mongoose from "mongoose";
 import Payment from "../models/Payment.js";
 import Appointment from "../models/Appointment.js";
 import Client from "../models/Client.js";
@@ -52,7 +53,7 @@ const stripe = new Stripe(
   process.env.STRIPE_SECRET || process.env.STRIPE_SECRET_KEY,
   {
     apiVersion: "2024-06-20",
-  }
+  },
 );
 
 /**
@@ -116,6 +117,7 @@ const refundPaymentSchema = z.object({
 const listPaymentsSchema = z.object({
   page: z.string().regex(/^\d+$/).transform(Number).optional().default("1"),
   limit: z.string().regex(/^\d+$/).transform(Number).optional().default("20"),
+  cursor: z.string().optional(),
   status: z
     .enum([
       "pending",
@@ -143,6 +145,28 @@ const listPaymentsSchema = z.object({
   endDate: z.string().datetime().optional(),
 });
 
+function decodePaymentsCursor(cursor) {
+  try {
+    if (!cursor) return null;
+    const decoded = JSON.parse(Buffer.from(cursor, "base64").toString("utf8"));
+    if (!decoded || typeof decoded !== "object") return null;
+    if (!decoded.id || !mongoose.Types.ObjectId.isValid(decoded.id)) {
+      return null;
+    }
+    if (!decoded.createdAt) return null;
+    return decoded;
+  } catch {
+    return null;
+  }
+}
+
+function encodePaymentsCursor(payment) {
+  return Buffer.from(
+    JSON.stringify({ id: String(payment._id), createdAt: payment.createdAt }),
+    "utf8",
+  ).toString("base64");
+}
+
 // ==================== CONNECTION TOKEN ====================
 
 /**
@@ -169,7 +193,7 @@ router.post("/connection-token", async (req, res) => {
     if (req.admin.specialistId) {
       const Specialist = (await import("../models/Specialist.js")).default;
       const specialist = await Specialist.findById(
-        req.admin.specialistId
+        req.admin.specialistId,
       ).select("stripeAccountId");
       stripeAccount = specialist?.stripeAccountId;
     }
@@ -303,7 +327,7 @@ router.post("/intents", async (req, res) => {
     // Get specialist's Stripe account (same model/field used in /admin/stripe-connect)
     const Specialist = (await import("../models/Specialist.js")).default;
     const specialist = await Specialist.findById(req.admin.specialistId).select(
-      "stripeAccountId stripeStatus"
+      "stripeAccountId stripeStatus",
     );
 
     if (!specialist) {
@@ -458,7 +482,7 @@ router.post("/intents", async (req, res) => {
 
       console.error(
         "[Stripe Error] Failed to create PaymentIntent:",
-        stripeError
+        stripeError,
       );
 
       res.status(400).json({
@@ -726,7 +750,7 @@ router.post("/refund", async (req, res) => {
       return res.status(400).json({
         success: false,
         message: `Refund amount exceeds refundable amount of ${payment.formatAmount(
-          payment.getRefundableAmount()
+          payment.getRefundableAmount(),
         )}`,
       });
     }
@@ -741,12 +765,12 @@ router.post("/refund", async (req, res) => {
             reason === "duplicate"
               ? "duplicate"
               : reason === "fraudulent"
-              ? "fraudulent"
-              : "requested_by_customer",
+                ? "fraudulent"
+                : "requested_by_customer",
         },
         {
           stripeAccount: payment.stripe.connectedAccountId,
-        }
+        },
       );
 
       // Add refund to payment record
@@ -838,6 +862,7 @@ router.get("/", async (req, res) => {
     const {
       page,
       limit,
+      cursor,
       status,
       staffId,
       clientId,
@@ -866,13 +891,37 @@ router.get("/", async (req, res) => {
     }
 
     // Execute query with pagination
-    const payments = await Payment.find(query)
+    const paymentsQuery = Payment.find(query)
       .populate("client", "firstName lastName email phone")
       .populate("staff", "firstName lastName")
       .populate("appointment", "date services")
       .sort({ createdAt: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit);
+      .sort({ _id: -1 });
+
+    const decodedCursor = decodePaymentsCursor(cursor);
+    if (decodedCursor) {
+      paymentsQuery.where({
+        $or: [
+          { createdAt: { $lt: new Date(decodedCursor.createdAt) } },
+          {
+            createdAt: new Date(decodedCursor.createdAt),
+            _id: { $lt: new mongoose.Types.ObjectId(decodedCursor.id) },
+          },
+        ],
+      });
+    } else {
+      paymentsQuery.skip((page - 1) * limit);
+    }
+
+    paymentsQuery.limit(limit + 1);
+
+    const rows = await paymentsQuery;
+    const hasMore = rows.length > limit;
+    const payments = hasMore ? rows.slice(0, limit) : rows;
+    const nextCursor =
+      hasMore && payments.length > 0
+        ? encodePaymentsCursor(payments[payments.length - 1])
+        : null;
 
     const count = await Payment.countDocuments(query);
 
@@ -883,6 +932,8 @@ router.get("/", async (req, res) => {
         totalPages: Math.ceil(count / limit),
         currentPage: page,
         totalCount: count,
+        hasMore,
+        nextCursor,
       },
     });
   } catch (error) {
@@ -1016,7 +1067,7 @@ router.get("/appointments/today", async (req, res) => {
         ])
       : [];
     const totalPaidByAppointment = new Map(
-      paymentTotals.map((row) => [row._id?.toString(), row.totalPaid || 0])
+      paymentTotals.map((row) => [row._id?.toString(), row.totalPaid || 0]),
     );
 
     // Calculate payment status for each appointment
@@ -1024,7 +1075,7 @@ router.get("/appointments/today", async (req, res) => {
       const totalPaid = totalPaidByAppointment.get(apt._id?.toString()) || 0;
       const appointmentTotal = apt.services.reduce(
         (sum, s) => sum + (s?.service?.price || 0),
-        0
+        0,
       );
       const remainingBalance = appointmentTotal - totalPaid;
 

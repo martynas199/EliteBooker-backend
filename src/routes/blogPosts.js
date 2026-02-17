@@ -11,8 +11,7 @@ import { createConsoleLogger } from "../utils/logger.js";
 
 const router = express.Router();
 const LOG_BLOG_POSTS =
-  process.env.LOG_BLOG_POSTS === "true" ||
-  process.env.LOG_VERBOSE === "true";
+  process.env.LOG_BLOG_POSTS === "true" || process.env.LOG_VERBOSE === "true";
 const console = createConsoleLogger({
   scope: "blog-posts-route",
   verbose: LOG_BLOG_POSTS,
@@ -68,7 +67,7 @@ router.get("/", async (req, res) => {
       BlogPost,
       query,
       req.query,
-      { useCache: true, cacheKey }
+      { useCache: true, cacheKey, tenantId: req.tenantId },
     );
 
     res.json({
@@ -114,7 +113,8 @@ router.get("/admin", requireAdmin, async (req, res) => {
       blogQuery,
       BlogPost,
       query,
-      req.query
+      req.query,
+      { tenantId: req.tenantId },
     );
 
     const { data: posts, pagination: total } = result;

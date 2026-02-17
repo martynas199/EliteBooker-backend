@@ -13,15 +13,18 @@ const router = express.Router();
 router.get("/", requireAdmin, async (req, res) => {
   try {
     const { tenantId, role, specialistId } = req.admin;
-    const { status, search, sortBy, order, limit, skip } = req.query;
+    const { status, search, sortBy, order, limit, skip, cursor } = req.query;
+    const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 100);
+    const safeSkip = Math.max(parseInt(skip, 10) || 0, 0);
 
     const result = await ClientService.getClientsForTenant(tenantId, {
       status,
       search,
       sortBy: sortBy || "lastVisit",
       order: order || "desc",
-      limit: parseInt(limit) || 100,
-      skip: parseInt(skip) || 0,
+      limit: safeLimit,
+      skip: safeSkip,
+      cursor,
       specialistId: role === "specialist" ? specialistId : null, // Filter by specialist if role is specialist
     });
 
@@ -45,6 +48,7 @@ router.get("/", requireAdmin, async (req, res) => {
       })),
       total: result.total,
       hasMore: result.hasMore,
+      nextCursor: result.nextCursor,
     });
   } catch (error) {
     console.error("[Admin Clients] Error fetching clients:", error);
@@ -67,7 +71,7 @@ router.get("/:clientId", requireAdmin, async (req, res) => {
 
     const clientDetails = await ClientService.getClientDetailsForTenant(
       tenantId,
-      clientId
+      clientId,
     );
 
     if (!clientDetails) {
@@ -133,7 +137,7 @@ router.patch("/:clientId", requireAdmin, async (req, res) => {
     const tenantClient = await ClientService.updateTenantClient(
       tenantId,
       clientId,
-      updates
+      updates,
     );
 
     if (!tenantClient) {
@@ -178,7 +182,7 @@ router.post("/:clientId/block", requireAdmin, async (req, res) => {
       tenantId,
       clientId,
       reason,
-      adminId
+      adminId,
     );
 
     if (!tenantClient) {

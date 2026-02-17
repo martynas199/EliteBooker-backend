@@ -1,6 +1,7 @@
 import express from "express";
 import Appointment from "../models/Appointment.js";
 import dayjs from "dayjs";
+import mongoose from "mongoose";
 
 const router = express.Router();
 
@@ -41,65 +42,84 @@ router.get("/", async (req, res) => {
         .json({ error: "startDate must be before or equal to endDate" });
     }
 
-    // Find all completed appointments in the date range FOR THIS TENANT ONLY
-    // Use 'start' field instead of 'date' and 'confirmed' status
-    const appointments = await Appointment.find({
-      tenantId, // CRITICAL: Filter by tenant
-      start: { $gte: start, $lte: end },
-      status: { $in: ["completed", "confirmed"] },
-    })
-      .populate("specialistId", "name")
-      .populate("serviceId", "name")
-      .lean();
+    const normalizedTenantId =
+      typeof tenantId === "string" && mongoose.Types.ObjectId.isValid(tenantId)
+        ? new mongoose.Types.ObjectId(tenantId)
+        : tenantId;
 
-    // Group by specialist and calculate revenue
-    const revenueByBeautician = {};
+    // Aggregate in MongoDB to reduce payload transfer and Node.js CPU work
+    const specialists = await Appointment.aggregate([
+      {
+        $match: {
+          tenantId: normalizedTenantId,
+          start: { $gte: start, $lte: end },
+          status: { $in: ["completed", "confirmed"] },
+        },
+      },
+      {
+        $group: {
+          _id: "$specialistId",
+          revenue: { $sum: { $ifNull: ["$price", 0] } },
+          bookings: { $sum: 1 },
+          serviceIds: { $addToSet: "$serviceId" },
+        },
+      },
+      {
+        $lookup: {
+          from: "specialists",
+          localField: "_id",
+          foreignField: "_id",
+          as: "specialist",
+        },
+      },
+      {
+        $unwind: {
+          path: "$specialist",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          specialist: { $ifNull: ["$specialist.name", "Unknown Specialist"] },
+          specialistId: {
+            $cond: [
+              { $ifNull: ["$_id", false] },
+              { $toString: "$_id" },
+              "unknown",
+            ],
+          },
+          revenue: { $round: ["$revenue", 2] },
+          bookings: 1,
+          serviceCount: {
+            $size: {
+              $filter: {
+                input: "$serviceIds",
+                as: "serviceId",
+                cond: { $ne: ["$$serviceId", null] },
+              },
+            },
+          },
+        },
+      },
+      { $sort: { revenue: -1 } },
+    ]);
 
-    appointments.forEach((apt) => {
-      const beauticianName = apt.specialistId?.name || "Unknown Specialist";
-      const specialistId = apt.specialistId?._id?.toString() || "unknown";
-      const price = parseFloat(apt.price) || 0;
-
-      if (!revenueByBeautician[specialistId]) {
-        revenueByBeautician[specialistId] = {
-          specialist: beauticianName,
-          specialistId: specialistId,
-          revenue: 0,
-          bookings: 0,
-          services: [],
-        };
-      }
-
-      revenueByBeautician[specialistId].revenue += price;
-      revenueByBeautician[specialistId].bookings += 1;
-
-      // Track unique services
-      const serviceName = apt.serviceId?.name || "Unknown Service";
-      if (!revenueByBeautician[specialistId].services.includes(serviceName)) {
-        revenueByBeautician[specialistId].services.push(serviceName);
-      }
-    });
-
-    // Convert to array and sort by revenue (descending)
-    const result = Object.values(revenueByBeautician)
-      .map((item) => ({
-        specialist: item.specialist,
-        specialistId: item.specialistId,
-        revenue: parseFloat(item.revenue.toFixed(2)),
-        bookings: item.bookings,
-        serviceCount: item.services.length,
-      }))
-      .sort((a, b) => b.revenue - a.revenue);
-
-    // Calculate total revenue
-    const totalRevenue = result.reduce((sum, item) => sum + item.revenue, 0);
+    const totalRevenue = specialists.reduce(
+      (sum, item) => sum + (Number(item.revenue) || 0),
+      0,
+    );
+    const totalBookings = specialists.reduce(
+      (sum, item) => sum + (Number(item.bookings) || 0),
+      0,
+    );
 
     res.json({
       startDate,
       endDate,
       totalRevenue: parseFloat(totalRevenue.toFixed(2)),
-      totalBookings: appointments.length,
-      specialists: result,
+      totalBookings,
+      specialists,
     });
   } catch (err) {
     console.error("Revenue API error:", err);

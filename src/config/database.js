@@ -17,7 +17,8 @@ function normalizeMongoUri(mongoUri) {
 export async function connectToDatabase({
   mongoUri = process.env.MONGO_URI,
   logger = rootLogger.child({ scope: "database" }).toNodeLogger(),
-  startCron = process.env.NODE_ENV !== "test",
+  startCron = process.env.NODE_ENV !== "test" &&
+    process.env.RUN_SCHEDULERS !== "false",
 } = {}) {
   const normalizedMongoUri = normalizeMongoUri(mongoUri);
 
@@ -34,6 +35,8 @@ export async function connectToDatabase({
     startReminderCron();
     logger.log("Starting scheduled gift card delivery cron job...");
     startGiftCardDeliveryCron();
+  } else {
+    logger.log("Skipping cron startup (RUN_SCHEDULERS=false or test mode)");
   }
 
   return mongoose.connection;

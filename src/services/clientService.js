@@ -18,6 +18,40 @@ const console = createConsoleLogger({
  * Client Service - Handles global client operations
  */
 class ClientService {
+  static MAX_CLIENT_LIST_LIMIT = 100;
+  static CURSOR_SORT_FIELDS = new Set([
+    "lastVisit",
+    "totalSpend",
+    "totalVisits",
+    "firstVisit",
+    "createdAt",
+  ]);
+
+  static escapeRegex(value = "") {
+    return `${value}`.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
+  static decodeCursor(cursor) {
+    try {
+      if (!cursor) return null;
+      const decoded = JSON.parse(
+        Buffer.from(cursor, "base64").toString("utf8"),
+      );
+      if (!decoded || typeof decoded !== "object") return null;
+      if (!decoded.id || !mongoose.Types.ObjectId.isValid(decoded.id)) {
+        return null;
+      }
+      return decoded;
+    } catch {
+      return null;
+    }
+  }
+
+  static encodeCursor({ id, value }) {
+    const payload = JSON.stringify({ id: String(id), value });
+    return Buffer.from(payload, "utf8").toString("base64");
+  }
+
   /**
    * Find or create a global client (soft signup)
    * Used when a client makes a booking
@@ -86,7 +120,7 @@ class ClientService {
       });
 
       console.log(
-        `[ClientService] Created tenant-client relationship: tenant=${tenantId}, client=${clientId}`
+        `[ClientService] Created tenant-client relationship: tenant=${tenantId}, client=${clientId}`,
       );
     }
 
@@ -140,11 +174,11 @@ class ClientService {
           lifetimeValue: totalSpend,
           updatedAt: new Date(),
         },
-      }
+      },
     );
 
     console.log(
-      `[ClientService] Updated metrics: tenant=${tenantId}, client=${clientId}, visits=${totalVisits}, spend=${totalSpend}`
+      `[ClientService] Updated metrics: tenant=${tenantId}, client=${clientId}, visits=${totalVisits}, spend=${totalSpend}`,
     );
   }
 
@@ -163,7 +197,7 @@ class ClientService {
     const tenantClient = await this.findOrCreateTenantClient(
       tenantId,
       client._id,
-      { name }
+      { name },
     );
 
     // Step 3: Create appointment
@@ -206,7 +240,18 @@ class ClientService {
       limit = 100,
       skip = 0,
       specialistId = null,
+      cursor = null,
     } = options;
+
+    const safeLimit = Math.min(
+      Math.max(parseInt(limit, 10) || 50, 1),
+      ClientService.MAX_CLIENT_LIST_LIMIT,
+    );
+    const safeSkip = Math.max(parseInt(skip, 10) || 0, 0);
+    const safeSortBy = ClientService.CURSOR_SORT_FIELDS.has(sortBy)
+      ? sortBy
+      : "lastVisit";
+    const sortDirection = order === "asc" ? 1 : -1;
 
     const filter = { tenantId };
     if (status) filter.status = status;
@@ -232,44 +277,78 @@ class ClientService {
       filter.clientId = { $in: appointments };
     }
 
-    let query = TenantClient.find(filter)
-      .populate("clientId", "name email phone memberSince isActive")
-      .sort({ [sortBy]: order === "desc" ? -1 : 1 })
-      .limit(limit)
-      .skip(skip);
+    const effectiveFilter = { ...filter };
 
     // Handle search
     if (search) {
+      const searchRegex = new RegExp(ClientService.escapeRegex(search), "i");
       const clients = await Client.find({
         $or: [
-          { name: new RegExp(search, "i") },
-          { email: new RegExp(search, "i") },
-          { phone: new RegExp(search, "i") },
+          { name: searchRegex },
+          { email: searchRegex },
+          { phone: searchRegex },
         ],
-      });
+      })
+        .select("_id")
+        .lean();
       const clientIds = clients.map((c) => c._id);
 
       // If specialist filter is active, combine with search filter
       if (filter.clientId && filter.clientId.$in) {
-        query = query
-          .where("clientId")
-          .in(
-            clientIds.filter((id) =>
-              filter.clientId.$in.some((fid) => fid.equals(id))
-            )
-          );
+        effectiveFilter.clientId = {
+          $in: clientIds.filter((id) =>
+            filter.clientId.$in.some((fid) => fid.equals(id)),
+          ),
+        };
       } else {
-        query = query.where("clientId").in(clientIds);
+        effectiveFilter.clientId = { $in: clientIds };
       }
     }
 
-    const tenantClients = await query;
-    const total = await TenantClient.countDocuments(filter);
+    const query = TenantClient.find(effectiveFilter)
+      .populate("clientId", "name email phone memberSince isActive")
+      .sort({ [safeSortBy]: sortDirection, _id: sortDirection })
+      .lean();
+
+    const decodedCursor = ClientService.decodeCursor(cursor);
+    if (decodedCursor && decodedCursor.value !== undefined) {
+      const cursorValue = decodedCursor.value;
+      const cursorId = new mongoose.Types.ObjectId(decodedCursor.id);
+      const valueComparison = sortDirection === 1 ? "$gt" : "$lt";
+
+      query.where({
+        $or: [
+          { [safeSortBy]: { [valueComparison]: cursorValue } },
+          {
+            [safeSortBy]: cursorValue,
+            _id: { [valueComparison]: cursorId },
+          },
+        ],
+      });
+    } else {
+      query.skip(safeSkip);
+    }
+
+    query.limit(safeLimit + 1);
+
+    const rows = await query;
+    const hasMore = rows.length > safeLimit;
+    const tenantClients = hasMore ? rows.slice(0, safeLimit) : rows;
+    const total = await TenantClient.countDocuments(effectiveFilter);
+
+    const nextCursor =
+      hasMore && tenantClients.length > 0
+        ? ClientService.encodeCursor({
+            id: tenantClients[tenantClients.length - 1]._id,
+            value: tenantClients[tenantClients.length - 1][safeSortBy],
+          })
+        : null;
 
     return {
       clients: tenantClients,
       total,
-      hasMore: skip + tenantClients.length < total,
+      hasMore,
+      nextCursor,
     };
   }
 
@@ -281,7 +360,9 @@ class ClientService {
     const tenantClient = await TenantClient.findOne({
       tenantId,
       clientId,
-    }).populate("clientId");
+    })
+      .populate("clientId", "name email phone memberSince isActive")
+      .lean();
 
     if (!tenantClient) {
       return null;
@@ -289,9 +370,11 @@ class ClientService {
 
     // Get booking history for THIS tenant only
     const appointments = await Appointment.find({ tenantId, clientId })
-      .populate("serviceId")
-      .populate("specialistId")
-      .sort({ start: -1 });
+      .populate("serviceId", "name category price duration")
+      .populate("specialistId", "name email image")
+      .sort({ start: -1 })
+      .limit(100)
+      .lean();
 
     return {
       client: tenantClient.clientId,
@@ -326,7 +409,7 @@ class ClientService {
     const tenantClient = await TenantClient.findOneAndUpdate(
       { tenantId, clientId },
       { $set: { ...filteredUpdates, updatedAt: new Date() } },
-      { new: true }
+      { new: true },
     ).populate("clientId");
 
     return tenantClient;
@@ -347,7 +430,7 @@ class ClientService {
           blockedBy: blockedByAdminId,
         },
       },
-      { new: true }
+      { new: true },
     );
 
     return tenantClient;
@@ -368,7 +451,7 @@ class ClientService {
           blockedBy: null,
         },
       },
-      { new: true }
+      { new: true },
     );
 
     return tenantClient;
@@ -467,13 +550,13 @@ class ClientService {
     // Get all business relationships
     const tenantRelationships = await TenantClient.find({ clientId }).populate(
       "tenantId",
-      "name slug branding"
+      "name slug branding",
     );
 
     // Get all bookings across all businesses - use collection.find to bypass tenant filtering
     // Convert clientId to ObjectId for MongoDB query
     console.log(
-      `[ClientService] Fetching appointments for clientId: ${clientId}`
+      `[ClientService] Fetching appointments for clientId: ${clientId}`,
     );
     const appointmentDocs = await Appointment.collection
       .find({ clientId: new mongoose.Types.ObjectId(clientId) })
@@ -481,7 +564,7 @@ class ClientService {
       .toArray();
 
     console.log(
-      `[ClientService] Found ${appointmentDocs.length} appointment documents`
+      `[ClientService] Found ${appointmentDocs.length} appointment documents`,
     );
 
     // Manually populate the appointments
@@ -492,11 +575,11 @@ class ClientService {
         await appt.populate("serviceId");
         await appt.populate("specialistId");
         return appt;
-      })
+      }),
     );
 
     console.log(
-      `[ClientService] Populated ${allAppointments.length} appointments`
+      `[ClientService] Populated ${allAppointments.length} appointments`,
     );
 
     return {
@@ -535,7 +618,7 @@ class ClientService {
   static async exportClientData(clientId) {
     const client = await Client.findById(clientId);
     const tenantRelationships = await TenantClient.find({ clientId }).populate(
-      "tenantId"
+      "tenantId",
     );
     const appointments = await Appointment.find({ clientId }).populate([
       "serviceId",
@@ -568,7 +651,7 @@ class ClientService {
           "client.phone": "[deleted]",
           clientId: null,
         },
-      }
+      },
     );
 
     // Delete global client

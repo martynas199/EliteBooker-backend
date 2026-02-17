@@ -38,22 +38,67 @@ const PLATFORM_DOMAINS = [
  */
 const tenantCache = new Map();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const MAX_TENANT_CACHE_ENTRIES = 1000;
+
+function normalizeCacheValue(value) {
+  if (value === null || value === undefined) return value;
+  if (value instanceof Date) return value.toISOString();
+  if (Array.isArray(value)) return value.map(normalizeCacheValue);
+  if (typeof value === "object") {
+    const normalized = {};
+    for (const key of Object.keys(value).sort()) {
+      normalized[key] = normalizeCacheValue(value[key]);
+    }
+    return normalized;
+  }
+  return value;
+}
+
+function buildTenantCacheKey(query) {
+  return JSON.stringify(normalizeCacheValue(query));
+}
+
+function pruneTenantCache(now = Date.now()) {
+  for (const [key, entry] of tenantCache.entries()) {
+    if (now - entry.timestamp >= CACHE_TTL) {
+      tenantCache.delete(key);
+    }
+  }
+
+  if (tenantCache.size <= MAX_TENANT_CACHE_ENTRIES) {
+    return;
+  }
+
+  const sortedEntries = Array.from(tenantCache.entries()).sort(
+    (a, b) => a[1].timestamp - b[1].timestamp,
+  );
+
+  const toDelete = sortedEntries.slice(
+    0,
+    tenantCache.size - MAX_TENANT_CACHE_ENTRIES,
+  );
+  for (const [key] of toDelete) {
+    tenantCache.delete(key);
+  }
+}
 
 /**
  * Get tenant from cache or database
  */
 async function getTenant(query) {
-  const cacheKey = JSON.stringify(query);
+  const now = Date.now();
+  const cacheKey = buildTenantCacheKey(query);
   const cached = tenantCache.get(cacheKey);
 
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+  if (cached && now - cached.timestamp < CACHE_TTL) {
     return cached.tenant;
   }
 
   const tenant = await Tenant.findOne(query);
 
   if (tenant) {
-    tenantCache.set(cacheKey, { tenant, timestamp: Date.now() });
+    tenantCache.set(cacheKey, { tenant, timestamp: now });
+    pruneTenantCache(now);
   }
 
   return tenant;
@@ -225,7 +270,10 @@ export async function resolveTenant(req, res, next) {
       } catch (error) {
         // Invalid token - continue without tenant context
         if (LOG_RESOLVE_TENANT) {
-          console.log("Token verification failed in resolveTenant:", error.message);
+          console.log(
+            "Token verification failed in resolveTenant:",
+            error.message,
+          );
         }
       }
     }

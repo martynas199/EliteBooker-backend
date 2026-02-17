@@ -10,7 +10,10 @@ import { createConsoleLogger } from "../utils/logger.js";
 const router = Router();
 const LOG_USERS =
   process.env.LOG_USERS === "true" || process.env.LOG_VERBOSE === "true";
-const console = createConsoleLogger({ scope: "users-route", verbose: LOG_USERS });
+const console = createConsoleLogger({
+  scope: "users-route",
+  verbose: LOG_USERS,
+});
 
 // All routes require authentication
 router.use(authenticateUser);
@@ -18,10 +21,18 @@ router.use(authenticateUser);
 // GET /api/users/me/bookings - Get user's bookings
 router.get("/me/bookings", async (req, res) => {
   try {
+    const limit = Math.min(
+      Math.max(parseInt(req.query.limit, 10) || 50, 1),
+      100,
+    );
+    const skip = Math.max(parseInt(req.query.skip, 10) || 0, 0);
+
     const bookings = await Appointment.find({ userId: req.userId })
       .populate("serviceId", "name description")
       .populate("specialistId", "name image")
       .sort({ start: -1 }) // Most recent first
+      .skip(skip)
+      .limit(limit)
       .lean();
 
     res.json({ bookings });
@@ -34,9 +45,17 @@ router.get("/me/bookings", async (req, res) => {
 // GET /api/users/me/orders - Get user's product orders
 router.get("/me/orders", async (req, res) => {
   try {
+    const limit = Math.min(
+      Math.max(parseInt(req.query.limit, 10) || 50, 1),
+      100,
+    );
+    const skip = Math.max(parseInt(req.query.skip, 10) || 0, 0);
+
     const orders = await Order.find({ userId: req.userId })
       .populate("items.productId", "title images price")
       .sort({ createdAt: -1 }) // Most recent first
+      .skip(skip)
+      .limit(limit)
       .lean();
 
     res.json({ orders });
@@ -77,7 +96,7 @@ router.patch("/me", async (req, res) => {
 
       const isPasswordValid = await bcrypt.compare(
         currentPassword,
-        user.password
+        user.password,
       );
       if (!isPasswordValid) {
         return res.status(401).json({ error: "Current password is incorrect" });
