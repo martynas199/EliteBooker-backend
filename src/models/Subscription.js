@@ -88,7 +88,6 @@ const subscriptionSchema = new mongoose.Schema(
 subscriptionSchema.index({ salonId: 1 });
 subscriptionSchema.index({ adminId: 1 });
 subscriptionSchema.index({ stripeCustomerId: 1 });
-subscriptionSchema.index({ stripeSubscriptionId: 1 });
 
 // Apply multi-tenant plugin
 subscriptionSchema.plugin(multiTenantPlugin);
