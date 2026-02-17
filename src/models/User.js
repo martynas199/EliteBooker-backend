@@ -86,9 +86,6 @@ const userSchema = new mongoose.Schema(
 );
 
 // Performance indexes for common queries
-userSchema.index({ email: 1 }); // Already unique
-userSchema.index({ googleId: 1 }); // Already sparse unique
-userSchema.index({ appleId: 1 }); // Already sparse unique
 userSchema.index({ authProvider: 1, email: 1 }); // OAuth lookups
 userSchema.index({ isActive: 1, createdAt: -1 }); // Active users
 userSchema.index({ lastLogin: -1 }); // Recent activity
